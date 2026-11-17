@@ -47,6 +47,10 @@
   const $ = (id) => document.getElementById(id);
   const show = (el, on) => el.classList.toggle('hidden', !on);
   const hidden = (el) => el.classList.contains('hidden');
+  const sentence = (t) => t.charAt(0) + t.slice(1).toLowerCase();
+  const DIFF_WORD = { EASY: 'Easy', MEDIUM: 'Intermediate', HARD: 'Expert' };
+  const pisteSign = (d) => `<i class="pst ${d}" title="${DIFF_WORD[d] || ''}"></i>`;
+  const rgbOf = (c) => 'rgb(' + c.map((v) => Math.round(v * 255)).join(',') + ')';
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
   const ui = {};
@@ -56,7 +60,7 @@
     'bestScore', 'servers', 'serverList', 'serverMsg', 'backBtn', 'pauseMenu', 'resumeBtn', 'restartBtn', 'pauseSettingsBtn', 'quitBtn',
     'results', 'resTitle', 'resBody', 'againBtn', 'newBtn', 'resMenuBtn', 'resNote', 'settings', 'settingsDone', 'loading', 'loadingText',
     'nogl', 'touch', 'fx', 'boostBox', 'boostFill', 'balance', 'balMark', 'mapIntro', 'miTime', 'miName', 'miGoals', 'maps', 'mapGrid', 'mapsBack',
-    'starsTotal', 'resMapsBtn'].forEach((id) => { ui[id] = $(id); });
+    'starsTotal', 'resMapsBtn', 'avatar'].forEach((id) => { ui[id] = $(id); });
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
@@ -296,7 +300,7 @@
       grounded: true, surf: 0, grindRef: null, grind: 0, airT: 0,
       spin: 0, flip: 0, spinVel: 0, flipVel: 0, spinLock: 0, flipLock: 0, grabT: 0,
       stance: 0, lean: 0, crouch: 0.2, comp: 0, compV: 0, charge: 0, chargeT: 0, charging: false, coyote: 0,
-      bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, inv: 0, finished: false, yawOff: -0.3,
+      bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, inv: 0, finished: false, yawOff: 0,
       steerS: 0, slide: 0, wind: 0, wobble: 0, boosting: false, bal: 0, balV: 0, balPush: 0, balT: 0, balErr: 0,
     });
     P.y = world.H(P.x, P.z);
@@ -550,7 +554,12 @@
     } else {
       const turn = lerp(2.5, 1.4, clamp(P.speed / 38, 0, 1)) * (1 + 0.35 * P.slide);
       P.heading += s * turn * dt;
-      if (Math.abs(s) < 0.05) P.heading *= Math.exp(-0.25 * dt);
+      if (Math.abs(steer) < 0.05) {
+        // hands off: the board swings back to pointing straight down the course
+        const course = Math.atan2(w.center(P.z + 4) - w.center(P.z - 4), 8);
+        P.heading = lerpAngle(P.heading, course, Math.min(1, dt * (2.2 + P.speed * 0.03)));
+        P.steerS *= Math.exp(-6 * dt);
+      }
       P.heading = clamp(P.heading, -1.45, 1.45);
     }
 
@@ -632,7 +641,7 @@
     } else if (wasGrind) endGrind();
 
     P.lean = lerp(P.lean, grinding ? P.bal * 0.6 : s * clamp(P.speed / 16, 0.3, 1) * 0.5 - P.slide * 0.3, Math.min(1, dt * 6));
-    P.yawOff = lerp(P.yawOff, grinding ? 0 : -0.3 - s * 0.18 - P.slide * 1.05, Math.min(1, dt * 6));
+    P.yawOff = lerp(P.yawOff, grinding ? 0 : -s * 0.12 - P.slide * 1.05, Math.min(1, dt * 6));
     const cTarget = P.charging ? 0.45 + P.charge * 0.5 : tuck ? 0.8 : 0.18 + Math.abs(s) * 0.18 + P.slide * 0.25;
     P.crouch = lerp(P.crouch, cTarget, Math.min(1, dt * 10));
     if (P.wobble > 0) P.lean += Math.sin(time * 30) * 0.08 * P.wobble;
@@ -689,7 +698,7 @@
     }
     if (grabbing()) P.grabT += dt;
     P.lean *= Math.exp(-4 * dt);
-    P.yawOff = lerp(P.yawOff, -0.15, Math.min(1, dt * 3));
+    P.yawOff = lerp(P.yawOff, 0, Math.min(1, dt * 3));
     P.crouch = lerp(P.crouch, grabbing() ? 0.55 : 0.28, Math.min(1, dt * 8));
 
     const h = world.H(P.x, P.z);
@@ -1401,31 +1410,36 @@
     updateStars();
     const newBest = run.score > best;
     if (newBest) { best = Math.round(run.score); store.set(BEST_KEY, best); ui.bestScore.textContent = fmt(best); }
-    ui.resTitle.textContent = 'RUN COMPLETE';
-    ui.resBody.innerHTML = `<div class="resMap">${esc(map.name.toUpperCase())} &middot; ${map.time}</div><div class="chal">${chal}</div><div class="stats" style="margin-top:12px">
-      <div class="total"><span>SCORE</span><b>${fmt(run.score)}</b></div>
-      <div><span>TIME</span><b>${fmtTime(run.finalTime)}</b>${run.bonus ? `<small>+${fmt(run.bonus)} bonus</small>` : ''}</div>
-      <div><span>TRICKS</span><b>${run.tricks}</b></div>
-      <div><span>PERFECT LANDINGS</span><b>${run.perfects}</b></div>
-      <div><span>TOKENS</span><b>${run.tokens}/${world.tokens.length}</b></div>
-      <div><span>TOP SPEED</span><b>${Math.round(run.topSpeed * 3.6)} km/h</b></div>
-      <div><span>BIGGEST AIR</span><b>${run.bigAir.toFixed(1)} s</b></div>
-      <div><span>BAILS</span><b>${run.bails}</b></div>
-      <div><span>MAP BEST</span><b>${fmt(pr.best)}</b></div>
-    </div>${mapBest ? '<div class="newbest">NEW BEST ON ' + esc(map.name.toUpperCase()) + '!</div>' : ''}`;
+    ui.resTitle.innerHTML = `RUN COMPLETE<small>${esc(map.name)}, ${sentence(map.time).toLowerCase()}</small>`;
+    ui.results.style.setProperty('--acc', map.accent);
+    ui.resBody.innerHTML = `<div class="res-top">
+      <div class="res-score"><b>${fmt(run.score)}</b><span>points</span>${mapBest ? '<span class="stamp">NEW BEST!</span>' : ''}${run.bonus ? `<small>incl. +${fmt(run.bonus)} time bonus</small>` : ''}</div>
+      <div class="chal">${chal}</div>
+    </div>
+    <div class="stats">
+      <div><span>Time</span><b>${fmtTime(run.finalTime)}</b></div>
+      <div><span>Tricks</span><b>${run.tricks}</b></div>
+      <div><span>Perfect landings</span><b>${run.perfects}</b></div>
+      <div><span>Tokens</span><b>${run.tokens}/${world.tokens.length}</b></div>
+      <div><span>Top speed</span><b>${Math.round(run.topSpeed * 3.6)} km/h</b></div>
+      <div><span>Biggest air</span><b>${run.bigAir.toFixed(1)} s</b></div>
+      <div><span>Bails</span><b>${run.bails}</b></div>
+      <div><span>Best here</span><b>${fmt(pr.best)}</b></div>
+    </div>`;
     show(ui.againBtn, true);
     show(ui.newBtn, true);
     show(ui.resMapsBtn, true);
     show(ui.touch, false);
     ui.resMenuBtn.textContent = 'MENU';
-    ui.resNote.textContent = 'Same mountain = the same course again, racing a ghost of your best run (Enter).';
+    ui.resNote.textContent = 'Same mountain rides this exact course again against a ghost of your best run. Press Enter.';
     show(ui.results, true);
   }
 
   function showMpResults(rows) {
-    ui.resTitle.textContent = 'ROUND RESULTS';
+    ui.resTitle.innerHTML = `ROUND RESULTS<small>${esc(world.map.name)}</small>`;
+    ui.results.style.setProperty('--acc', world.map.accent);
     ui.resBody.innerHTML = rows.length
-      ? `<table class="rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'DNF · ' + fmt(r.dist) + ' m'}</td><td class="n"><b>${fmt(r.score)}</b></td></tr>`).join('')}</table>`
+      ? `<table class="rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'Didn\'t finish (' + fmt(r.dist) + ' m)'}</td><td class="n"><b>${fmt(r.score)}</b></td></tr>`).join('')}</table>`
       : '<p class="small">Nobody finished this round.</p>';
     show(ui.againBtn, false);
     show(ui.newBtn, false);
@@ -1530,10 +1544,10 @@
       b.dataset.id = id;
       b.style.setProperty('--acc', m.accent);
       b.innerHTML = `<div class="art">${mapArt(m)}<span class="play">RIDE &#9654;</span></div>
-        <div class="mc-body"><div class="mc-name brush">${esc(m.name)}</div>
-        <div class="mc-tags"><span class="t">${m.time}</span><span class="${m.diff}">${m.diff}</span></div>
+        <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}${esc(m.name)}</div>
+        <div class="mc-tags">${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}</div>
         <div class="mc-sub">${esc(m.sub)}</div>
-        <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'BEST ' + fmt(pr.best) : 'NOT RIDDEN'}</span></div></div>`;
+        <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'Best ' + fmt(pr.best) : 'Not ridden yet'}</span></div></div>`;
       b.title = m.goals.map((g, i) => (pr.stars[i] ? '★ ' : '☆ ') + g.t).join('\n');
       b.addEventListener('click', (e) => { e.currentTarget.blur(); clearTimeout(previewTimer); saveName(); startSingle(false, id); });
       const preview = () => {
@@ -1570,7 +1584,7 @@
   function showIntro(dur) {
     const m = world.map;
     ui.mapIntro.style.setProperty('--acc', m.accent);
-    ui.miTime.textContent = m.time + ' · ' + m.diff;
+    ui.miTime.innerHTML = `<span class="on-dark">${pisteSign(m.diff)}</span>${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}`;
     ui.miName.textContent = m.name.toUpperCase();
     ui.miGoals.innerHTML = mode === 'sp' ? m.goals.map((g) => `<span>${esc(g.t)}</span>`).join('') : '<span>' + esc(m.sub) + '</span>';
     ui.mapIntro.classList.remove('out');
@@ -1638,9 +1652,9 @@
         const full = s.players >= s.max;
         const tag = row.querySelector('.mapTag');
         const mm = SS.MAPS[s.map];
-        tag.textContent = mm ? mm.name.toUpperCase() : '';
+        tag.textContent = mm ? mm.name : '';
         tag.style.setProperty('--acc', mm ? mm.accent : '#fff');
-        row.querySelector('.st').textContent = (s.players === 0 ? 'EMPTY · JOIN TO START A ROUND' : s.phase === 'racing' ? 'RACE IN PROGRESS' : s.phase === 'countdown' ? 'STARTING SOON' : s.phase === 'results' ? 'RESULTS · NEXT MOUNTAIN SOON' : 'OPEN') + (mm ? ' · ' + mm.time : '');
+        row.querySelector('.st').textContent = s.players === 0 ? 'Empty. Join to start a round' : s.phase === 'racing' ? 'Race in progress' : s.phase === 'countdown' ? 'Starting soon' : s.phase === 'results' ? 'Results are up, next mountain soon' : 'Open';
         row.querySelector('.cnt').textContent = s.players + '/' + s.max;
         row.querySelector('.fill i').style.width = (s.players / s.max) * 100 + '%';
         const btn = row.querySelector('button');
@@ -1681,6 +1695,27 @@
     net.connect(id, playerName, settings.outfit | 0);
   }
 
+  // the photo on the season pass, drawn in the chosen outfit
+  function drawAvatar() {
+    const p = SS.PALETTE[settings.outfit | 0];
+    const jacket = rgbOf(p.jacket), trim = rgbOf(p.trim), helmet = rgbOf(p.helmet), board = rgbOf(p.board), stripe = rgbOf(p.stripe);
+    ui.avatar.innerHTML = `<svg viewBox="0 0 92 112" xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="avSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0ff"/><stop offset="1" stop-color="#e8f3ff"/></linearGradient>
+      <linearGradient id="avLens" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="0.55" stop-color="#ff4f8b"/><stop offset="1" stop-color="#6b4dff"/></linearGradient></defs>
+      <rect width="92" height="112" fill="url(#avSky)"/>
+      <path d="M0 78 L22 58 L36 68 L56 46 L92 74 L92 112 L0 112Z" fill="#fff" opacity="0.9"/>
+      <g transform="rotate(-28 46 70)"><rect x="-6" y="62" width="104" height="17" rx="8.5" fill="${board}" stroke="#10204a" stroke-width="2"/><rect x="4" y="68.5" width="84" height="4" rx="2" fill="${stripe}"/></g>
+      <path d="M8 112 Q11 76 46 72 Q81 76 84 112Z" fill="${jacket}" stroke="#10204a" stroke-width="2"/>
+      <path d="M46 78 L46 112" stroke="${trim}" stroke-width="3.5"/>
+      <rect x="33" y="57" width="26" height="19" rx="7" fill="${trim}" stroke="#10204a" stroke-width="2"/>
+      <circle cx="46" cy="43" r="21" fill="${helmet}" stroke="#10204a" stroke-width="2"/>
+      <path d="M31 33 Q46 24 61 33" stroke="#10204a" stroke-width="2" fill="none" opacity="0.35"/>
+      <rect x="26" y="41" width="40" height="15" rx="7.5" fill="#1a1d2b" stroke="#10204a" stroke-width="2"/>
+      <rect x="29" y="43.5" width="34" height="10" rx="5" fill="url(#avLens)"/>
+      <path d="M33 46 L40 46" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
+    </svg>`;
+  }
+
   // outfit picker
   function buildSwatches() {
     ui.swatches.innerHTML = '';
@@ -1700,6 +1735,7 @@
       ui.swatches.appendChild(b);
     });
     ui.outfitName.textContent = SS.PALETTE[settings.outfit | 0].name;
+    drawAvatar();
   }
 
   // buttons

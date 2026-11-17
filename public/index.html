@@ -7,7 +7,7 @@
   <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Five mountains: sunny day, sunset, floodlit night, moonlit woods and an ice cave. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1226'/%3E%3Cpath d='M10 44 L54 20' stroke='%23ff7a1f' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -60,27 +60,37 @@
   <section id="title" class="overlay">
     <div class="title-wrap">
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
-      <p class="tag">Five mountains. Sun, dusk, floodlights and a frozen cave. Send it.</p>
-      <label class="name">Rider name <input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
-      <div class="outfits"><span class="olbl">Outfit</span><div id="swatches"></div><span id="outfitName"></span></div>
-      <div class="buttons">
-        <button id="spBtn" class="btn" type="button">SINGLEPLAYER</button>
-        <button id="mpBtn" class="btn alt" type="button">MULTIPLAYER</button>
+      <p class="tag">Five mountains. Sun, dusk, floodlights and a frozen cave.</p>
+      <div class="pass">
+        <div class="pass-head"><span class="brush">Season pass</span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></div>
+        <div class="pass-body">
+          <div id="avatar" class="avatar" aria-hidden="true"></div>
+          <div class="pass-fields">
+            <label class="field"><span>Rider</span><input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
+            <div class="field"><span>Outfit</span><div id="swatches"></div></div>
+            <div class="pass-meta"><span id="outfitName"></span><span>Best run <b id="bestScore">0</b></span></div>
+          </div>
+        </div>
+        <div class="buttons">
+          <button id="spBtn" class="btn" type="button">SINGLEPLAYER</button>
+          <button id="mpBtn" class="btn alt" type="button">MULTIPLAYER</button>
+          <button id="settingsBtn" class="btn ghost icon" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.2 0 1.8l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.8l-2-1.8 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9z" fill="currentColor"/><circle cx="12" cy="11" r="3" fill="#fff"/></svg></button>
+        </div>
+        <div class="barcode" aria-hidden="true"></div>
       </div>
-      <div class="buttons"><button id="settingsBtn" class="btn ghost sm" type="button">SETTINGS</button></div>
       <div class="controls">
+        <div class="howto-h brush">How to ride</div>
         <div><kbd>&larr;</kbd><kbd>&rarr;</kbd> carve, or spin in the air</div>
-        <div><kbd>Space</kbd> hold, then release to pop</div>
-        <div><kbd>&uarr;</kbd><kbd>&darr;</kbd> in the air: front / back flip</div>
+        <div><kbd>Space</kbd> hold, then let go to pop</div>
+        <div><kbd>&uarr;</kbd><kbd>&darr;</kbd> in the air: front or back flip</div>
         <div><kbd>&darr;</kbd> on the snow: tuck for speed</div>
         <div><kbd>&uarr;</kbd> on the snow: powerslide</div>
         <div><kbd>Shift</kbd> grab</div>
         <div><kbd>B</kbd> boost (tricks fill it up)</div>
-        <div>On rails: <kbd>&larr;</kbd><kbd>&rarr;</kbd> keep your balance</div>
+        <div>On rails <kbd>&larr;</kbd><kbd>&rarr;</kbd> keep your balance</div>
         <div>Hold <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> while you pop: pre-spin</div>
         <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> mute</div>
       </div>
-      <p class="small">Stars <b id="starsTotal">0/15</b> &nbsp;&middot;&nbsp; Best run: <b id="bestScore">0</b></p>
     </div>
   </section>
 
@@ -88,7 +98,7 @@
   <section id="maps" class="overlay hidden">
     <div class="panel wide">
       <h2 class="brush">PICK A MOUNTAIN</h2>
-      <p class="small dim">Each mountain has 3 star challenges. Every run builds a fresh course.</p>
+      <p class="lead">Every mountain has 3 stars to earn, and every run builds a fresh course.</p>
       <div id="mapGrid"></div>
       <button id="mapsBack" class="btn ghost" type="button">BACK</button>
     </div>
@@ -98,7 +108,7 @@
   <section id="servers" class="overlay hidden">
     <div class="panel">
       <h2 class="brush">MULTIPLAYER</h2>
-      <p class="small dim">Race the same course with up to 10 riders per server. Every round moves to the next mountain.</p>
+      <p class="lead">Up to 10 riders per server race the same course. Each round moves on to the next mountain.</p>
       <div id="serverList"></div>
       <p id="serverMsg" class="small"></p>
       <button id="backBtn" class="btn ghost" type="button">BACK</button>
@@ -139,7 +149,7 @@
       <div class="set"><span>Music</span><div class="seg" data-key="music"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
       <div class="set"><span>Sound effects</span><div class="seg" data-key="sfx"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
       <div class="set"><span>Camera</span><div class="seg" data-key="camera"><button data-v="close" type="button">CLOSE</button><button data-v="far" type="button">FAR</button></div></div>
-      <p class="small dim">Low graphics runs best on older school computers.</p>
+      <p class="lead">Low graphics runs best on older school computers.</p>
       <button id="settingsDone" class="btn" type="button">DONE</button>
     </div>
   </section>
