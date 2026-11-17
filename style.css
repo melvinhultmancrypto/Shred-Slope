@@ -39,7 +39,7 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  padding: 14px 16px;
+  padding: calc(14px + env(safe-area-inset-top)) 16px 14px;
   pointer-events: none;
 }
 .hud-left, .hud-right { display: flex; flex-direction: column; gap: 8px; }
@@ -336,7 +336,7 @@ kbd {
 }
 #touch button.on { background: rgba(255, 255, 255, 0.4); }
 
-body.touch #corner { top: 118px; bottom: auto; }
+body.touch #corner { top: calc(118px + env(safe-area-inset-top)); bottom: auto; }
 body.touch #hint { bottom: calc(118px + env(safe-area-inset-bottom)); font-size: 13px; }
 body.touch .keys { display: none; }
 
