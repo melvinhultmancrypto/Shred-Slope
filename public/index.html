@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Shred Slope</title>
+  <meta name="description" content="Shred Slope: a 3D night-time snowboarding game in the browser. Ride solo or race up to 10 friends.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1226'/%3E%3Cpath d='M10 44 L54 20' stroke='%23ff7a1f' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <canvas id="gl"></canvas>
+  <div id="tags"></div>
+
+  <!-- In-game HUD -->
+  <div id="hud" class="hidden">
+    <div id="zone" class="brush"></div>
+    <div id="mpbar" class="hidden"><span id="mpServer"></span><span id="mpTimer"></span></div>
+    <div id="scoreBox">
+      <div class="lbl brush">SCORE</div>
+      <div id="score" class="brush">0</div>
+    </div>
+    <div id="trick"><div id="trickName" class="brush"></div><div id="trickSub" class="brush"></div></div>
+    <div id="speedBox">
+      <div id="speedLbl" class="lbl brush">SPEED</div>
+      <div class="big"><span id="speedVal" class="brush">0</span><span id="speedUnit" class="brush">KM/H</span></div>
+      <div class="bar"><i id="speedBar"></i></div>
+      <div id="subStats" class="brush"></div>
+      <div id="timer" class="brush">00:00</div>
+    </div>
+    <div id="mapBox">
+      <canvas id="minimap" width="72" height="170"></canvas>
+      <div id="alt" class="brush">0 M</div>
+      <div id="left" class="brush">0 KM LEFT</div>
+    </div>
+    <div id="popMeter" class="hidden"><div class="bar"><i id="popBar"></i></div><span class="brush">RELEASE TO POP</span></div>
+    <div id="standings" class="hidden"></div>
+    <div id="feed"></div>
+    <div id="big"><div id="bigText" class="brush"></div><div id="bigSub" class="brush"></div></div>
+    <div id="note" class="hidden"></div>
+  </div>
+
+  <button id="menuBtn" class="hidden" type="button">&#9776; MENU <kbd>ESC</kbd></button>
+
+  <!-- Title -->
+  <section id="title" class="overlay">
+    <div class="title-wrap">
+      <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
+      <p class="tag">Night session. Floodlights on. Send it.</p>
+      <label class="name">Rider name <input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
+      <div class="buttons">
+        <button id="spBtn" class="btn" type="button">SINGLEPLAYER</button>
+        <button id="mpBtn" class="btn alt" type="button">MULTIPLAYER</button>
+      </div>
+      <div class="controls">
+        <div><kbd>&larr;</kbd><kbd>&rarr;</kbd> carve, or spin in the air</div>
+        <div><kbd>Space</kbd> hold, then release to pop</div>
+        <div><kbd>&uarr;</kbd><kbd>&darr;</kbd> in the air: front / back flip</div>
+        <div><kbd>&darr;</kbd> on the snow: tuck for speed</div>
+        <div><kbd>Shift</kbd> grab</div>
+        <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> sound</div>
+      </div>
+      <p class="small">Best run: <b id="bestScore">0</b></p>
+    </div>
+  </section>
+
+  <!-- Server browser -->
+  <section id="servers" class="overlay hidden">
+    <div class="panel">
+      <h2 class="brush">MULTIPLAYER</h2>
+      <p class="small dim">Race the same mountain with up to 10 riders per server. New round every few minutes.</p>
+      <div id="serverList"></div>
+      <p id="serverMsg" class="small"></p>
+      <button id="backBtn" class="btn ghost" type="button">BACK</button>
+    </div>
+  </section>
+
+  <!-- Menu -->
+  <section id="pauseMenu" class="overlay hidden">
+    <div class="panel narrow">
+      <h2 class="brush">MENU</h2>
+      <button id="resumeBtn" class="btn" type="button">RESUME</button>
+      <button id="restartBtn" class="btn alt" type="button">RESTART RUN</button>
+      <button id="quitBtn" class="btn ghost" type="button">QUIT TO MENU</button>
+    </div>
+  </section>
+
+  <!-- Results -->
+  <section id="results" class="overlay hidden">
+    <div class="panel">
+      <h2 id="resTitle" class="brush">RUN COMPLETE</h2>
+      <div id="resBody"></div>
+      <div class="buttons">
+        <button id="againBtn" class="btn" type="button">RIDE AGAIN</button>
+        <button id="resMenuBtn" class="btn ghost" type="button">MENU</button>
+      </div>
+      <p id="resNote" class="small dim"></p>
+    </div>
+  </section>
+
+  <div id="loading" class="hidden"><div class="spinner"></div><span id="loadingText">Building the mountain&hellip;</span></div>
+
+  <section id="nogl" class="overlay hidden">
+    <div class="panel narrow">
+      <h2 class="brush">NO 3D</h2>
+      <p>This browser can't run WebGL, which Shred Slope needs for 3D. Try Chrome, Edge or Firefox.</p>
+    </div>
+  </section>
+
+  <!-- Touch controls (phones and tablets) -->
+  <div id="touch" class="hidden">
+    <div class="pad"><button data-k="left" type="button" aria-label="Left">&#9664;</button><button data-k="right" type="button" aria-label="Right">&#9654;</button></div>
+    <div class="pad"><button data-k="flip" type="button">FLIP</button><button data-k="pop" type="button">POP</button></div>
+  </div>
+
+  <script src="js/engine.js"></script>
+  <script src="js/world.js"></script>
+  <script src="js/rider.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/net.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>
