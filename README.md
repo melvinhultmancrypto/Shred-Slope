@@ -16,23 +16,35 @@ A 3D night-time snowboarding game that runs in the browser. Ride a floodlit moun
 
 ## Put it on Render
 
-1. Sign in at [render.com](https://render.com) with your GitHub account.
-2. Click **New → Blueprint**, pick the `Shred-Slope` repo and press **Apply**. Render reads `render.yaml` and creates a free web service called `shred-slope`.
-3. Wait for the deploy log to say `Shred Slope running on port 10000 with 3 servers`. The first deploy takes a couple of minutes.
-4. Open the URL Render shows at the top of the service, e.g. `https://shred-slope.onrender.com`.
-5. Every time you push to `main`, Render redeploys automatically.
+Render pulls the code straight from GitHub, so there is nothing to upload by hand. `render.yaml` is set up for the $7/month Starter size (0.5 CPU, 512 MB), which stays on all the time, in the Frankfurt region (closest to Scandinavia, so multiplayer lag stays low).
+
+1. Sign in at [render.com](https://render.com) with your GitHub account and give Render access to the `Shred-Slope` repo.
+2. Click **New → Blueprint**, pick `melvinhultmancrypto/Shred-Slope` and press **Apply**. Render reads `render.yaml` and creates the `shred-slope` web service.
+3. Wait for the deploy log to say `Shred Slope running on port 10000 with 3 servers`. The status changes to **Live**.
+4. Open the URL at the top of the service, e.g. `https://shred-slope.onrender.com`.
+5. Every push to `main` redeploys automatically.
 
 **If you'd rather not use the Blueprint:** choose **New → Web Service**, pick the repo, and use these settings:
 
 | Setting | Value |
 | --- | --- |
+| Name | `shred-slope` (this becomes part of the URL) |
 | Language | Node |
+| Branch | `main` |
+| Region | Frankfurt (EU Central) |
+| Root directory | leave empty |
 | Build command | `npm install` |
 | Start command | `npm start` |
-| Instance type | Free |
-| Health check path | `/health` |
+| Instance type | Starter ($7/month) |
+| Health check path | `/health` (under Advanced) |
+| Auto-deploy | On commit |
+| Environment variables | none needed (Render sets `PORT` itself) |
 
-**Good to know about the free plan:** it goes to sleep after 15 minutes with no visitors. The next visit wakes it up, which takes about a minute, so open the link a minute before you want to play. A paid instance never sleeps.
+**Keep it to one instance.** The multiplayer servers live in the server's memory, so scaling to 2+ instances would put players on different copies and they wouldn't see each other.
+
+**Already made a free service?** Changing `render.yaml` doesn't change the size of a service that already exists. Open the service, go to **Settings → Instance Type** and pick **Starter**.
+
+**Your own domain (optional):** on the service, open **Settings → Custom Domains**, add e.g. `shredslope.fun`, and create the DNS record Render shows you at your domain registrar.
 
 ## Controls
 

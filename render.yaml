@@ -1,9 +1,13 @@
-# Render Blueprint: one free web service that serves the game and runs all 3 multiplayer servers.
+# Render Blueprint: one web service that serves the game and runs all 3 multiplayer servers.
+# 0.5c-512mb is Render's $7/month "Starter" size (0.5 CPU, 512 MB): always on, never sleeps.
+# Keep it at ONE instance: the multiplayer rooms live in memory, so a second instance would split players up.
 services:
   - type: web
     name: shred-slope
     runtime: node
-    plan: free
+    plan: 0.5c-512mb
+    region: frankfurt
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+    numInstances: 1
