@@ -29,6 +29,7 @@ const MAPS = [
   { id: 'sunset', name: 'Golden Ridge' },
   { id: 'woods', name: 'Moonlit Woods' },
   { id: 'cave', name: 'Crystal Caverns' },
+  { id: 'bigair', name: 'Big Air Valley' },
 ];
 
 const SERVER_DEFS = [

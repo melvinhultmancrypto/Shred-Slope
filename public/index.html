@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Shred Slope</title>
-  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Five mountains: sunny day, sunset, floodlit night, moonlit woods and an ice cave. Ride solo or race up to 10 friends.">
+  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Six mountains: sunny day, sunset, floodlit night, moonlit woods, an ice cave and giant big-air kickers. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -47,7 +47,7 @@
     </div>
     <div id="balance" class="hidden"><div class="track"><i id="balMark"></i></div><span class="brush">BALANCE &larr; &rarr;</span></div>
     <div id="mapIntro" class="hidden"><div id="miTime"></div><div id="miName" class="brush"></div><div id="miGoals"></div></div>
-    <div id="popMeter" class="hidden"><div class="bar"><i id="popBar"></i></div><span class="brush">RELEASE TO POP</span></div>
+    <div id="popMeter" class="hidden"><div class="bar"><i id="popBar"></i></div></div>
     <div id="standings" class="hidden"></div>
     <div id="feed"></div>
     <div id="big"><div id="bigText" class="brush"></div><div id="bigSub" class="brush"></div></div>
@@ -60,7 +60,7 @@
   <section id="title" class="overlay">
     <div class="title-wrap">
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
-      <p class="tag">Five mountains. Sun, dusk, floodlights and a frozen cave.</p>
+      <p class="tag">Six mountains: sun, dusk, floodlights, an ice cave and giant kickers.</p>
       <div class="pass">
         <div class="pass-head"><span class="brush">Season pass</span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></div>
         <div class="pass-body">
@@ -80,15 +80,13 @@
       </div>
       <div class="controls">
         <div class="howto-h brush">How to ride</div>
-        <div><kbd>&larr;</kbd><kbd>&rarr;</kbd> carve, or spin in the air</div>
-        <div><kbd>Space</kbd> hold, then let go to pop</div>
-        <div><kbd>&uarr;</kbd><kbd>&darr;</kbd> in the air: front or back flip</div>
-        <div><kbd>&darr;</kbd> on the snow: tuck for speed</div>
-        <div><kbd>&uarr;</kbd> on the snow: powerslide</div>
-        <div><kbd>Shift</kbd> grab</div>
+        <div><kbd>A</kbd><kbd>D</kbd> carve, or spin in the air</div>
+        <div><kbd>Space</kbd> jump</div>
+        <div><kbd>W</kbd> speed up &middot; air: front flip</div>
+        <div><kbd>S</kbd> powerslide &middot; air: back flip</div>
+        <div><kbd>Shift</kbd> grab in the air</div>
         <div><kbd>B</kbd> boost (tricks fill it up)</div>
-        <div>On rails <kbd>&larr;</kbd><kbd>&rarr;</kbd> keep your balance</div>
-        <div>Hold <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> while you pop: pre-spin</div>
+        <div>On rails <kbd>A</kbd><kbd>D</kbd> keep your balance</div>
         <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> mute</div>
       </div>
     </div>

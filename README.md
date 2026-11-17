@@ -1,11 +1,11 @@
 # Shred Slope 🏂
 
-A 3D snowboarding game that runs in the browser. Pick one of five mountains, from a sunny bluebird day to an ice cave inside the mountain, hit kickers and rails, land spins and flips, and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Pick one of six mountains, from a sunny bluebird day to an ice cave inside the mountain or a valley of giant big-air kickers, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
-- **Five mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
-- **Star challenges:** 3 stars to earn on every mountain (15 in total), saved in the browser together with your best score per mountain.
+- **Six mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
+- **Star challenges:** 3 stars to earn on every mountain (18 in total), saved in the browser together with your best score per mountain.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
-- **Looks:** northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
+- **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
 - **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
 - **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, music, sound and camera.
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
@@ -18,6 +18,7 @@ A 3D snowboarding game that runs in the browser. Pick one of five mountains, fro
 | **Golden Ridge** | Sunset | Low orange sun, pink snow, a winding ridge with fast rollers. |
 | **Floodlit Night** | Night | The original: floodlights, northern lights and a shuffled zone order every run. |
 | **Moonlit Woods** | Night | Full moon, heavy snowfall, a dense forest and a TREE SLALOM through red and blue gates. Hardest. |
+| **Big Air Valley** | Sunny day | Three giant kickers with huge landing hills: about 5 seconds of air, 35 m above the snow. The in-run sets your takeoff speed so you always reach the landing. |
 | **Crystal Caverns** | Underground | Ride into the mountain through an ice cave lit by glowing crystals, with icicles, ice pillars to dodge and glowing rails, then out into the night. |
 
 Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing* or *Collect 35 tokens*.
@@ -66,14 +67,13 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 
 | Action | Keyboard | Touch |
 | --- | --- | --- |
-| Carve left / right | `←` `→` or `A` `D` | ◀ ▶ |
-| Pop (jump) | hold `Space`, release to jump. Longer hold, bigger pop | hold and release POP |
-| Spin | `←` `→` in the air | ◀ ▶ in the air |
-| Front / back flip | `↑` / `↓` in the air (or `W` / `S`) | hold FLIP (back flip) |
+| Carve left / right | `A` `D` (or `←` `→`) | ◀ ▶ |
+| Jump | `Space` | POP |
+| Speed up | `W` (or `↑`) on the snow | |
+| Powerslide (brake) | `S` (or `↓`) on the snow | |
+| Spin | `A` `D` in the air | ◀ ▶ in the air |
+| Front / back flip | `W` / `S` in the air | hold FLIP (back flip) |
 | Grab | `Shift` (or `E`) in the air | hold POP in the air |
-| Tuck for speed | `↓` on the snow | |
-| Powerslide (brake) | `↑` on the snow | |
-| Pre-spin | hold `←`/`→` while charging the pop | |
 | Boost | hold `B` (or `X`) | hold BOOST |
 | Keep your balance on a rail | `←` `→` against the lean | ◀ ▶ |
 | Menu | `Esc` | ☰ MENU |

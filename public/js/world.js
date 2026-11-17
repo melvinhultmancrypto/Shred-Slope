@@ -36,7 +36,11 @@
     M: { Hk: 2.1, Lu: 8, Lt: 7, Ll: 14, w: 3.2 },
     L: { Hk: 3.0, Lu: 10, Lt: 10, Ll: 18, w: 3.8 },
     XL: { Hk: 4.0, Lu: 13, Lt: 14, Ll: 24, w: 4.6 },
+    // giant big-air kicker: steep lip, long table, then a short drop onto a huge landing hill
+    G: { Hk: 7, Lu: 22, Lt: 20, Ll: 10, w: 6.5, pe: 2.2 },
   };
+  // where a giant's lip sits in its zone, and how its landing hill is shaped
+  const GIANT = { at: 70, land: 125, landSlope: 0.6, runSlope: 0.12, inSlope: 0.25 };
 
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -127,9 +131,25 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'tokens', v: 35, t: 'Collect 35 tokens' }],
       card: 'radial-gradient(ellipse at 50% 120%,#3ff0ff 0%,#5a3cff 25%,#1c1145 55%,#07051a 85%)', accent: '#7cf7ff',
     },
+    bigair: {
+      id: 'bigair', name: 'Big Air Valley', time: 'SUNNY DAY', diff: 'MEDIUM',
+      sub: 'Three giant kickers with huge landing hills. Fly over the trees and spin all the way down.',
+      half: 22, curve: [12, 320, 5, 130], slope: 0.24, alt: 3350,
+      zones: [Z('WARM-UP KICKERS', 'kickers'), Z('GIANT ONE', 'giant'), Z('VALLEY ROLLERS', 'rollers'), Z('GIANT TWO', 'giant'), Z('JIB LINE', 'jib'), Z('GIANT THREE', 'giant')],
+      first: 'THE IN-RUN',
+      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([0.35, 0.5, 0.79]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
+      sky: { zen: [0.2, 0.42, 0.78], hor: [0.78, 0.86, 0.95], dir: norm3([0.35, 0.5, 0.79]), col: [1.0, 0.96, 0.85], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.74, 0.79, 0.88], cloudLit: [1.0, 1.0, 1.0], clouds: 1.0, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.85, far: 0.9, snow: 0.7, green: [0.08, 0.2, 0.14] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.5, 0.58, 0.74], cap: [0.97, 0.98, 1.0], k: [0.62, 0.42] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 35000, t: 'Score 35,000' }, { k: 'air', v: 4.5, t: 'Stay in the air for 4.5 seconds' }],
+      card: 'linear-gradient(180deg,#2f6fd6 0%,#8ec0f5 55%,#eef6ff 100%)', accent: '#4fc3ff',
+    },
   };
   SS.MAPS = MAPS;
-  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave'];
+  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair'];
+  SS.GIANT = GIANT;
 
   const CRYSTAL_COLS = [[0.35, 0.95, 1.0], [0.65, 0.45, 1.0], [0.3, 1.0, 0.75], [1.0, 0.45, 0.85]];
 
@@ -211,12 +231,16 @@
         let s = this.map.slope + 0.05 * Math.sin(z / 160 + this.p3);
         if (t === 'kickers') s += 0.02;
         else if (t === 'bigair' || t === 'mega') s += 0.03;
+        else if (t === 'giant') {
+          const zn = this.zoneAt(z), k = z - zn.z0, lip = GIANT.at + KICK.G.Lu, knuckle = lip + KICK.G.Lt + 4;
+          s = k < knuckle ? GIANT.inSlope : k < knuckle + GIANT.land ? GIANT.landSlope : GIANT.runSlope;
+        }
         else if (t === 'rails') s -= 0.03;
         else if (t === 'slalom') s -= 0.04;
         if (z < 30) s = lerp(0.1, s, clamp((z + 30) / 60, 0, 1));
         if (z > C.LENGTH + 10) s = lerp(s, 0.025, clamp((z - C.LENGTH - 10) / 70, 0, 1));
         slope[i] = s;
-        amp[i] = t === 'rollers' ? 1.7 : t === 'summit' ? 0.35 : t === 'finish' ? 0.1 : 0.18;
+        amp[i] = t === 'rollers' ? 1.7 : t === 'summit' ? 0.35 : t === 'finish' ? 0.1 : t === 'giant' ? 0.05 : 0.18;
         if (z < 20) amp[i] = 0;
       }
       const blur = (src, w) => {
@@ -282,10 +306,29 @@
       if (dx >= f.w + 2.5) return 0;
       const lat = dx <= f.w ? 1 : smooth(1 - (dx - f.w) / 2.5);
       let p;
-      if (u < f.Lu) p = f.Hk * Math.pow(u / f.Lu, 1.7);
+      if (u < f.Lu) p = f.Hk * Math.pow(u / f.Lu, f.pe || 1.7);
       else if (u < f.Lu + f.Lt) p = f.Hk;
       else p = f.Hk * 0.5 * (1 + Math.cos(Math.PI * ((u - f.Lu - f.Lt) / f.Ll)));
       return p * lat;
+    }
+
+    // height of the drawn snow mesh (2 m rows, flat triangles), so decals like board dents sit exactly on it
+    meshY(x, z) {
+      const offs = Builder.offs();
+      const fi = (z - C.Z0) / 2;
+      const i = Math.floor(fi);
+      const z0 = C.Z0 + i * 2, z1 = z0 + 2;
+      const t = fi - i;
+      const c0 = this.center(z0), c1 = this.center(z1);
+      const off = x - (c0 + (c1 - c0) * t);
+      let j = 0;
+      if (off <= offs[0]) return this.ground(x, z);
+      while (j < offs.length - 2 && off > offs[j + 1]) j++;
+      if (off > offs[offs.length - 1]) return this.ground(x, z);
+      const s = (off - offs[j]) / (offs[j + 1] - offs[j]);
+      const ya = this.ground(c0 + offs[j], z0), yb = this.ground(c0 + offs[j + 1], z0);
+      const yc = this.ground(c1 + offs[j], z1), yd = this.ground(c1 + offs[j + 1], z1);
+      return s >= t ? ya + s * (yb - ya) + t * (yd - yb) : ya + t * (yc - ya) + s * (yd - yc);
     }
 
     // snow plus kickers (no rails): used for slope forces so rails don't disturb them
@@ -435,6 +478,9 @@
             kicker(z0 + 140, R(-5, 5), 'L');
             kicker(z0 + 255, R(-4, 4), 'XL');
             break;
+          case 'giant':
+            kicker(z0 + GIANT.at, 0, 'G');
+            break;
           case 'mega':
             kicker(z0 + 40, R(-6, 6), 'L');
             kicker(z0 + 150, R(-5, 5), 'XL');
@@ -565,7 +611,7 @@
       this.nets = [];
       if (M.nets) {
         for (const zn of this.zones) {
-          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish'].includes(zn.type)) continue;
+          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant'].includes(zn.type)) continue;
           for (let z = Math.max(zn.z0, 10); z < Math.min(zn.z1, C.LENGTH + 40); z += 6) {
             for (const sd of [-1, 1]) if (r() < 0.92) this.nets.push({ z0: z, z1: z + 6, side: sd });
           }
@@ -592,7 +638,20 @@
       const add = (x, y, z) => tok.push({ x, y, z, id: tok.length });
       const G = 14, v = 23;
       for (const f of this.features) {
-        if (f.kind === 'kicker') {
+        if (f.kind === 'kicker' && f.size === 'G') {
+          // along the flight of a popped launch at the in-run speed
+          const zl = f.z0 + f.Lu, xl = this.center(zl);
+          const yl = this.Hk(xl, zl);
+          const s = (this.Hk(xl, zl - 0.25) - this.Hk(xl, zl - 0.75)) / 0.5;
+          const sp = SS.GIANT_SPEED || 27, a = Math.atan(s);
+          const vz = sp * Math.cos(a), vy = sp * Math.sin(a) + 5;
+          for (const t of [0.6, 1.3, 2.0, 2.7, 3.4, 4.1]) {
+            const z = zl + vz * t;
+            const y = yl + vy * t - 0.5 * (SS.GIANT_G || 10) * t * t + 0.9;
+            if (y < this.Hk(xl, z) + 2) break;
+            add(xl, y, z);
+          }
+        } else if (f.kind === 'kicker') {
           const zl = f.z0 + f.Lu;
           const xl = this.center(zl) + f.off;
           const yl = this.Hk(xl, zl);

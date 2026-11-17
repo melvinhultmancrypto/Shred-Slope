@@ -801,3 +801,14 @@ body.touch .controls { display: none; }
   .srv .st { font-size: 14px; margin-top: 1px; }
   .srv .btn { padding: 5px 14px; font-size: 16px; }
 }
+
+/* six mountains: one row on wide screens, three by two on laptops */
+#mapGrid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (min-width: 1400px) { #mapGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+@media (max-height: 760px) and (min-width: 701px) {
+  #mapGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; }
+  .mapCard .art { height: 96px; }
+  .mapCard .mc-sub { font-size: 13px; }
+}
+@media (max-width: 700px) { #mapGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-height: 540px) { #mapGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; } }

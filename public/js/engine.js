@@ -183,12 +183,12 @@ void main() {
 
   const VS_LIT = `
 attribute vec3 aPos; attribute vec3 aNorm;
-uniform mat4 uVP; uniform mat4 uModel; uniform vec3 uCam; uniform vec2 uFog;
+uniform mat4 uVP; uniform mat4 uModel; uniform mat3 uNM; uniform vec3 uCam; uniform vec2 uFog;
 varying vec3 vN; varying vec3 vRel; varying float vFog;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.0);
   gl_Position = uVP * w;
-  vN = mat3(uModel) * aNorm;
+  vN = uNM * aNorm;
   vRel = w.xyz - uCam;
   vFog = clamp((length(vRel) - uFog.x) / (uFog.y - uFog.x), 0.0, 1.0);
 }`;
@@ -196,18 +196,29 @@ void main() {
 varying vec3 vN; varying vec3 vRel; varying float vFog;
 uniform vec3 uColor; uniform float uEmissive; uniform vec3 uFogCol;
 uniform vec3 uSky; uniform vec3 uGround; uniform vec3 uMoonDir; uniform vec3 uMoonCol;
-uniform vec3 uLP[4]; uniform vec3 uLC[4]; uniform vec3 uRim; uniform float uAlpha;
+uniform vec3 uLP[4]; uniform vec3 uLC[4]; uniform vec3 uRim; uniform float uAlpha; uniform vec2 uSpec;
 void main() {
   vec3 n = normalize(vN);
   vec3 v = normalize(-vRel);
-  float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+  float ndv = max(dot(n, v), 0.0);
+  float rim = pow(1.0 - ndv, 2.5);
   vec3 light = mix(uGround, uSky, n.y * 0.5 + 0.5) + uMoonCol * max(dot(n, uMoonDir), 0.0) + uRim * rim;
+  // shine: helmets, goggles and the board's top sheet catch the sun, the moon and the floodlights
+  vec3 spec = vec3(0.0);
+  if (uSpec.x > 0.0) {
+    spec = uMoonCol * pow(max(dot(n, normalize(uMoonDir + v)), 0.0), uSpec.y);
+    vec3 r = reflect(-v, n);
+    spec += mix(uGround, uSky, r.y * 0.5 + 0.5) * (0.12 + 0.88 * pow(1.0 - ndv, 4.0)) * 0.6;
+  }
   for (int i = 0; i < 4; i++) {
     vec3 L = uLP[i] - vRel;
     float d2 = dot(L, L);
-    light += uLC[i] * max(dot(n, L * inversesqrt(d2)), 0.0) / (1.0 + d2 * 0.0035);
+    vec3 ld = L * inversesqrt(d2);
+    float fall = 1.0 / (1.0 + d2 * 0.0035);
+    light += uLC[i] * max(dot(n, ld), 0.0) * fall;
+    if (uSpec.x > 0.0) spec += uLC[i] * pow(max(dot(n, normalize(ld + v)), 0.0), uSpec.y) * fall;
   }
-  vec3 c = uColor * light + uColor * uEmissive;
+  vec3 c = uColor * light + uColor * uEmissive + spec * uSpec.x;
   gl_FragColor = vec4(mix(c, uFogCol, vFog), uAlpha);
 }`;
 
@@ -627,12 +638,16 @@ void main() {
       else gl.disable(gl.BLEND);
     }
 
-    drawLit(mesh, model, color, emissive) {
+    // spec: optional [strength, sharpness] for shiny parts
+    drawLit(mesh, model, color, emissive, spec) {
       const gl = this.gl;
       const u = this.lit.u;
       gl.uniformMatrix4fv(u.uModel, false, model);
+      gl.uniformMatrix3fv(u.uNM, false, normalMatrix(model));
       gl.uniform3fv(u.uColor, color);
       gl.uniform1f(u.uEmissive, emissive || 0);
+      if (spec) gl.uniform2f(u.uSpec, spec[0], spec[1]);
+      else gl.uniform2f(u.uSpec, 0, 1);
       gl.bindBuffer(gl.ARRAY_BUFFER, mesh.b);
       gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
       gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 24, 12);
@@ -670,6 +685,20 @@ void main() {
   }
 
   const WARM = [1, 0.93, 0.8];
+  // inverse-transpose of the model's 3x3, so stretched parts still shade correctly
+  const NM = new Float32Array(9);
+  function normalMatrix(m) {
+    const a = m[0], b = m[4], c = m[8], d = m[1], e = m[5], f = m[9], g = m[2], h = m[6], i = m[10];
+    const c00 = e * i - f * h, c01 = f * g - d * i, c02 = d * h - e * g;
+    const c10 = c * h - b * i, c11 = a * i - c * g, c12 = b * g - a * h;
+    const c20 = b * f - c * e, c21 = c * d - a * f, c22 = a * e - b * d;
+    const det = a * c00 + b * c01 + c * c02;
+    const k = det ? 1 / det : 1;
+    NM[0] = c00 * k; NM[1] = c10 * k; NM[2] = c20 * k;
+    NM[3] = c01 * k; NM[4] = c11 * k; NM[5] = c21 * k;
+    NM[6] = c02 * k; NM[7] = c12 * k; NM[8] = c22 * k;
+    return NM;
+  }
   function norm(v) {
     const l = Math.hypot(v[0], v[1], v[2]) || 1;
     return [v[0] / l, v[1] / l, v[2] / l];
