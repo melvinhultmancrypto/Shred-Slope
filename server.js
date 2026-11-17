@@ -323,13 +323,15 @@ class Room {
     }
   }
 
-  freeColor() {
+  // the outfit the rider picked, unless someone on this server already wears it
+  freeColor(pref) {
     const used = new Set([...this.players.values()].map((p) => p.color));
+    if (Number.isInteger(pref) && pref >= 0 && pref < MAX_PLAYERS && !used.has(pref)) return pref;
     for (let i = 0; i < MAX_PLAYERS; i++) if (!used.has(i)) return i;
     return 0;
   }
 
-  join(conn, name) {
+  join(conn, name, pref) {
     if (this.players.size >= MAX_PLAYERS) {
       conn.send(JSON.stringify({ t: 'full' }));
       conn.close(1000);
@@ -338,7 +340,7 @@ class Room {
     let n = cleanName(name);
     const names = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
     for (let k = 2; names.has(n.toLowerCase()); k++) n = cleanName(name).slice(0, 13) + ' ' + k;
-    const p = { id: nextId++, name: n, color: this.freeColor(), conn, state: null, score: 0, dist: 0, fin: false, time: 0 };
+    const p = { id: nextId++, name: n, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0 };
     this.players.set(p.id, p);
     // join the current round during the countdown, or in the first 30 s of a race (you start at the top)
     const joinsRound = this.phase === 'countdown' || (this.phase === 'racing' && Date.now() - this.raceStart < LATE_JOIN_MS);
@@ -457,7 +459,7 @@ server.on('upgrade', (req, socket) => {
       try { m = JSON.parse(text); } catch (e) { return; }
       if (m && m.t === 'hello') {
         clearTimeout(hello);
-        player = room.join(conn, m.name);
+        player = room.join(conn, m.name, m.color);
       }
       return;
     }

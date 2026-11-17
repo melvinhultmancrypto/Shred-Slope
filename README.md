@@ -2,8 +2,11 @@
 
 A 3D night-time snowboarding game that runs in the browser. Ride a floodlit mountain through kickers, rails and pine trees, land spins and flips, and race up to 9 friends online.
 
-- **Singleplayer:** a new mountain every run. Chase your best score.
+- **Singleplayer:** a new mountain every run, or ride the same one again against a see-through ghost of your best run.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same mountain in rounds.
+- **Looks:** northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
+- **Feel:** smooth carving, powerslides, pre-spins, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
+- **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, music, sound and camera.
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
 
 ## Play it
@@ -56,7 +59,8 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 | Front / back flip | `↑` / `↓` in the air (or `W` / `S`) | hold FLIP (back flip) |
 | Grab | `Shift` (or `E`) in the air | hold POP in the air |
 | Tuck for speed | `↓` on the snow | |
-| Brake | `↑` on the snow | |
+| Powerslide (brake) | `↑` on the snow | |
+| Pre-spin | hold `←`/`→` while charging the pop | |
 | Menu | `Esc` | ☰ MENU |
 | Sound on/off | `M` | |
 
@@ -69,6 +73,8 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 - **Combos:** tricks chain into a combo with a growing multiplier. The combo banks after about 2 seconds of clean riding.
 - **Bails:** land sideways or upside down, or hit a tree, and you lose the combo you haven't banked yet. You get back on your feet straight away.
 - **Time bonus:** finish under 2:30 for extra points.
+- **Landings:** a clean, square landing is a PERFECT (+15% points and a little speed). A messy one is SKETCHY: fewer points and you wobble.
+- **Tokens:** each glowing snowflake is worth 50 points. They sit along jump arcs, above boxes and rails, and in slalom lines.
 
 Let go of the keys before you land. The rider straightens up to the nearest clean landing by themself.
 
@@ -95,6 +101,8 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/js/audio.js` | Synthesised sound effects |
 
 ## Settings
+
+In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Music, Sound effects and Camera (Close / Far). Low graphics is the one to pick on older school computers.
 
 The server reads these environment variables (all optional):
 

@@ -388,10 +388,72 @@
       // finish arch pillars
       for (const s of [-1, 1]) this.colliders.push({ x: this.center(C.LENGTH) + s * (C.HALF + 0.6), z: C.LENGTH, r: 0.8, top: 1e4 });
 
+      // orange safety nets along the fast sections
+      this.nets = [];
+      for (const zn of this.zones) {
+        if (!['KICKER LINE', 'BIG AIR', 'ROLLER COASTER', 'THE FINISH'].includes(zn.name)) continue;
+        for (let z = Math.max(zn.z0, 10); z < Math.min(zn.z1, C.LENGTH + 40); z += 6) {
+          for (const sd of [-1, 1]) if (r() < 0.92) this.nets.push({ z0: z, z1: z + 6, side: sd });
+        }
+      }
+      // huts with warm windows at the start and the finish
+      this.huts = [
+        { x: this.center(-14) - (C.HALF + 7), z: -14, yaw: 0.25, sign: 'start' },
+        { x: this.center(C.LENGTH + 55) + (C.HALF + 9), z: C.LENGTH + 55, yaw: -0.3, sign: 'lodge' },
+      ];
+      for (const h of this.huts) this.colliders.push({ x: h.x, z: h.z, r: 3.2, top: 1e4 });
+
+      this.placeTokens(R);
+
       this.cb = [];
       for (const col of this.colliders) {
         const b = ((col.z - C.Z0) / 10) | 0;
         (this.cb[b] = this.cb[b] || []).push(col);
+      }
+    }
+
+    // glowing snowflake tokens: along kicker arcs, over boxes and rails, and in slalom lines
+    placeTokens(R) {
+      const tok = [];
+      const add = (x, y, z) => tok.push({ x, y, z, id: tok.length });
+      const G = 14, v = 23;
+      for (const f of this.features) {
+        if (f.kind === 'kicker') {
+          const zl = f.z0 + f.Lu;
+          const xl = this.center(zl) + f.off;
+          const yl = this.Hk(xl, zl);
+          const s = (this.Hk(xl, zl - 0.25) - this.Hk(xl, zl - 0.75)) / 0.5;
+          const vy = v * s;
+          for (const t of [0.35, 0.65, 0.95, 1.25]) {
+            const z = zl + v * t;
+            const y = yl + vy * t - 0.5 * G * t * t + 1.0;
+            if (y < this.Hk(xl, z) + 1.4) break;
+            add(xl, y, z);
+          }
+        } else {
+          for (const k of [0.25, 0.5, 0.75]) {
+            const x = f.ax + f.dx * f.len * k, z = f.az + f.dz * f.len * k;
+            add(x, lerp(f.g0, f.g1, k) + f.h + 1.0, z);
+          }
+        }
+      }
+      for (const zn of this.zones) {
+        if (!['THE SUMMIT', 'ROLLER COASTER', 'PINE ALLEY', 'THE FINISH'].includes(zn.name)) continue;
+        for (let z0 = Math.max(zn.z0, 40) + R(10, 40); z0 < Math.min(zn.z1, C.LENGTH - 30) - 50; z0 += R(80, 120)) {
+          const off = R(-C.HALF + 5, C.HALF - 5), amp = R(2, 5), ph = R(0, Math.PI * 2);
+          for (let i = 0; i < 6; i++) {
+            const z = z0 + i * 8;
+            const x = this.center(z) + clamp(off + amp * Math.sin(i * 0.8 + ph), -C.HALF + 2, C.HALF - 2);
+            if (this.trees.some((t) => t.solid && Math.abs(t.z - z) < 2.5 && Math.abs(t.x - x) < 2.5)) continue;
+            add(x, this.ground(x, z) + 1.0, z);
+          }
+        }
+      }
+      this.tokens = tok;
+      this.tokenBuckets = [];
+      for (const t of tok) {
+        const b = ((t.z - C.Z0) / 10) | 0;
+        (this.tokenBuckets[b] = this.tokenBuckets[b] || []).push(t);
       }
     }
 
@@ -499,6 +561,8 @@
       for (const p of this.poles) add(p.z, { k: 'pole', o: p });
       for (const f of this.flags) add(f.z, { k: 'flag', o: f });
       this.liftTowers.forEach((t, i) => add(t.z, { k: 'tower', o: t, next: this.liftTowers[i + 1] }));
+      for (const n of this.nets) add(n.z0, { k: 'net', o: n });
+      for (const h of this.huts) add(h.z, { k: 'hut', o: h });
       add(C.LENGTH, { k: 'finish' });
       add(-3, { k: 'start' });
     }
@@ -519,7 +583,9 @@
           case 'pole': B.pole(o); break;
           case 'flag': B.flag(o); break;
           case 'tower': B.tower(o, it.next); if (it.next) ch.maxZ = Math.max(ch.maxZ, it.next.z); break;
-          case 'finish': B.arch(C.LENGTH, true); break;
+          case 'net': B.net(o); break;
+          case 'hut': B.hut(o); break;
+          case 'finish': B.arch(C.LENGTH, true); B.finishFlags(); break;
           case 'start': B.arch(-3, false); break;
         }
       }
@@ -554,6 +620,10 @@
       for (const l of this.lamps) {
         d.push(l.hx, l.hy - 0.15, l.z, 1.0, 0.93, 0.78, 0.9, 1.6);
         d.push(l.hx, l.hy - 0.3, l.z, 1.0, 0.88, 0.66, 0.16, 11);
+      }
+      for (const h of this.huts) {
+        const gy = this.ground(h.x, h.z);
+        d.push(h.x, gy + 2, h.z, 1.0, 0.65, 0.3, 0.22, 14);
       }
       const fc = this.center(C.LENGTH);
       for (let i = -3; i <= 3; i++) d.push(fc + i * 5.5, this.ground(fc, C.LENGTH) + 8.2, C.LENGTH, 1.0, 0.6, 0.3, 0.35, 3.5);
@@ -892,6 +962,74 @@
       }
     }
 
+    net(n) {
+      const w = this.w;
+      const off = n.side * (C.HALF + 1.7);
+      const x0 = w.center(n.z0) + off, x1 = w.center(n.z1) + off;
+      const g0 = w.ground(x0, n.z0), g1 = w.ground(x1, n.z1);
+      w.light(-n.side, 0.3, 0, x0, g0 + 1, n.z0, L3);
+      const k = Math.min(1.6, (L3[0] + L3[1] + L3[2]) / 3);
+      const orange = [1.0 * k, 0.32 * k, 0.07 * k];
+      const dim = [0.75 * k, 0.24 * k, 0.05 * k];
+      this.box(x0, g0 + 0.8, n.z0, 0.04, 0.85, 0.04, 0, [0.15, 0.15, 0.17]);
+      for (const h of [0.12, 0.85, 1.55]) this.line(x0, g0 + h, n.z0, x1, g1 + h, n.z1, orange);
+      for (let i = 0; i < 6; i++) {
+        const a = i / 6, b = (i + 1) / 6;
+        const xa = lerp(x0, x1, a), xb = lerp(x0, x1, b), za = lerp(n.z0, n.z1, a), zb = lerp(n.z0, n.z1, b), ga = lerp(g0, g1, a), gb = lerp(g0, g1, b);
+        this.line(xa, ga + 0.12, za, xb, gb + 1.55, zb, dim);
+        this.line(xa, ga + 1.55, za, xb, gb + 0.12, zb, dim);
+      }
+    }
+
+    hut(h) {
+      const w = this.w;
+      const gy = w.ground(h.x, h.z) - 0.3;
+      const c = Math.cos(h.yaw), s = Math.sin(h.yaw);
+      const P = (x, y, z) => [h.x + x * c + z * s, gy + y, h.z - x * s + z * c];
+      const wood = [0.42, 0.26, 0.15], dark = [0.24, 0.15, 0.09], snowc = [0.95, 0.97, 1.0];
+      this.box(h.x, gy + 1.6, h.z, 3.0, 1.6, 2.3, h.yaw, wood);
+      // log lines
+      for (let y = 0.5; y < 3.1; y += 0.55) {
+        const a = P(-3.02, y, 2.32), b = P(3.02, y, 2.32), a2 = P(-3.02, y, -2.32), b2 = P(3.02, y, -2.32);
+        this.line(a[0], a[1], a[2], b[0], b[1], b[2], [0.12, 0.07, 0.04]);
+        this.line(a2[0], a2[1], a2[2], b2[0], b2[1], b2[2], [0.12, 0.07, 0.04]);
+      }
+      // snowy roof
+      const o = P(0, 3.4, 0);
+      const r1 = P(-3.5, 3.1, -2.8), r2 = P(3.5, 3.1, -2.8), r3 = P(3.5, 4.9, 0), r4 = P(-3.5, 4.9, 0);
+      const r5 = P(3.5, 3.1, 2.8), r6 = P(-3.5, 3.1, 2.8);
+      this.quad(r1, r2, r3, r4, snowc, [o[0], o[1] - 2, o[2]]);
+      this.quad(r4, r3, r5, r6, snowc, [o[0], o[1] - 2, o[2]]);
+      this.tri(r1[0], r1[1], r1[2], r4[0], r4[1], r4[2], r6[0], r6[1], r6[2], dark, o[0], o[1] - 2, o[2]);
+      this.tri(r2[0], r2[1], r2[2], r3[0], r3[1], r3[2], r5[0], r5[1], r5[2], dark, o[0], o[1] - 2, o[2]);
+      // warm windows and a door facing the piste
+      const face = h.sign === 'start' ? 1 : -1;
+      const win = [1.6, 1.05, 0.5];
+      for (const z of [-1.1, 1.1]) {
+        const p = P(face * 3.02, 1.8, z);
+        this.box(p[0], p[1], p[2], 0.04, 0.45, 0.5, h.yaw, win, true);
+      }
+      const d = P(face * 3.02, 1.05, 0);
+      this.box(d[0], d[1], d[2], 0.05, 1.05, 0.5, h.yaw, dark);
+      // chimney
+      const ch = P(1.6, 4.6, -1.0);
+      this.box(ch[0], ch[1], ch[2], 0.3, 0.7, 0.3, h.yaw, [0.3, 0.3, 0.33]);
+    }
+
+    finishFlags() {
+      const w = this.w;
+      const cols = [[1, 0.25, 0.2], [1, 0.8, 0.15], [0.2, 0.55, 1], [0.2, 0.85, 0.45], [0.7, 0.35, 1]];
+      for (let i = 0; i < 12; i++) {
+        for (const sd of [-1, 1]) {
+          const z = C.LENGTH - 60 + i * 9;
+          const x = w.center(z) + sd * (C.HALF + 2.6);
+          const gy = w.ground(x, z);
+          this.box(x, gy + 1.9, z, 0.04, 2.0, 0.04, 0, [0.15, 0.15, 0.17]);
+          this.box(x, gy + 3.2, z + 0.45, 0.02, 0.6, 0.45, 0, cols[(i + (sd > 0 ? 2 : 0)) % cols.length]);
+        }
+      }
+    }
+
     arch(z, finish) {
       const w = this.w;
       const c = w.center(z);
@@ -954,8 +1092,6 @@
       const b = 0.35 + r() * 0.65;
       stars.push(Math.cos(t) * Math.cos(f) * 1400, Math.sin(t) * 1400, Math.cos(t) * Math.sin(f) * 1400, 0.8 * b, 0.86 * b, 1.0 * b, 0.9, 1.4 + r() * 2.6);
     }
-    // the moon
-    stars.push(-600, 820, -760, 0.95, 0.96, 1.0, 1.0, 55, -600, 820, -760, 0.5, 0.6, 0.9, 0.22, 260);
 
     const mtn = new SS.FBuf(1 << 14);
     const B = new Builder({ light: (nx, ny, nz, x, y, z, out) => { const k = 0.25 + Math.max(0, nx * MOON_DIR[0] + ny * MOON_DIR[1] + nz * MOON_DIR[2]) * 0.55; out[0] = k; out[1] = k; out[2] = k; return out; } }, mtn, new SS.FBuf(8));
@@ -978,7 +1114,9 @@
       const toward = [-cx * 0.01, 0, -cz * 0.01];
       B.tri(sl[0] + toward[0], sl[1], sl[2] + toward[2], sr[0] + toward[0], sr[1], sr[2] + toward[2], apex[0] + toward[0], apex[1] + 0.5, apex[2] + toward[2], snowc, back[0], back[1] + 100, back[2]);
     }
+    const md = [-0.45, 0.42, 0.78], ml = Math.hypot(...md);
     return {
+      moonDir: md.map((v) => v / ml),
       sky: engine.mesh(sky.data(), 6),
       stars: engine.mesh(new Float32Array(stars), 8, engine.gl.POINTS),
       starCount: stars.length / 8,

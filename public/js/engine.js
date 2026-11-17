@@ -137,18 +137,47 @@
   const VS_BAKED = `
 attribute vec3 aPos; attribute vec3 aCol;
 uniform mat4 uVP; uniform mat4 uModel; uniform vec3 uCam; uniform vec2 uFog;
-varying vec3 vCol; varying float vFog;
+varying vec3 vCol; varying float vFog; varying vec3 vW;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.0);
   gl_Position = uVP * w;
   vCol = aCol;
+  vW = w.xyz;
   vFog = clamp((length(w.xyz - uCam) - uFog.x) / (uFog.y - uFog.x), 0.0, 1.0);
 }`;
-  const FS_BAKED = HEAD + `
-varying vec3 vCol; varying float vFog;
-uniform vec3 uFogCol; uniform float uAlpha; uniform float uBright;
+  const NOISE = `
+float h21(vec2 p) { p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float vnoise(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
+}`;
+  const FS_BAKED = HEAD + NOISE + `
+varying vec3 vCol; varying float vFog; varying vec3 vW;
+uniform vec3 uFogCol; uniform float uAlpha; uniform float uBright; uniform float uDetail; uniform vec3 uEye;
 void main() {
-  gl_FragColor = vec4(mix(vCol * uBright, uFogCol, vFog), uAlpha);
+  vec3 c = vCol * uBright;
+  if (uDetail > 0.0) {
+    float lum = dot(vCol, vec3(0.3, 0.5, 0.2));
+    float snow = smoothstep(0.3, 0.55, lum) * step(vCol.g * 0.92, vCol.b);
+    if (snow > 0.0) {
+      // wind-blown snow texture
+      float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
+      c *= mix(1.0, 0.92 + n * 0.13, snow);
+      // glitter that flickers as the camera moves, like real snow under lights
+      float d = length(vW - uEye);
+      if (d < 40.0) {
+        vec2 cell = floor(vW.xz * 7.0);
+        float h = h21(cell + floor(vW.y * 7.0) * 3.17);
+        float tw = h21(cell * 1.31 + floor(uEye.xz * 1.6) * 0.37);
+        vec2 spot = vec2(h21(cell + 11.0), h21(cell + 23.0));
+        float dot0 = smoothstep(0.16, 0.0, length(fract(vW.xz * 7.0) - spot));
+        float s = step(0.975, h) * step(0.55, tw) * dot0 * snow * (1.0 - d / 40.0);
+        c += vec3(0.95, 0.97, 1.0) * s * (0.6 + lum * 1.6) * uDetail;
+      }
+    }
+  }
+  gl_FragColor = vec4(mix(c, uFogCol, vFog), uAlpha);
 }`;
 
   const VS_LIT = `
@@ -166,17 +195,19 @@ void main() {
 varying vec3 vN; varying vec3 vRel; varying float vFog;
 uniform vec3 uColor; uniform float uEmissive; uniform vec3 uFogCol;
 uniform vec3 uSky; uniform vec3 uGround; uniform vec3 uMoonDir; uniform vec3 uMoonCol;
-uniform vec3 uLP[4]; uniform vec3 uLC[4];
+uniform vec3 uLP[4]; uniform vec3 uLC[4]; uniform vec3 uRim; uniform float uAlpha;
 void main() {
   vec3 n = normalize(vN);
-  vec3 light = mix(uGround, uSky, n.y * 0.5 + 0.5) + uMoonCol * max(dot(n, uMoonDir), 0.0);
+  vec3 v = normalize(-vRel);
+  float rim = pow(1.0 - max(dot(n, v), 0.0), 2.5);
+  vec3 light = mix(uGround, uSky, n.y * 0.5 + 0.5) + uMoonCol * max(dot(n, uMoonDir), 0.0) + uRim * rim;
   for (int i = 0; i < 4; i++) {
     vec3 L = uLP[i] - vRel;
     float d2 = dot(L, L);
     light += uLC[i] * max(dot(n, L * inversesqrt(d2)), 0.0) / (1.0 + d2 * 0.0035);
   }
   vec3 c = uColor * light + uColor * uEmissive;
-  gl_FragColor = vec4(mix(c, uFogCol, vFog), 1.0);
+  gl_FragColor = vec4(mix(c, uFogCol, vFog), uAlpha);
 }`;
 
   const VS_PTS = `
@@ -197,6 +228,62 @@ void main() {
   if (r > 1.0) discard;
   float k = 1.0 - r;
   gl_FragColor = vec4(vCol.rgb, vCol.a * mix(1.0, k * k, uSoft));
+}`;
+
+  const VS_SKY = `
+attribute vec3 aPos;
+uniform mat4 uVP; uniform vec3 uCam;
+varying vec3 vDir;
+void main() {
+  vDir = aPos;
+  vec4 p = uVP * vec4(aPos + uCam, 1.0);
+  gl_Position = vec4(p.xy, p.w * 0.99999, p.w);
+}`;
+  const FS_SKY = HEAD + NOISE + `
+varying vec3 vDir;
+uniform float uTime; uniform vec3 uMoon; uniform float uDetail; uniform vec3 uFogCol;
+float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += vnoise(p) * a; p = p * 2.03 + 17.1; a *= 0.5; } return s; }
+void main() {
+  vec3 d = normalize(vDir);
+  float el = d.y;
+  vec3 zen = vec3(0.012, 0.02, 0.058), hor = vec3(0.10, 0.15, 0.28);
+  vec3 col = mix(hor, zen, pow(clamp(el, 0.0, 1.0), 0.45));
+  if (el < 0.0) col = mix(hor, uFogCol, clamp(-el * 8.0, 0.0, 1.0));
+  float m = max(dot(d, uMoon), 0.0);
+  col += vec3(0.35, 0.42, 0.62) * pow(m, 14.0) * 0.28 + vec3(0.7, 0.75, 0.9) * pow(m, 300.0) * 0.35;
+  float disk = smoothstep(0.99955, 0.9998, m);
+
+  // northern lights, mostly down the valley
+  float az = atan(d.z, d.x);
+  float t = uTime * 0.05;
+  float sector = exp(-pow(az - 1.5708, 2.0) / 1.6) * smoothstep(0.0, 0.05, el);
+  float aur = 0.0; vec3 aurCol = vec3(0.0);
+  if (sector > 0.01) {
+    for (int k = 0; k < 2; k++) {
+      float fk = float(k);
+      float base = 0.16 + fk * 0.12 + sin(az * 3.0 + t * 2.0 + fk * 2.0) * 0.07 + sin(az * 7.0 - t * 3.0) * 0.025;
+      float h = el - base;
+      float curtain = smoothstep(-0.015, 0.012, h) * exp(-max(h, 0.0) * (7.0 + fk * 4.0));
+      float rays = 0.45 + 0.55 * sin(az * 70.0 + sin(az * 9.0 + t * 5.0) * 4.0 + t * 8.0 + fk * 3.0);
+      float a = curtain * (0.55 + 0.45 * rays) * (1.0 - fk * 0.45);
+      aurCol += mix(vec3(0.1, 1.0, 0.55), vec3(0.55, 0.25, 0.95), clamp(h * 7.0, 0.0, 1.0)) * a;
+      aur += a;
+    }
+    aurCol *= sector * 0.42;
+  }
+
+  // drifting night clouds
+  float cover = 0.0;
+  if (uDetail > 0.0 && el > -0.02) {
+    vec2 cp = d.xz / max(el + 0.12, 0.06) * 0.9 + vec2(uTime * 0.012, uTime * 0.005);
+    float c = fbm(cp);
+    cover = smoothstep(0.5, 0.82, c) * smoothstep(-0.02, 0.2, el) * 0.85;
+    vec3 cloudCol = mix(vec3(0.05, 0.07, 0.14), vec3(0.2, 0.24, 0.36), pow(m, 6.0) + 0.15);
+    col = mix(col, cloudCol, cover);
+  }
+  col += aurCol * (1.0 - cover * 0.8);
+  col += vec3(0.85, 0.88, 0.95) * disk * (1.0 - cover);
+  gl_FragColor = vec4(col, 1.0);
 }`;
 
   function compile(gl, type, src) {
@@ -282,6 +369,11 @@ void main() {
       this.baked = makeProgram(gl, VS_BAKED, FS_BAKED);
       this.lit = makeProgram(gl, VS_LIT, FS_LIT);
       this.pts = makeProgram(gl, VS_PTS, FS_PTS);
+      this.skyP = makeProgram(gl, VS_SKY, FS_SKY);
+      this.dynBuf = gl.createBuffer();
+      this.time = 0;
+      this.detail = 1;
+      this.rim = [0.22, 0.3, 0.5];
       this.proj = M4.create();
       this.view = M4.create();
       this.vp = M4.create();
@@ -337,9 +429,22 @@ void main() {
       if (m && m.b) this.gl.deleteBuffer(m.b);
     }
 
-    setCamera(eye, target, fovy) {
+    setCamera(eye, target, fovy, roll) {
       M4.perspective(this.proj, fovy, this.w / this.h, 0.1, 2600);
-      M4.lookAt(this.view, eye, target, [0, 1, 0]);
+      let up = [0, 1, 0];
+      if (roll) {
+        // tilt the up vector around the view direction (camera banking)
+        let fx = target[0] - eye[0], fy = target[1] - eye[1], fz = target[2] - eye[2];
+        const fl = Math.hypot(fx, fy, fz) || 1;
+        fx /= fl; fy /= fl; fz /= fl;
+        let rx = fz, ry = 0, rz = -fx;
+        const rl = Math.hypot(rx, rz) || 1;
+        rx /= rl; rz /= rl;
+        const ux = fy * rz - fz * ry, uy = fz * rx - fx * rz, uz = fx * ry - fy * rx;
+        const c = Math.cos(roll), s = Math.sin(roll);
+        up = [ux * c + rx * s, uy * c + ry * s, uz * c + rz * s];
+      }
+      M4.lookAt(this.view, eye, target, up);
       M4.mul(this.vp, this.proj, this.view);
       this.eye[0] = eye[0]; this.eye[1] = eye[1]; this.eye[2] = eye[2];
       this.pxScale = (this.h * this.proj[5]) / 2;
@@ -390,13 +495,49 @@ void main() {
       const u = this.use(this.baked);
       gl.uniformMatrix4fv(u.uVP, false, this.vp);
       gl.uniform3fv(u.uCam, this.eye);
+      gl.uniform3fv(u.uEye, this.eye);
       gl.uniform2f(u.uFog, fogNear === undefined ? this.fog[0] : fogNear, fogFar === undefined ? this.fog[1] : fogFar);
       gl.uniform3fv(u.uFogCol, this.fogCol);
       gl.uniform1f(u.uAlpha, 1);
       gl.uniform1f(u.uBright, 1);
+      gl.uniform1f(u.uDetail, 0);
       gl.uniformMatrix4fv(u.uModel, false, this.ident);
       this.attribs([0, 1]);
       return u;
+    }
+
+    // snow texture + glitter on/off for the next baked draws
+    setDetail(on) {
+      this.gl.uniform1f(this.baked.u.uDetail, on ? this.detail : 0);
+    }
+
+    // draw a dynamic array of [x,y,z, r,g,b] vertices with the baked program
+    drawBakedArray(data, count, mode) {
+      if (!count) return;
+      const gl = this.gl;
+      gl.bindBuffer(gl.ARRAY_BUFFER, this.dynBuf);
+      gl.bufferData(gl.ARRAY_BUFFER, data.subarray(0, count * 6), gl.DYNAMIC_DRAW);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+      gl.vertexAttribPointer(1, 3, gl.FLOAT, false, 24, 12);
+      gl.drawArrays(mode === undefined ? gl.TRIANGLES : mode, 0, count);
+    }
+
+    // procedural night sky on the dome mesh (positions only are used)
+    drawSky(mesh, moonDir) {
+      const gl = this.gl;
+      const u = this.use(this.skyP);
+      gl.uniformMatrix4fv(u.uVP, false, this.vp);
+      gl.uniform3fv(u.uCam, this.eye);
+      gl.uniform1f(u.uTime, this.time);
+      gl.uniform3fv(u.uMoon, moonDir);
+      gl.uniform1f(u.uDetail, this.detail);
+      gl.uniform3fv(u.uFogCol, this.fogCol);
+      this.attribs([0]);
+      gl.bindBuffer(gl.ARRAY_BUFFER, mesh.b);
+      gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
+      gl.depthMask(false);
+      gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+      gl.depthMask(true);
     }
 
     drawBaked(mesh, model, alpha, bright) {
@@ -428,6 +569,8 @@ void main() {
       gl.uniform3fv(u.uMoonDir, L.moonDir);
       gl.uniform3fv(u.uMoonCol, L.moonCol);
       gl.uniform1f(u.uEmissive, 0);
+      gl.uniform3fv(u.uRim, this.rim);
+      gl.uniform1f(u.uAlpha, 1);
       this.setLights(lights);
       this.attribs([0, 2]);
       return u;
@@ -448,6 +591,14 @@ void main() {
       }
       this.gl.uniform3fv(u.uLP, L.lp);
       this.gl.uniform3fv(u.uLC, L.lc);
+    }
+
+    // see-through riders (ghosts)
+    setLitAlpha(a) {
+      const gl = this.gl;
+      gl.uniform1f(this.lit.u.uAlpha, a);
+      if (a < 1) gl.enable(gl.BLEND);
+      else gl.disable(gl.BLEND);
     }
 
     drawLit(mesh, model, color, emissive) {

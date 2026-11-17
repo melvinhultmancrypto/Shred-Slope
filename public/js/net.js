@@ -22,14 +22,14 @@
       return j.servers;
     }
 
-    connect(serverId, name) {
+    connect(serverId, name, color) {
       this.leave();
       const url = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws?server=' + serverId;
       const ws = new WebSocket(url);
       this.ws = ws;
       ws.onopen = () => {
         this.open = true;
-        this.send({ t: 'hello', name });
+        this.send({ t: 'hello', name, color });
       };
       ws.onmessage = (e) => {
         let m;
