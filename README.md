@@ -1,9 +1,9 @@
 # Shred Slope 🏂
 
-A 3D snowboarding game that runs in the browser. Pick one of six mountains, from a sunny bluebird day to an ice cave inside the mountain or a valley of giant big-air kickers, hit kickers and rails, land spins and flips, and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Pick one of twelve mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row or an Olympic-style slopestyle course, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
-- **Six mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
-- **Star challenges:** 3 stars to earn on every mountain (18 in total), saved in the browser together with your best score per mountain.
+- **Twelve mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
+- **Star challenges:** 3 stars to earn on every mountain (36 in total), saved in the browser together with your best score per mountain.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
 - **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
@@ -20,8 +20,14 @@ A 3D snowboarding game that runs in the browser. Pick one of six mountains, from
 | **Moonlit Woods** | Night | Full moon, heavy snowfall, a dense forest and a TREE SLALOM through red and blue gates. Hardest. |
 | **Big Air Valley** | Sunny day | Three giant kickers with huge landing hills: about 5 seconds of air, 35 m above the snow. The in-run sets your takeoff speed so you always reach the landing. |
 | **Crystal Caverns** | Underground | Ride into the mountain through an ice cave lit by glowing crystals, with icicles, ice pillars to dodge and glowing rails, then out into the night. |
+| **Rail Kingdom** | Sunny day | A rail park: long flat rails, gap rails, rainbow (arched) rails and mega rails up to 50 m long. |
+| **Triple Giants** | Golden hour | Three giant kickers back to back to back. Land all three. |
+| **Gold Medal Slopestyle** | Sunny day | A competition course built like the Olympic one: three rail sections with three lines each, then three big jumps with a small, medium and big kicker side by side, past grandstands full of fans. |
+| **Jump Line** | Night | Floodlit kicker lines, one jump straight after the other. Built for perfect landings. |
+| **Cliff Drops** | Snowstorm | Backcountry: no poles, low visibility, rock bands to drop off and pillow fields to bounce through. |
+| **Neon Park** | Night | Glowing pink and cyan boxes and rails under coloured lamps. |
 
-Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing* or *Collect 35 tokens*.
+Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing*, *Grind for 12 seconds* or *Land all three giants*. The mountain picker shows five mountains per page; switch pages with the arrows next to BACK (or `←` `→`).
 
 ## Play it
 
@@ -68,13 +74,13 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 | Action | Keyboard | Touch |
 | --- | --- | --- |
 | Carve left / right | `A` `D` (or `←` `→`) | ◀ ▶ |
-| Jump | `Space` | POP |
+| Jump | `Space` (hold `Shift` first for a bigger pop) | POP |
 | Speed up | `W` (or `↑`) on the snow | |
 | Powerslide (brake) | `S` (or `↓`) on the snow | |
 | Spin | `A` `D` in the air | ◀ ▶ in the air |
 | Front / back flip | `W` / `S` in the air | hold FLIP (back flip) |
-| Grab | `Shift` (or `E`) in the air | hold POP in the air |
-| Boost | hold `B` (or `X`) | hold BOOST |
+| Grab | `Shift` (or `E`) in the air, tap again to switch grab | hold POP in the air |
+| Boost | hold `F` | hold BOOST |
 | Keep your balance on a rail | `←` `→` against the lean | ◀ ▶ |
 | Menu | `Esc` | ☰ MENU |
 | Sound on/off | `M` | |
@@ -83,14 +89,14 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 
 - **Spins:** 180, 360, 540, 720… The more you rotate, the more points.
 - **Flips:** BACKFLIP and FRONTFLIP. Flip and spin together for a RODEO (back) or MISTY (front). Two flips make it a DOUBLE.
-- **Grabs:** hold grab in the air for METHOD, INDY, MUTE and friends.
+- **Grabs:** hold grab in the air for METHOD, INDY, MUTE, JAPAN and friends. Which grab you get depends on how you spin or flip; tap grab again mid-air to switch, and hold two in one jump for a bigger score (METHOD TO INDY).
 - **Grinds:** ride onto a box from its ramp, or pop onto a rail, for a 50-50.
 - **Combos:** tricks chain into a combo with a growing multiplier. The combo banks after about 2 seconds of clean riding.
 - **Bails:** land sideways or upside down, or hit a tree, and you lose the combo you haven't banked yet. You get back on your feet straight away.
 - **Time bonus:** finish under 2:30 for extra points.
-- **Landings:** a clean, square landing is a PERFECT (+15% points and a little speed). A messy one is SKETCHY: fewer points and you wobble.
+- **Landings:** a clean, square landing is a PERFECT (+15% points and a little speed). A messy one is SKETCHY: fewer points and you wobble. Your legs soak up more on long airs, so big jumps still land PERFECT when your rotation is clean.
 - **Tokens:** each glowing snowflake is worth 50 points. They sit along jump arcs, above boxes and rails, through slalom gates and in slalom lines.
-- **Boost:** tricks, tokens, grinds and perfect landings fill the BOOST meter. Hold `B` to burn it for extra speed (up to about 190 km/h).
+- **Boost:** tricks, tokens, grinds and perfect landings fill the BOOST meter. Hold `F` to burn it for extra speed (up to about 190 km/h).
 - **Rail balance:** on a box or rail a balance bar appears. Steer against the lean to stay on; tip all the way over and you bail. A steady grind gets PERFECT BALANCE (+30%). Rails are wobblier than boxes and worth more.
 
 Let go of the keys before you land. The rider straightens up to the nearest clean landing by themself.
@@ -99,7 +105,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
-- The mountain changes every round: Floodlit Night → Bluebird Peak → Golden Ridge → Moonlit Woods → Crystal Caverns, and around again. The three servers start on different mountains, and the server list shows which one is up.
+- The mountain changes every round and goes through all twelve, then around again. The three servers start on different mountains, and the server list shows which one is up.
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
 
@@ -112,7 +118,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
-| `public/js/world.js` | The five mountains and the seeded course: terrain, cave, kickers, rails, trees, lights, chairlift |
+| `public/js/world.js` | The twelve mountains and the seeded course: terrain, cave, cliffs, kickers, giant jumps, rails, grandstands, trees, lights, chairlift |
 | `public/js/rider.js` | The 3D snowboarder and its poses |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |

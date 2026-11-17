@@ -359,8 +359,53 @@
     engine.drawLit(meshes.sph, at(base, p, r * 2, r * 2, r * 2), col, 0, spec);
   }
 
+  // ------------------------------------------------------------------ posing
+  // Grab poses: which hand (1 = front/nose side, -1 = back), the point on the board it holds
+  // (board frame), and how the board is tweaked: [dx, dy, pitch, roll, yaw]. Order matches game.js GRABS.
+  const GRAB_POSES = [
+    { hand: 1, pt: [-0.15, 0.03, 0.06], tw: [-0.16, 0.24, 0.05, -0.85, 0.15] },  // METHOD: heel edge, board pulled up behind
+    { hand: -1, pt: [0.15, 0.03, -0.04], tw: [0.03, 0.26, 0, 0.3, 0] },          // INDY: back hand, toe edge
+    { hand: 1, pt: [0.15, 0.03, 0.08], tw: [0.03, 0.26, 0, 0.3, 0.15] },         // MUTE: front hand, toe edge
+    { hand: 1, pt: [-0.15, 0.03, 0.1], tw: [-0.1, 0.24, 0, -0.5, 0] },           // MELON: front hand, heel edge
+    { hand: -1, pt: [-0.15, 0.03, -0.1], tw: [-0.12, 0.24, 0, -0.55, 0] },       // STALEFISH: back hand, heel edge
+    { hand: 1, pt: [0, 0.05, 0.62], tw: [0.06, 0.24, -0.55, 0, 0] },             // NOSE GRAB: front hand, nose up
+    { hand: -1, pt: [0, 0.05, -0.62], tw: [0.06, 0.24, 0.55, 0, 0] },            // TAIL GRAB: back hand, tail up
+    { hand: 1, pt: [0.15, 0.03, 0.34], tw: [-0.2, 0.3, 0.3, 0.95, -0.25] },      // JAPAN: board tweaked hard behind
+  ];
+  const LEG_T = 0.42, LEG_S = 0.37, ARM_U = 0.29, ARM_F = 0.28;
+  const BT = M4.create(); // board tweak relative to the body
+  const BM = M4.create(); // board frame
+  const PT = [0, 0, 0];
+  const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
+
+  // two-bone reach: joint position between a and b, bending toward `bend`
+  function ik(a, b, l1, l2, bend) {
+    let dx = b[0] - a[0], dy = b[1] - a[1], dz = b[2] - a[2];
+    const d = Math.hypot(dx, dy, dz) || 1e-4;
+    dx /= d; dy /= d; dz /= d;
+    const dc = Math.min(d, l1 + l2 - 1e-3);
+    const along = (l1 * l1 - l2 * l2 + dc * dc) / (2 * dc);
+    const h = Math.sqrt(Math.max(0, l1 * l1 - along * along));
+    let bx = bend[0], by = bend[1], bz = bend[2];
+    const p = bx * dx + by * dy + bz * dz;
+    bx -= dx * p; by -= dy * p; bz -= dz * p;
+    const bl = Math.hypot(bx, by, bz) || 1;
+    return [a[0] + dx * along + (bx / bl) * h, a[1] + dy * along + (by / bl) * h, a[2] + dz * along + (bz / bl) * h];
+  }
+  // pull a target back within reach of a limb rooted at a
+  function reach(a, b, max) {
+    const d = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const l = len3(d);
+    if (l <= max) return b;
+    const k = max / l;
+    return [a[0] + d[0] * k, a[1] + d[1] * k, a[2] + d[2] * k];
+  }
+  const boardPt = (p) => { M4.point(BT, p[0], p[1], p[2], PT); return [PT[0], PT[1], PT[2]]; };
+
   /*
-   * st: { x, y, z, heading, spin, stance, flip, lean, crouch, comp, grab, tuck, slide, air, bail, tumble, tumbleRoll, wind, t }
+   * st: { x, y, z, heading, spin, stance, flip, lean, crouch, comp, grab, grabK, grabType, tuck, slide, air, airT,
+   *       spinV, flipV, bail, tumble, tumbleRoll, wind, t }
    */
   SS.drawRider = function (engine, world, st, colorIdx, alpha) {
     if (!meshes) build(engine);
@@ -376,27 +421,50 @@
     M4.translate(M, st.x, st.y, st.z);
     M4.rotY(M, st.heading || 0);
     const t = st.t || 0;
-    const mode = st.bail ? 'bail' : st.grab ? 'grab' : st.air ? 'air' : st.slide > 0.3 ? 'slide' : st.tuck ? 'tuck' : 'ride';
+    const air = !!st.air && !st.bail;
+    const mode = st.bail ? 'bail' : air ? 'air' : st.slide > 0.3 ? 'slide' : st.tuck ? 'tuck' : 'ride';
     if (st.bail) {
       M4.translate(M, 0, 0.45, 0);
       M4.rotX(M, st.tumble || 0);
       M4.rotZ(M, st.tumbleRoll || 0);
       M4.translate(M, 0, -0.45, 0);
     } else {
-      M4.translate(M, 0, 0.9, 0);
+      M4.translate(M, 0, 0.8, 0);
       M4.rotY(M, (st.spin || 0) + (st.stance || 0));
       M4.rotX(M, st.flip || 0);
-      M4.translate(M, 0, -0.9, 0);
+      M4.translate(M, 0, -0.8, 0);
       M4.rotZ(M, -(st.lean || 0));
     }
 
+    // ---- how the body moves: crouch, pop, tuck, grab ----
+    const spinV = air ? clamp(st.spinV || 0, -1, 1) : 0;
+    const flipV = air ? clamp(st.flipV || 0, -1, 1) : 0;
+    const gk = air ? clamp(st.grabK !== undefined ? st.grabK : st.grab ? 1 : 0, 0, 1) : 0;
+    const G = GRAB_POSES[(st.grabType | 0) % GRAB_POSES.length];
+    const airT = st.airT || 0;
+    // pop: legs snap straight off the lip, then the knees come up
+    const ext = air && airT < 0.24 ? Math.sin((airT / 0.24) * Math.PI) : 0;
+    const tuckAir = air ? clamp(0.28 + 0.3 * Math.abs(spinV) + 0.65 * Math.abs(flipV), 0, 1) * (1 - ext) * clamp(airT / 0.3, 0, 1) : 0;
+    let k = clamp((st.crouch || 0) * 0.85 + (st.comp || 0) * 0.6 + (mode === 'tuck' ? 0.2 : 0), 0, 1);
+    if (air) k = 0.2 - ext * 0.15;
+    const back = mode === 'slide' ? -0.12 : 0;
+    const hip = [-0.05 - 0.05 * k + back, 0.93 - 0.38 * k, 0];
+
+    // board tweak relative to the body
+    M4.identity(BT);
+    M4.translate(BT, G.tw[0] * gk, tuckAir * 0.26 + G.tw[1] * gk - ext * 0.06, 0);
+    M4.rotX(BT, G.tw[2] * gk - ext * 0.22 + flipV * 0.1);
+    M4.rotZ(BT, G.tw[3] * gk);
+    M4.rotY(BT, G.tw[4] * gk);
+    M4.mul(BM, M, BT);
+
     // ---- board ----
-    engine.drawLit(meshes.top, M, pal.board, 0, SH_BOARD);
-    engine.drawLit(meshes.gfx, M, pal.stripe, 0, SH_BOARD);
-    engine.drawLit(meshes.base, M, BASE);
-    engine.drawLit(meshes.baseGfx, M, pal.board);
-    engine.drawLit(meshes.side, M, DARK);
-    if (!far) engine.drawLit(meshes.edge, M, STEEL, 0, SH_STEEL);
+    engine.drawLit(meshes.top, BM, pal.board, 0, SH_BOARD);
+    engine.drawLit(meshes.gfx, BM, pal.stripe, 0, SH_BOARD);
+    engine.drawLit(meshes.base, BM, BASE);
+    engine.drawLit(meshes.baseGfx, BM, pal.board);
+    engine.drawLit(meshes.side, BM, DARK);
+    if (!far) engine.drawLit(meshes.edge, BM, STEEL, 0, SH_STEEL);
 
     // ---- feet: bindings and boots, front foot angled toward the nose, back foot ducked out ----
     const TH = 0.026;
@@ -404,7 +472,7 @@
       M4.identity(L);
       M4.translate(L, 0.0, TH, fz);
       M4.rotY(L, yaw);
-      M4.mul(FF, M, L);
+      M4.mul(FF, BM, L);
       engine.drawLit(meshes.plate, FF, BIND);
       if (!far) engine.drawLit(meshes.highback, FF, BIND, 0, SH_BOOT);
       M4.identity(L); M4.translate(L, 0, 0.022, 0);
@@ -420,34 +488,41 @@
       }
     }
 
-    // ---- legs ----
-    const k = Math.min(1, Math.max(0, (st.crouch || 0) * 0.85 + (st.comp || 0) * 0.6 + (mode === 'tuck' ? 0.2 : 0)));
-    const back = mode === 'slide' ? -0.12 : 0;
-    const hip = [-0.05 - 0.05 * k + back, 0.93 - 0.38 * k, 0];
-    const kneeF = [0.13 + 0.17 * k + back * 0.5, 0.53 - 0.19 * k, 0.23];
-    const kneeB = [0.13 + 0.17 * k + back * 0.5, 0.53 - 0.19 * k, -0.22];
-    const ankF = [-0.025, 0.2, 0.25], ankB = [-0.025, 0.2, -0.25];
-    for (const [ank, knee, hz] of [[ankF, kneeF, 0.115], [ankB, kneeB, -0.115]]) {
+    // ---- legs: knees found from the hips and the boots ----
+    const ankF = boardPt([-0.025, 0.2, 0.25]), ankB = boardPt([-0.025, 0.2, -0.25]);
+    const knees = [];
+    for (const [ank, hz] of [[ankF, 0.115], [ankB, -0.115]]) {
       const hp = add(hip, [0, -0.02, hz]);
+      const knee = ik(ank, hp, LEG_S, LEG_T, [1, 0.1, hz * 2.4]);
+      knees.push(knee);
       limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
       limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
       ball(engine, M, knee, 0.094, pal.pants, SH_PANTS);
-      // reinforced knee patch on the front of the knee
       if (!far) {
+        // reinforced knee patch on the front of the knee
         const dir = nrm(sub(knee, ank));
-        const fwd = nrm(cross(dir, [0, 0, 1]));
-        const kp = add(knee, [fwd[0] * 0.074 - dir[0] * 0.03, fwd[1] * 0.074 - dir[1] * 0.03, 0]);
-        engine.drawLit(meshes.sph, segC(M, add(kp, [-dir[0] * 0.07, -dir[1] * 0.07, 0]), add(kp, [dir[0] * 0.07, dir[1] * 0.07, 0]), 0.13, 0.06, [0, 0, 1]), pal.pantsPatch, 0, SH_PANTS);
+        const fwd = nrm(sub(knee, mix(ank, hp, 0.5)));
+        const kp = add(knee, [fwd[0] * 0.074 - dir[0] * 0.03, fwd[1] * 0.074 - dir[1] * 0.03, fwd[2] * 0.074 - dir[2] * 0.03]);
+        engine.drawLit(meshes.sph, segC(M, add(kp, [-dir[0] * 0.07, -dir[1] * 0.07, -dir[2] * 0.07]), add(kp, [dir[0] * 0.07, dir[1] * 0.07, dir[2] * 0.07]), 0.13, 0.06, [0, 0, 1]), pal.pantsPatch, 0, SH_PANTS);
       }
     }
     // seat
     engine.drawLit(meshes.sph, at(M, add(hip, [-0.01, -0.03, 0]), 0.29, 0.25, 0.37), pal.pants, 0, SH_PANTS);
 
-    // ---- upper body (twisted toward the nose, more with a spin wind-up) ----
-    let twist = -0.42 + (st.wind || 0) * 0.5;
+    // ---- upper body: shoulders lead a spin, lean into a grab ----
+    let twist = -0.42 + (air ? spinV * 0.85 : (st.wind || 0) * 0.5);
     if (mode === 'tuck') twist = -0.75;
-    const lean = mode === 'tuck' ? 0.18 : mode === 'slide' ? -0.1 : 0;
-    const sh = add(hip, tw([0.1 + 0.15 * k + lean, 0.53 - 0.06 * k, 0.02], twist));
+    const lean = mode === 'tuck' ? 0.18 : mode === 'slide' ? -0.1 : air ? 0.06 + flipV * 0.12 + tuckAir * 0.08 : 0;
+    let sh = add(hip, tw([0.1 + 0.15 * k + lean, 0.53 - 0.06 * k - tuckAir * 0.05, 0.02], twist));
+    const gp = gk > 0 ? boardPt(G.pt) : null;
+    if (gp) {
+      // reach down toward the grab
+      const gs = add(sh, tw([0, -0.04, G.hand * 0.205], twist));
+      const d = sub(gp, gs), dl = len3(d);
+      const need = Math.max(0, dl - (ARM_U + ARM_F) * 0.92);
+      const k2 = gk * Math.min(0.32, need * 0.75) / (dl || 1);
+      sh = add(sh, [d[0] * k2, d[1] * k2 - gk * 0.04, d[2] * k2 * 0.6]);
+    }
     const waist = add(hip, tw([-0.005, -0.03, 0], twist));
     const neck = add(sh, tw([0.012, 0.11, 0], twist));
     const across = tw([0, 0, 1], twist);
@@ -465,11 +540,12 @@
       engine.drawLit(meshes.straps, TF, DARK, 0, SH_JACKET);
     }
 
-    // ---- head ----
+    // ---- head: looks ahead into the spin, down at a grab ----
     const head = add(sh, tw([0.05, 0.25, 0], twist));
     M4.identity(L);
     M4.translate(L, head[0], head[1], head[2]);
-    M4.rotY(L, twist);
+    M4.rotY(L, twist + spinV * 0.55);
+    M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV));
     M4.mul(HF, M, L);
     engine.drawLit(meshes.gaiter, HF, pal.trim, 0, SH_PANTS);
     engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
@@ -482,54 +558,65 @@
       engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
     }
 
-    // ---- arms ----
+    // ---- arms: hands go to targets, elbows find themselves ----
     const sf = add(sh, tw([0, -0.04, 0.205], twist)), sb = add(sh, tw([0, -0.04, -0.205], twist));
     const sway = Math.sin(t * 2.6) * 0.03;
     const carve = st.lean || 0;
-    let ef, hf, eb, hb;
+    let hf, hb;
     switch (mode) {
       case 'bail': {
         const f = Math.sin(t * 13) * 0.15;
-        ef = add(sf, [0.05, 0.22 + f, 0.18]); hf = add(ef, [0.05, 0.26 - f, 0.17]);
-        eb = add(sb, [0.05, 0.22 - f, -0.18]); hb = add(eb, [0.05, 0.26 + f, -0.17]);
+        hf = add(sf, [0.1, 0.42 + f, 0.32]); hb = add(sb, [0.1, 0.42 - f, -0.32]);
         break;
       }
-      case 'grab': {
-        ef = add(sf, tw([0.2, -0.24, 0.06], twist)); hf = [0.2, 0.2, 0.13];
-        eb = add(sb, tw([0.02, 0.12, -0.24], twist)); hb = add(eb, tw([0.05, 0.24, -0.17], twist));
-        break;
-      }
-      case 'air':
-        ef = add(sf, tw([0.08, 0.02, 0.28], twist)); hf = add(ef, tw([0.08, 0.12, 0.26], twist));
-        eb = add(sb, tw([0.06, 0.02, -0.26], twist)); hb = add(eb, tw([0.06, 0.13, -0.25], twist));
-        break;
       case 'tuck':
-        ef = add(sf, tw([0.22, -0.2, 0.05], twist)); hf = mix(kneeF, ef, 0.3); hf[0] += 0.1; hf[1] += 0.08;
-        eb = add(sb, tw([0.22, -0.2, -0.02], twist)); hb = mix(kneeB, eb, 0.3); hb[0] += 0.1; hb[1] += 0.1;
+        hf = add(knees[0], tw([0.13, 0.06, -0.02], twist)); hb = add(knees[1], tw([0.13, 0.08, 0.04], twist));
         break;
       case 'slide':
-        ef = add(sf, tw([0.22, -0.1, 0.22], twist)); hf = add(ef, tw([0.21, -0.05, 0.23], twist));
-        eb = add(sb, tw([0.2, -0.12, -0.1], twist)); hb = add(eb, tw([0.23, -0.05, -0.05], twist));
+        hf = add(sf, tw([0.38, -0.2, 0.3], twist)); hb = add(sb, tw([0.4, -0.24, -0.08], twist));
         break;
+      case 'air': {
+        // balance: arms out wide; spinning pulls them in; flipping grabs the shins
+        hf = add(sf, tw([0.1, -0.06 + Math.sin(t * 5) * 0.04, 0.5], twist));
+        hb = add(sb, tw([0.06, -0.02 - Math.sin(t * 5) * 0.04, -0.5], twist));
+        const sp = Math.min(1, Math.abs(spinV) * 0.9);
+        if (sp > 0) {
+          hf = mix(hf, add(sh, tw([0.32, -0.16, -0.06 * Math.sign(spinV || 1)], twist)), sp);
+          hb = mix(hb, add(sh, tw([0.3, -0.1, 0.1], twist)), sp);
+        }
+        const fp = Math.min(1, Math.abs(flipV) * 0.85);
+        if (fp > 0) {
+          hf = mix(hf, add(knees[0], [0.1, 0.02, 0]), fp);
+          hb = mix(hb, add(knees[1], [0.1, 0.02, 0]), fp);
+        }
+        if (gp) {
+          // the grabbing hand goes to the board, the other one is thrown out for style
+          if (G.hand > 0) { hf = mix(hf, gp, gk); hb = mix(hb, add(sb, tw([-0.08, 0.3, -0.38], twist)), gk); }
+          else { hb = mix(hb, gp, gk); hf = mix(hf, add(sf, tw([0.02, 0.3, 0.4], twist)), gk); }
+        }
+        break;
+      }
       default:
-        ef = add(sf, tw([0.12, -0.2 + sway - carve * 0.12, 0.23], twist)); hf = add(ef, tw([0.15, -0.17 - sway - carve * 0.15, 0.3], twist));
-        eb = add(sb, tw([0.07, -0.23 - sway + carve * 0.1, -0.17], twist)); hb = add(eb, tw([0.11, -0.28 + sway + carve * 0.12, -0.23], twist));
+        hf = add(sf, tw([0.22, -0.34 + sway - carve * 0.18, 0.36], twist));
+        hb = add(sb, tw([0.15, -0.42 - sway + carve * 0.15, -0.28], twist));
     }
-    for (const [s0, e0, h0] of [[sf, ef, hf], [sb, eb, hb]]) {
+    for (const [s0, h1, side] of [[sf, hf, 1], [sb, hb, -1]]) {
+      const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
+      const elbow = ik(s0, hand, ARM_U, ARM_F, tw([-0.55, -0.6, side * 0.75], twist));
       ball(engine, M, s0, 0.088, pal.jacket, SH_JACKET);
-      limb(engine, M, meshes.sleeveUp, s0, e0, pal.jacket, SH_JACKET);
-      ball(engine, M, e0, 0.07, pal.jacket, SH_JACKET);
+      limb(engine, M, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);
+      ball(engine, M, elbow, 0.07, pal.jacket, SH_JACKET);
       // forearm stops short of the hand; the cuff and mitt cover the wrist
-      const dir = nrm(sub(h0, e0));
-      const wrist = add(h0, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
-      limb(engine, M, meshes.sleeveLo, e0, wrist, pal.jacket, SH_JACKET);
-      const tip = add(h0, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
+      const dir = nrm(sub(hand, elbow));
+      const wrist = add(hand, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
+      limb(engine, M, meshes.sleeveLo, elbow, wrist, pal.jacket, SH_JACKET);
+      const tip = add(hand, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
       const palmSide = nrm(cross(dir, [0, 1, 0]));
       if (!far) {
         const c1 = add(wrist, [dir[0] * 0.05, dir[1] * 0.05, dir[2] * 0.05]);
         engine.drawLit(meshes.cuff, seg(M, wrist, c1, 1, 1, palmSide), pal.trim, 0, SH_JACKET);
       }
-      engine.drawLit(meshes.mitt, seg(M, add(h0, [-dir[0] * 0.02, -dir[1] * 0.02, -dir[2] * 0.02]), tip, 1, 1, palmSide), pal.glove, 0, SH_BOOT);
+      engine.drawLit(meshes.mitt, seg(M, add(hand, [-dir[0] * 0.02, -dir[1] * 0.02, -dir[2] * 0.02]), tip, 1, 1, palmSide), pal.glove, 0, SH_BOOT);
     }
     engine.setLitAlpha(1);
   };

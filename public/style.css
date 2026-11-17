@@ -812,3 +812,31 @@ body.touch .controls { display: none; }
 }
 @media (max-width: 700px) { #mapGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-height: 540px) { #mapGrid { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; } }
+
+/* ------------------------------------------------------------ picker pages */
+#mapGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+@media (min-width: 1400px) { #mapGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-height: 760px) and (min-width: 701px) { #mapGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-height: 540px) { #mapGrid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
+@media (max-width: 700px) { #mapGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+#mapGrid.slide-l { animation: pageL 0.32s ease-out; }
+#mapGrid.slide-r { animation: pageR 0.32s ease-out; }
+@keyframes pageL { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+@keyframes pageR { from { opacity: 0; transform: translateX(-40px); } to { opacity: 1; transform: none; } }
+.pager { display: flex; justify-content: center; align-items: center; gap: 16px; }
+.pager .btn { margin: 0; }
+.btn.arrow { --c: #fff; --t: var(--ink); width: 64px; height: 54px; font: 900 22px var(--ui); }
+.btn.arrow:not(:disabled) { --c: var(--piste); --t: #fff; }
+#mapDots { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 10px; min-height: 12px; }
+#mapDots i { width: 9px; height: 9px; border-radius: 50%; background: var(--rule); border: 1.5px solid var(--ink); }
+#mapDots i.on { background: var(--bib); }
+#mapDots span { margin-left: 6px; font-size: 14px; font-weight: 700; color: var(--ink-2); }
+@media (max-height: 540px) {
+  .btn.arrow { width: 50px; height: 40px; font-size: 17px; }
+  #mapDots { margin-top: 6px; }
+}
+@media (prefers-reduced-motion: reduce) { #mapGrid.slide-l, #mapGrid.slide-r { animation: none; } }
+/* long mountain names wrap instead of spilling out of narrow cards */
+.mapCard .mc-name > span { min-width: 0; overflow-wrap: anywhere; }
+@media (max-width: 700px) { .mapCard .mc-name { font-size: 19px; } }
+@media (max-width: 400px) { .mapCard .mc-name { font-size: 17px; } }

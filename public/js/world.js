@@ -33,9 +33,13 @@
 
   const KICK = {
     S: { Hk: 1.3, Lu: 6, Lt: 4, Ll: 11, w: 2.6 },
-    M: { Hk: 2.1, Lu: 8, Lt: 7, Ll: 14, w: 3.2 },
-    L: { Hk: 3.0, Lu: 10, Lt: 10, Ll: 18, w: 3.8 },
-    XL: { Hk: 4.0, Lu: 13, Lt: 14, Ll: 24, w: 4.6 },
+    M: { Hk: 2.1, Lu: 8, Lt: 7, Ll: 18, w: 3.2 },
+    L: { Hk: 3.0, Lu: 10, Lt: 10, Ll: 24, w: 3.8 },
+    XL: { Hk: 4.0, Lu: 13, Lt: 14, Ll: 32, w: 4.6 },
+    // slopestyle-size jump
+    XXL: { Hk: 5, Lu: 16, Lt: 18, Ll: 40, w: 5 },
+    // pillow: a rounded powder mound in the backcountry
+    P: { Hk: 1.5, Lu: 6, Lt: 1.5, Ll: 7, w: 2.2, pe: 2 },
     // giant big-air kicker: steep lip, long table, then a short drop onto a huge landing hill
     G: { Hk: 7, Lu: 22, Lt: 20, Ll: 10, w: 6.5, pe: 2.2 },
   };
@@ -53,7 +57,7 @@
   };
 
   // ------------------------------------------------------------------ the maps
-  const Z = (name, type) => ({ name, type });
+  const Z = (name, type, len, opt) => ({ name, type, len, opt });
   const MAPS = {
     night: {
       id: 'night', name: 'Floodlit Night', time: 'NIGHT', diff: 'MEDIUM',
@@ -67,7 +71,7 @@
       trees: { near: 0.82, far: 0.75, snow: 1, green: [0.07, 0.17, 0.12] },
       snowfall: 1, nets: true, shadows: false,
       mtn: { dark: [0.07, 0.09, 0.16], cap: [0.32, 0.36, 0.5], k: [0.25, 0.55] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'tokens', v: 30, t: 'Collect 30 tokens' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 15000, t: 'Score 15,000' }, { k: 'tokens', v: 30, t: 'Collect 30 tokens' }],
       card: 'linear-gradient(180deg,#050a1c 0%,#0f2348 55%,#1d3a6e 100%)', accent: '#59ffb0',
     },
     bluebird: {
@@ -82,7 +86,7 @@
       trees: { near: 0.6, far: 0.75, snow: 0.6, green: [0.09, 0.24, 0.15] },
       snowfall: 0, nets: true, shadows: true,
       mtn: { dark: [0.4, 0.5, 0.7], cap: [0.95, 0.97, 1.0], k: [0.6, 0.45] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 15000, t: 'Score 15,000' }, { k: 'perfects', v: 4, t: 'Land 4 perfect landings' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 16000, t: 'Score 16,000' }, { k: 'perfects', v: 5, t: 'Land 5 perfect landings' }],
       card: 'linear-gradient(180deg,#1a57c8 0%,#5aa0f0 55%,#cfe6ff 100%)', accent: '#ffd23f',
     },
     sunset: {
@@ -97,7 +101,7 @@
       trees: { near: 0.55, far: 0.6, snow: 0.8, green: [0.08, 0.16, 0.11] },
       snowfall: 0, nets: true, shadows: true,
       mtn: { dark: [0.25, 0.16, 0.26], cap: [1.0, 0.72, 0.6], k: [0.4, 0.6] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 13000, t: 'Score 13,000' }, { k: 'time', v: 110, t: 'Finish under 1:50' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'time', v: 105, t: 'Finish under 1:45' }],
       card: 'linear-gradient(180deg,#2a2a66 0%,#c8577a 45%,#ff9a52 75%,#ffd27a 100%)', accent: '#ffb14a',
     },
     woods: {
@@ -112,7 +116,7 @@
       trees: { near: 1.0, far: 0.95, snow: 1.35, green: [0.05, 0.13, 0.1], dense: true },
       snowfall: 1.6, nets: false, shadows: false,
       mtn: { dark: [0.04, 0.05, 0.1], cap: [0.3, 0.36, 0.52], k: [0.2, 0.6] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 9000, t: 'Score 9,000' }, { k: 'nobail', t: 'Finish without bailing' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 11000, t: 'Score 11,000' }, { k: 'nobail', t: 'Finish without bailing' }],
       card: 'radial-gradient(circle at 70% 25%,#e8efff 0 6%,#5d74a8 7%,#14214a 30%,#060b1e 75%)', accent: '#bcd2ff',
     },
     cave: {
@@ -128,7 +132,7 @@
       trees: { near: 0.8, far: 0.75, snow: 1.1, green: [0.06, 0.15, 0.11] },
       snowfall: 0.8, nets: false, shadows: false,
       mtn: { dark: [0.06, 0.07, 0.14], cap: [0.3, 0.33, 0.48], k: [0.25, 0.55] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'tokens', v: 35, t: 'Collect 35 tokens' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'tokens', v: 35, t: 'Collect 35 tokens' }],
       card: 'radial-gradient(ellipse at 50% 120%,#3ff0ff 0%,#5a3cff 25%,#1c1145 55%,#07051a 85%)', accent: '#7cf7ff',
     },
     bigair: {
@@ -143,12 +147,103 @@
       trees: { near: 0.85, far: 0.9, snow: 0.7, green: [0.08, 0.2, 0.14] },
       snowfall: 0, nets: true, shadows: true,
       mtn: { dark: [0.5, 0.58, 0.74], cap: [0.97, 0.98, 1.0], k: [0.62, 0.42] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 35000, t: 'Score 35,000' }, { k: 'air', v: 4.5, t: 'Stay in the air for 4.5 seconds' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 38000, t: 'Score 38,000' }, { k: 'air', v: 4.5, t: 'Stay in the air for 4.5 seconds' }],
       card: 'linear-gradient(180deg,#2f6fd6 0%,#8ec0f5 55%,#eef6ff 100%)', accent: '#4fc3ff',
+    },
+    railking: {
+      id: 'railking', name: 'Rail Kingdom', time: 'SUNNY DAY', diff: 'MEDIUM',
+      sub: 'A park made of rails: 40 m long rails, rainbow rails, rail-to-rail gaps and long boxes.',
+      half: 20, curve: [8, 360, 3, 150], slope: 0.22, alt: 2760,
+      zones: [Z('BOX ALLEY', 'jib'), Z('LONG RAILS', 'longrails'), Z('RAINBOW ROW', 'longrails', 380, { arch: true }), Z('RAIL GARDEN', 'rails'), Z('MEGA RAILS', 'longrails', 380, { mega: true }), Z('JIB FINALE', 'parkmix')],
+      first: 'DROP-IN',
+      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([-0.4, 0.55, 0.73]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
+      sky: { zen: [0.14, 0.38, 0.8], hor: [0.7, 0.82, 0.95], dir: norm3([-0.4, 0.55, 0.73]), col: [1.0, 0.95, 0.82], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.72, 0.78, 0.88], cloudLit: [1, 1, 1], clouds: 0.75, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.7, far: 0.8, snow: 0.6, green: [0.09, 0.22, 0.15] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 16000, t: 'Score 16,000' }, { k: 'grind', v: 12, t: 'Grind for 12 seconds in total' }],
+      card: 'linear-gradient(180deg,#1a63d8 0%,#7cb6f2 60%,#e8f3ff 100%)', accent: '#ffcc33',
+    },
+    triple: {
+      id: 'triple', name: 'Triple Giants', time: 'GOLDEN HOUR', diff: 'HARD',
+      sub: 'Three giant kickers back to back to back. No breaks, no small stuff, just send it three times.',
+      half: 22, curve: [10, 340, 4, 140], slope: 0.24, alt: 3480,
+      zones: [Z('GIANT ONE', 'giant', 300), Z('GIANT TWO', 'giant', 300), Z('GIANT THREE', 'giant', 300), Z('THE ROLLERS', 'rollers'), Z('KICKER LINE', 'kickers'), Z('LAST AIR', 'bigair')],
+      first: 'THE IN-RUN',
+      light: { sky: [0.32, 0.3, 0.44], ground: [0.16, 0.12, 0.16], sunDir: norm3([0.7, 0.3, 0.65]), sun: [1.05, 0.72, 0.45], fog: [0.82, 0.62, 0.52], rim: [0.45, 0.3, 0.3], snow: [0.95, 0.94, 0.96], powder: [0.9, 0.88, 0.94] },
+      sky: { zen: [0.2, 0.25, 0.5], hor: [1.0, 0.68, 0.42], dir: norm3([0.7, 0.24, 0.65]), col: [1.0, 0.7, 0.38], disk: 0.9992, glow: [5, 0.5, 60, 0.65], aurora: 0, cloudDark: [0.45, 0.32, 0.4], cloudLit: [1.0, 0.75, 0.52], clouds: 0.7, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.8, far: 0.85, snow: 0.7, green: [0.08, 0.17, 0.12] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.32, 0.22, 0.3], cap: [1.0, 0.8, 0.66], k: [0.42, 0.58] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'giants', v: 3, t: 'Land all three giants' }, { k: 'score', v: 38000, t: 'Score 38,000' }],
+      card: 'linear-gradient(180deg,#3a3c7a 0%,#d0688a 45%,#ffa45a 75%,#ffe08a 100%)', accent: '#ff8a3d',
+    },
+    slopestyle: {
+      id: 'slopestyle', name: 'Gold Medal Slopestyle', time: 'SUNNY DAY', diff: 'HARD',
+      sub: 'A competition course like the one at the Games: three rail sections with three lines each, then three jumps.',
+      half: 24, curve: [6, 360, 3, 160], slope: 0.23, alt: 2900, length: 1900,
+      zones: [Z('RAIL SECTION 1', 'railStation', 170, { n: 0 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 1 }), Z('RAIL SECTION 3', 'railStation', 170, { n: 2 }),
+        Z('JUMP 1', 'jumpStation', 300, { n: 0 }), Z('JUMP 2', 'jumpStation', 300, { n: 1 }), Z('JUMP 3', 'jumpStation', 300, { n: 2 })],
+      first: 'START GATE', stands: true,
+      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([0.3, 0.6, 0.74]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
+      sky: { zen: [0.12, 0.36, 0.8], hor: [0.7, 0.82, 0.96], dir: norm3([0.3, 0.6, 0.74]), col: [1.0, 0.96, 0.85], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.74, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.6, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.65, far: 0.85, snow: 0.6, green: [0.08, 0.2, 0.14] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'perfects', v: 3, t: 'Land 3 perfect landings' }],
+      card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ffd23f',
+    },
+    jumpline: {
+      id: 'jumpline', name: 'Jump Line', time: 'NIGHT', diff: 'MEDIUM',
+      sub: 'Floodlit kickers one after another, all the way down. Find the rhythm and never stop spinning.',
+      half: 18, curve: [10, 320, 4, 140], slope: 0.25, alt: 2700,
+      zones: [Z('WARM-UP LINE', 'jumpline', 380, { small: true }), Z('THE RHYTHM', 'jumpline'), Z('ROLLER BREAK', 'rollers'), Z('BIG LINE', 'jumpline', 380, { big: true }), Z('FAST LINE', 'jumpline'), Z('LAST LINE', 'jumpline', 380, { big: true })],
+      first: 'DROP-IN',
+      light: { sky: [0.3, 0.34, 0.5], ground: [0.1, 0.11, 0.17], sunDir: norm3([0.35, 0.8, -0.45]), sun: [0.24, 0.27, 0.38], fog: [0.08, 0.11, 0.22], rim: [0.22, 0.3, 0.5], snow: [0.95, 0.97, 1.0], powder: [0.86, 0.9, 1.0] },
+      sky: { zen: [0.01, 0.02, 0.06], hor: [0.09, 0.13, 0.26], dir: norm3([-0.4, 0.4, 0.8]), col: [0.75, 0.8, 0.95], disk: 0.99955, glow: [14, 0.2, 300, 0.35], aurora: 0.7, cloudDark: [0.05, 0.07, 0.14], cloudLit: [0.2, 0.24, 0.36], clouds: 0.7, stars: 1 },
+      lamps: { every: 30, i: 2.0, col: [1, 0.93, 0.8] },
+      trees: { near: 0.82, far: 0.75, snow: 1, green: [0.07, 0.17, 0.12] },
+      snowfall: 0.8, nets: true, shadows: false,
+      mtn: { dark: [0.07, 0.09, 0.16], cap: [0.32, 0.36, 0.5], k: [0.25, 0.55] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 40000, t: 'Score 40,000' }, { k: 'perfects', v: 8, t: 'Land 8 perfect landings' }],
+      card: 'linear-gradient(180deg,#040a1c 0%,#123064 60%,#2a4f8a 100%)', accent: '#7dffb0',
+    },
+    cliffs: {
+      id: 'cliffs', name: 'Cliff Drops', time: 'SNOWSTORM', diff: 'HARD',
+      sub: 'Backcountry in a storm. Deep powder, pillows and rock cliffs to drop off. No groomed piste out here.',
+      half: 19, curve: [24, 220, 10, 90], slope: 0.25, alt: 3010, poles: false,
+      zones: [Z('TREE RUN', 'trees'), Z('FIRST DROPS', 'cliffs', 380, { min: 3, max: 5 }), Z('PILLOW FIELD', 'pillows'), Z('BIG CLIFFS', 'cliffs', 380, { min: 5, max: 8 }), Z('DEEP POWDER', 'trees'), Z('THE HUCK', 'cliffs', 380, { min: 7, max: 10 })],
+      first: 'THE RIDGE',
+      light: { sky: [0.5, 0.53, 0.6], ground: [0.32, 0.33, 0.37], sunDir: norm3([0.2, 0.9, 0.3]), sun: [0.22, 0.22, 0.22], fog: [0.74, 0.77, 0.82], rim: [0.2, 0.22, 0.26], snow: [0.92, 0.93, 0.96], powder: [0.92, 0.93, 0.96] },
+      sky: { zen: [0.48, 0.52, 0.6], hor: [0.76, 0.79, 0.84], dir: norm3([0.2, 0.7, 0.6]), col: [0.9, 0.9, 0.88], disk: 0.9999, glow: [4, 0.15, 60, 0.1], aurora: 0, cloudDark: [0.58, 0.61, 0.68], cloudLit: [0.86, 0.88, 0.92], clouds: 1.0, stars: 0 },
+      lamps: null, fogNear: 30, fogFar: 260,
+      trees: { near: 1.0, far: 0.95, snow: 1.3, green: [0.06, 0.15, 0.11], dense: true },
+      snowfall: 1.5, nets: false, shadows: false,
+      mtn: { dark: [0.52, 0.56, 0.64], cap: [0.9, 0.92, 0.95], k: [0.7, 0.3] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 11000, t: 'Score 11,000' }, { k: 'nobail', t: 'Finish without bailing' }],
+      card: 'linear-gradient(180deg,#8d97a8 0%,#c4cad4 60%,#eef1f5 100%)', accent: '#c9d6ea',
+    },
+    neon: {
+      id: 'neon', name: 'Neon Park', time: 'NIGHT', diff: 'MEDIUM',
+      sub: 'A night park lit in pink, cyan and purple. Glowing boxes and rails, kickers and a jump line.',
+      half: 19, curve: [16, 260, 6, 110], slope: 0.23, alt: 2580, neon: true,
+      zones: [Z('NEON BOXES', 'jib'), Z('LIGHT RAILS', 'longrails'), Z('KICKER LINE', 'kickers'), Z('NEON GARDEN', 'parkmix'), Z('JUMP LINE', 'jumpline'), Z('GLOW FINALE', 'parkmix')],
+      first: 'DROP-IN',
+      light: { sky: [0.22, 0.18, 0.36], ground: [0.08, 0.06, 0.14], sunDir: norm3([0.35, 0.8, -0.45]), sun: [0.18, 0.16, 0.3], fog: [0.07, 0.03, 0.14], rim: [0.5, 0.25, 0.6], snow: [0.95, 0.95, 1.0], powder: [0.88, 0.88, 1.0] },
+      sky: { zen: [0.02, 0.005, 0.06], hor: [0.18, 0.05, 0.26], dir: norm3([-0.4, 0.4, 0.8]), col: [0.85, 0.75, 1.0], disk: 0.9995, glow: [12, 0.25, 260, 0.3], aurora: 0.5, cloudDark: [0.06, 0.03, 0.12], cloudLit: [0.3, 0.16, 0.4], clouds: 0.6, stars: 1 },
+      lamps: { every: 34, i: 2.1, col: [1, 0.3, 0.8], cols: [[1, 0.25, 0.75], [0.2, 0.9, 1], [0.65, 0.35, 1], [0.35, 1, 0.55]] },
+      trees: { near: 0.75, far: 0.7, snow: 0.9, green: [0.05, 0.1, 0.12] },
+      snowfall: 0.6, nets: false, shadows: false,
+      mtn: { dark: [0.06, 0.04, 0.12], cap: [0.3, 0.24, 0.45], k: [0.25, 0.55] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 18000, t: 'Score 18,000' }, { k: 'grind', v: 8, t: 'Grind for 8 seconds in total' }],
+      card: 'linear-gradient(180deg,#0a0420 0%,#3b0f5c 55%,#ff4fd8 100%)', accent: '#ff4fd8',
     },
   };
   SS.MAPS = MAPS;
-  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair'];
+  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon'];
   SS.GIANT = GIANT;
 
   const CRYSTAL_COLS = [[0.35, 0.95, 1.0], [0.65, 0.45, 1.0], [0.3, 1.0, 0.75], [1.0, 0.45, 0.85]];
@@ -159,6 +254,8 @@
       this.mapId = this.map.id;
       this.seed = seed >>> 0;
       C.HALF = this.map.half;
+      C.LENGTH = this.map.length || 2600;
+      C.ZMAX = C.LENGTH + C.RUNOUT + 90;
       this.L = this.map.light;
       this.cave = this.map.cave || null;
       this.rnd = mulberry32((this.seed || 1) ^ (SS.MAP_IDS.indexOf(this.mapId) * 0x9e3779b1));
@@ -211,8 +308,9 @@
       this.zones = [{ name: this.map.first, type: 'summit', z0: C.Z0, z1: 220 }];
       let z = 220;
       for (const m of mids) {
-        this.zones.push({ name: m.name, type: m.type, z0: z, z1: z + 380 });
-        z += 380;
+        const len = m.len || 380;
+        this.zones.push({ name: m.name, type: m.type, z0: z, z1: z + len, opt: m.opt || {} });
+        z += len;
       }
       this.zones.push({ name: 'THE FINISH', type: 'finish', z0: z, z1: C.ZMAX + 10 });
     }
@@ -261,6 +359,23 @@
       for (let i = 1; i < n; i++) this.bArr[i] = this.bArr[i - 1] - sl[i - 1];
       const b0 = this.sample(this.bArr, 0);
       for (let i = 0; i < n; i++) this.bArr[i] -= b0;
+      // cliff bands: a sharp drop across the whole slope, then a steeper landing
+      this.cliffs = [];
+      for (const zn of this.zones) {
+        if (zn.type !== 'cliffs') continue;
+        const o = zn.opt || {};
+        for (const at of [70, 190, 310]) {
+          const D = o.min + this.rnd() * (o.max - o.min);
+          this.cliffs.push({ z: zn.z0 + at, D, e: 0.15 + D * 0.04 });
+        }
+      }
+      for (const c of this.cliffs) {
+        for (let i = 0; i < n; i++) {
+          const z = C.Z0 + i;
+          if (z < c.z) continue;
+          this.bArr[i] -= c.D * smooth(Math.min(1, (z - c.z) / 2.2)) + c.e * Math.min(28, Math.max(0, z - c.z - 2.2));
+        }
+      }
       // how cave-like each metre is (steeper walls inside)
       this.kArr = new Float32Array(n);
       for (let i = 0; i < n; i++) this.kArr[i] = this.caveK(C.Z0 + i);
@@ -363,7 +478,7 @@
           const lat = Math.abs(rx * f.dz - rz * f.dx);
           if (lat > f.w) continue;
           let top;
-          if (t >= 0) top = Math.max(lerp(f.g0, f.g1, t / f.len) + f.h, g + 0.25);
+          if (t >= 0) top = Math.max(lerp(f.g0, f.g1, t / f.len) + f.h + (f.arch ? f.arch * Math.sin((Math.PI * t) / f.len) : 0), g + 0.25);
           else top = g + (f.h * (t + f.ramp)) / f.ramp;
           if (top > y) {
             y = top;
@@ -397,10 +512,10 @@
         const f = { kind: 'kicker', size, z0, off, ...k, len: k.Lu + k.Lt + k.Ll };
         this.features.push(f);
         const lipZ = z0 + k.Lu;
-        for (const s of [-1, 1]) this.flags.push({ x: this.center(lipZ) + off + s * (k.w + 1.4), z: lipZ });
+        if (size !== 'P') for (const s of [-1, 1]) this.flags.push({ x: this.center(lipZ) + off + s * (k.w + 1.4), z: lipZ });
         return f;
       };
-      const rail = (zStart, off, type, len) => {
+      const rail = (zStart, off, type, len, arch) => {
         const isBox = type === 'box';
         const zMid = zStart + len / 2;
         const ang = Math.atan((this.center(zMid + 1) - this.center(zMid - 1)) / 2);
@@ -409,7 +524,7 @@
         const f = {
           kind: 'rail', type, ax, az, dx, dz, len, ang,
           w: isBox ? 0.42 : 0.34, h: isBox ? 0.55 : 0.8, ramp: isBox ? 2.6 : 0,
-          z0: az - (isBox ? 2.6 : 0), z1: az + dz * len,
+          z0: az - (isBox ? 2.6 : 0), z1: az + dz * len, arch: arch || 0,
         };
         f.g0 = this.ground(ax, az);
         f.g1 = this.ground(ax + dx * len, az + dz * len);
@@ -481,6 +596,72 @@
           case 'giant':
             kicker(z0 + GIANT.at, 0, 'G');
             break;
+          case 'longrails': {
+            // long rails, rainbow rails, rail-to-rail gaps and long boxes
+            const o = zn.opt || {};
+            [30, 150, 270].forEach((at, i) => {
+              const side = r() < 0.5 ? -1 : 1, lane = Math.min(7, HALF - 6);
+              const kind = o.arch ? 'arch' : o.mega ? 'mega' : ['long', 'gap', 'arch'][(i + ((r() * 3) | 0)) % 3];
+              if (kind === 'long') {
+                rail(z0 + at, side * R(3, lane), 'rail', R(28, 40));
+                rail(z0 + at + R(0, 6), -side * R(3, lane), 'box', R(24, 32));
+              } else if (kind === 'mega') {
+                rail(z0 + at, side * R(2, 5), 'rail', R(42, 52));
+                rail(z0 + at + 4, -side * R(4, lane), 'box', R(34, 44));
+              } else if (kind === 'gap') {
+                const off = side * R(3, lane);
+                rail(z0 + at, off, 'rail', 14);
+                rail(z0 + at + 18, off, 'rail', 14);
+                rail(z0 + at + 6, -side * R(3, lane), 'box', 22, 0.5);
+              } else {
+                rail(z0 + at, side * R(3, lane), 'rail', R(14, 18), R(0.9, 1.4));
+                rail(z0 + at + R(0, 8), -side * R(3, lane), 'box', R(16, 20), R(0.6, 1.0));
+              }
+            });
+            break;
+          }
+          case 'railStation': {
+            // three lines side by side: pick the rail, the box or the rainbow
+            const n = (zn.opt && zn.opt.n) || 0;
+            const L3 = [
+              [['rail', 16, 0], ['box', 18, 0], ['rail', 15, 1.1]],
+              [['box', 26, 0.7], ['rail', 22, 0], ['box', 16, 0]],
+              [['rail', 30, 0], ['box', 20, 1.0], ['rail', 18, 1.3]],
+            ][n % 3];
+            [-10, 0, 10].forEach((off, i) => rail(z0 + 40 + (i === 1 ? 0 : 4), off, L3[i][0], L3[i][1], L3[i][2]));
+            break;
+          }
+          case 'jumpStation': {
+            // three kickers side by side: smaller on the outside, the biggest in the middle
+            const n = (zn.opt && zn.opt.n) || 0;
+            const sizes = [['M', 'L', 'M'], ['L', 'XL', 'L'], ['L', 'XXL', 'XL']][n % 3];
+            [-15, 0, 15].forEach((off, i) => kicker(z0 + 50, off, sizes[i]));
+            break;
+          }
+          case 'jumpline': {
+            const o = zn.opt || {};
+            const seq = o.small ? ['M', 'L', 'M', 'L', 'M'] : o.big ? ['XL', 'XXL', 'XL', 'XXL'] : ['L', 'XL', 'L', 'XL', 'L'];
+            const step = o.big ? 100 : o.small ? 72 : 82;
+            seq.forEach((sz, i) => { if (i * step + 20 + KICK[sz].Lu + KICK[sz].Lt + KICK[sz].Ll < zn.z1 - zn.z0) kicker(z0 + 20 + i * step, 0, sz); });
+            break;
+          }
+          case 'pillows':
+            scatter(z0, L, 14, 16, (x, z) => kicker(z - 6, x - this.center(z), 'P'));
+            break;
+          case 'parkmix': {
+            let lane = r() < 0.5 ? -1 : 1;
+            for (let at = 25; at < L - 40; at += 52) {
+              const pick = r(), off = lane * R(2, Math.min(7, HALF - 6));
+              if (pick < 0.3) kicker(z0 + at, off, r() < 0.5 ? 'S' : 'M');
+              else if (pick < 0.55) rail(z0 + at, off, 'box', R(12, 18), r() < 0.4 ? R(0.5, 0.9) : 0);
+              else if (pick < 0.8) rail(z0 + at, off, 'rail', R(12, 20), r() < 0.4 ? R(0.8, 1.2) : 0);
+              else { rail(z0 + at, off, 'box', 14); rail(z0 + at + 3, -off, 'rail', 16); }
+              lane = -lane;
+            }
+            break;
+          }
+          case 'cliffs':
+            break;
           case 'mega':
             kicker(z0 + 40, R(-6, 6), 'L');
             kicker(z0 + 150, R(-5, 5), 'XL');
@@ -549,14 +730,15 @@
 
       // floodlights (outside the cave), alternating sides
       if (M.lamps) {
-        let side = 1;
+        let side = 1, li = 0;
         for (let z = 8; z < C.LENGTH + 120; z += M.lamps.every) {
           if (this.cave && z > this.cave[0] - 8 && z < this.cave[1] + 8) continue;
           const c = this.center(z);
           const x = c + side * (HALF + 3.2);
           const gy = this.ground(x, z);
           const hx = x - side * 1.9;
-          this.lamps.push({ kind: 'lamp', x, z, gy, side, hx, hy: gy + 10.2, lx: hx, ly: gy + 9.8, lz: z, i: M.lamps.i, c: M.lamps.col });
+          const lc = M.lamps.cols ? M.lamps.cols[li++ % M.lamps.cols.length] : M.lamps.col;
+          this.lamps.push({ kind: 'lamp', x, z, gy, side, hx, hy: gy + 10.2, lx: hx, ly: gy + 9.8, lz: z, i: M.lamps.i, c: lc, neon: !!M.lamps.cols });
           this.colliders.push({ x, z, r: 0.35, top: gy + 11 });
           side = -side;
         }
@@ -586,7 +768,7 @@
       for (const l of this.lamps) (this.lampBuckets[((l.z - C.Z0) / 50) | 0] = this.lampBuckets[((l.z - C.Z0) / 50) | 0] || []).push(l);
 
       // piste marker poles or bright race banners
-      for (let z = 4; z < C.LENGTH + 100; z += M.banners ? 32 : 26) {
+      for (let z = 4; z < C.LENGTH + 100 && M.poles !== false; z += M.banners ? 32 : 26) {
         if (this.inCave(z)) continue;
         for (const s of [-1, 1]) {
           if (this.lamps.some((l) => l.kind === 'lamp' && l.side === s && Math.abs(l.z - z) < 4)) continue;
@@ -611,9 +793,33 @@
       this.nets = [];
       if (M.nets) {
         for (const zn of this.zones) {
-          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant'].includes(zn.type)) continue;
+          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant', 'jumpline', 'jumpStation'].includes(zn.type)) continue;
           for (let z = Math.max(zn.z0, 10); z < Math.min(zn.z1, C.LENGTH + 40); z += 6) {
             for (const sd of [-1, 1]) if (r() < 0.92) this.nets.push({ z0: z, z1: z + 6, side: sd });
+          }
+        }
+      }
+      // grandstands full of fans along the finish
+      this.stands = [];
+      if (M.stands) {
+        for (let z = C.LENGTH - 150; z < C.LENGTH + 30; z += 30) {
+          for (const sd of [-1, 1]) {
+            const x = this.center(z) + sd * (HALF + 7);
+            this.stands.push({ x, z, side: sd, gy: this.ground(x, z) });
+            for (let k = -12; k <= 12; k += 6) this.colliders.push({ x, z: z + k, r: 3.5, top: 1e4 });
+          }
+        }
+      }
+      // cliff bands: bare rock pokes out where the band runs into the banks
+      this.rocks = [];
+      for (const c of this.cliffs || []) {
+        for (const sd of [-1, 1]) {
+          for (let e = -2; e < 24; e += R(1.5, 2.4)) {
+            const z = c.z + R(-0.6, 0.4), x = this.center(z) + sd * (HALF + e);
+            const sz = clamp(0.5 + (e + 2) * 0.1, 0.45, 2.4) * R(0.8, 1.25);
+            const gy = this.ground(x, z - 0.8);
+            this.rocks.push({ x, z, s: sz, yaw: R(0, TAU), gy });
+            if (e > 0.5) this.colliders.push({ x, z, r: sz * 0.8, top: gy + sz * 1.1 });
           }
         }
       }
@@ -671,8 +877,12 @@
         }
       }
       for (const g of this.gates) add(g.x, this.ground(g.x, g.z) + 1.0, g.z);
+      for (const c of this.cliffs || []) {
+        const x = this.center(c.z) + R(-4, 4), y0 = this.ground(x, c.z - 1);
+        for (const [dz, dy] of [[5, 0.4], [10, -0.6], [15, -2.4]]) add(x, y0 + dy, c.z + dz);
+      }
       for (const zn of this.zones) {
-        if (!['summit', 'rollers', 'trees', 'finish', 'pillars'].includes(zn.type)) continue;
+        if (!['summit', 'rollers', 'trees', 'finish', 'pillars', 'pillows', 'cliffs'].includes(zn.type)) continue;
         for (let z0 = Math.max(zn.z0, 40) + R(10, 40); z0 < Math.min(zn.z1, C.LENGTH - 30) - 50; z0 += R(80, 120)) {
           const off = R(-C.HALF + 5, C.HALF - 5), amp = R(2, 5), ph = R(0, Math.PI * 2);
           for (let i = 0; i < 6; i++) {
@@ -836,6 +1046,9 @@
       this.liftTowers.forEach((t, i) => add(t.z, { k: 'tower', o: t, next: this.liftTowers[i + 1] && this.liftTowers[i + 1].z - t.z < 70 ? this.liftTowers[i + 1] : null }));
       for (const n of this.nets) add(n.z0, { k: 'net', o: n });
       for (const h of this.huts) add(h.z, { k: 'hut', o: h });
+      for (const st of this.stands) add(st.z, { k: 'stand', o: st });
+      for (const c of this.cliffs || []) add(c.z, { k: 'cliff', o: c });
+      for (const rk of this.rocks || []) add(rk.z, { k: 'rock', o: rk });
       if (this.cave) {
         add(this.cave[0], { k: 'mouth', o: { z: this.cave[0], dir: -1 } });
         add(this.cave[1], { k: 'mouth', o: { z: this.cave[1], dir: 1 } });
@@ -868,7 +1081,10 @@
           case 'tower': B.tower(o, it.next); if (it.next) ch.maxZ = Math.max(ch.maxZ, it.next.z); break;
           case 'net': B.net(o); break;
           case 'hut': B.hut(o); break;
+          case 'stand': B.stand(o); ch.maxZ = Math.max(ch.maxZ, o.z + 14); ch.minZ = Math.min(ch.minZ, o.z - 14); break;
           case 'mouth': B.mouth(o); break;
+          case 'cliff': B.cliff(o); break;
+          case 'rock': B.rock(o); break;
           case 'finish': B.arch(C.LENGTH, true); B.finishFlags(); break;
           case 'start': B.arch(-3, false); break;
         }
@@ -907,8 +1123,9 @@
           d.push(l.hx, l.hy, l.z, l.c[0], l.c[1], l.c[2], 0.5, 2.2 * l.s);
           d.push(l.hx, l.hy, l.z, l.c[0], l.c[1], l.c[2], 0.12, 12 * l.s);
         } else {
-          d.push(l.hx, l.hy - 0.15, l.z, 1.0, 0.93, 0.78, 0.9 * (l.i / 1.8), 1.6);
-          d.push(l.hx, l.hy - 0.3, l.z, 1.0, 0.88, 0.66, 0.16 * (l.i / 1.8), 11);
+          const gc = l.neon ? l.c : [1.0, 0.93, 0.78];
+          d.push(l.hx, l.hy - 0.15, l.z, gc[0], gc[1], gc[2], 0.9 * (l.i / 1.8), 1.6);
+          d.push(l.hx, l.hy - 0.3, l.z, gc[0], gc[1] * 0.95, gc[2] * 0.85, (l.neon ? 0.24 : 0.16) * (l.i / 1.8), l.neon ? 14 : 11);
         }
       }
       if (this.map.lamps) {
@@ -1059,7 +1276,7 @@
       for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], col, o, em);
     }
 
-    beam(x0, y0, z0, x1, y1, z1, w, h, col) {
+    beam(x0, y0, z0, x1, y1, z1, w, h, col, em) {
       const dx = x1 - x0, dz = z1 - z0;
       const len = Math.hypot(dx, dz) || 1;
       const sx = (-dz / len) * w, sz = (dx / len) * w;
@@ -1069,7 +1286,7 @@
       ];
       const o = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
       const f = [[0, 1, 2, 3], [5, 4, 7, 6], [4, 0, 3, 7], [1, 5, 6, 2], [3, 2, 6, 7], [4, 5, 1, 0]];
-      for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], col, o);
+      for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], col, o, em);
     }
 
     cyl(x, y0, z, r0, r1, h, sides, col, cap, em) {
@@ -1256,6 +1473,47 @@
       }
     }
 
+    // the rock face of a cliff band, bulging out of the snow drop across the run and the banks
+    cliff(c) {
+      const w = this.w, ROCK = [0.33, 0.33, 0.37], DARK = [0.24, 0.24, 0.29];
+      const span = C.HALF + 10, step = 1.3;
+      let prev = null;
+      for (let o = -span; o <= span + 0.01; o += step) {
+        const zc = c.z, x = w.center(zc) + o;
+        const top = w.ground(x, zc - 0.15), bot = w.ground(x, zc + 2.7);
+        const j = hash(o * 1.7, zc), j2 = hash(o * 0.9 + 3, zc * 1.3);
+        const col = [
+          [x, top + 0.04, zc + 0.15],
+          [x, lerp(top, bot, 0.42), zc + 1.35 + j * 0.5],
+          [x, bot - 0.15, zc + 2.75 + j2 * 0.3],
+        ];
+        if (prev) {
+          const ox = x - step / 2, oz = zc - 2, oy = top - 1;
+          const tint = (k) => (hash(o * 3.1 + k, zc) > 0.5 ? ROCK : DARK);
+          for (let k = 0; k < 2; k++) this.quad(prev[k], col[k], col[k + 1], prev[k + 1], tint(k), [ox, oy, oz]);
+        }
+        prev = col;
+      }
+    }
+
+    // a lumpy boulder sitting in the snow
+    rock(r) {
+      const s = r.s, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
+      const cy = r.gy + s * 0.25;
+      const hx = s * 0.95, hy = s * 0.8, hz = s * 0.75;
+      const P = (x, y, z, i) => {
+        const jx = 1 + (hash(r.x + i, r.z) - 0.5) * 0.5, jy = 1 + (hash(r.z + i, r.x) - 0.5) * 0.5;
+        x *= jx; z *= jy; y *= y > 0 ? jy : 1;
+        return [r.x + x * c + z * sn, cy + y, r.z - x * sn + z * c];
+      };
+      const v = [P(-hx, -hy, -hz, 0), P(hx, -hy, -hz, 1), P(hx * 0.7, hy, -hz * 0.6, 2), P(-hx * 0.8, hy * 0.9, -hz * 0.7, 3),
+        P(-hx, -hy, hz, 4), P(hx, -hy, hz, 5), P(hx * 0.6, hy * 0.85, hz * 0.7, 6), P(-hx * 0.75, hy, hz * 0.55, 7)];
+      const o = [r.x, cy, r.z];
+      const col = hash(r.x, r.z) > 0.5 ? [0.34, 0.34, 0.38] : [0.27, 0.27, 0.32];
+      const f = [[0, 1, 2, 3], [5, 4, 7, 6], [4, 0, 3, 7], [1, 5, 6, 2], [3, 2, 6, 7]];
+      for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], q[0] === 3 ? [0.92, 0.94, 0.98] : col, o);
+    }
+
     pillar(p) {
       const w = this.w;
       const gy = w.ground(p.x, p.z) - 0.3;
@@ -1332,7 +1590,8 @@
           put(a); put(d); put(c);
         }
       }
-      const blue = w.mapId === 'sunset' ? [1.0, 0.5, 0.2] : w.cave && w.inCave(f.z0) ? [0.6, 0.4, 1.0] : [0.25, 0.55, 1.0];
+      if (f.size === 'P') return;
+      const blue = w.map.neon ? [1.0, 0.3, 0.85] : w.mapId === 'sunset' ? [1.0, 0.5, 0.2] : w.cave && w.inCave(f.z0) ? [0.6, 0.4, 1.0] : [0.25, 0.55, 1.0];
       const lipI = Math.round((f.Lu / f.len) * nu);
       const j0 = Math.round(((span - f.w) / (span * 2)) * nv), j1 = nv - j0;
       for (let j = j0; j < j1; j++) {
@@ -1351,25 +1610,40 @@
     rail(f) {
       const w = this.w;
       const isBox = f.type === 'box';
-      const x0 = f.ax, z0 = f.az, x1 = f.ax + f.dx * f.len, z1 = f.az + f.dz * f.len;
-      const t0 = f.g0 + f.h, t1 = f.g1 + f.h;
-      const cave = w.cave && w.inCave(z0);
+      const cave = w.cave && w.inCave(f.az);
+      const neon = !!w.map.neon;
+      const NEON = [[1.0, 0.25, 0.75], [0.2, 0.9, 1.0], [0.65, 0.35, 1.0], [0.35, 1.0, 0.55]];
+      const nc = NEON[Math.abs(Math.round(f.az * 0.37)) % NEON.length];
+      // the top line, segment by segment, so long and arched rails follow their shape
+      const N = Math.max(1, Math.ceil(f.len / 2.5));
+      const P = [];
+      for (let i = 0; i <= N; i++) {
+        const k = i / N;
+        const x = f.ax + f.dx * f.len * k, z = f.az + f.dz * f.len * k;
+        const gy = w.ground(x, z);
+        const top = Math.max(lerp(f.g0, f.g1, k) + f.h + (f.arch ? f.arch * Math.sin(Math.PI * k) : 0), gy + 0.25);
+        P.push({ x, z, top, gy });
+      }
       if (isBox) {
         const hw = 0.3;
         const sx = f.dz * hw, sz = -f.dx * hw;
-        const g0 = f.g0 - 0.4, g1 = f.g1 - 0.4;
-        const v = [
-          [x0 - sx, g0, z0 - sz], [x0 + sx, g0, z0 + sz], [x0 + sx, t0, z0 + sz], [x0 - sx, t0, z0 - sz],
-          [x1 - sx, g1, z1 - sz], [x1 + sx, g1, z1 + sz], [x1 + sx, t1, z1 + sz], [x1 - sx, t1, z1 - sz],
-        ];
-        const o = [(x0 + x1) / 2, (t0 + g0) / 2, (z0 + z1) / 2];
-        const side = cave ? [0.4, 0.9, 1.0] : w.mapId === 'sunset' ? [1.0, 0.45, 0.25] : [1.0, 0.72, 0.12];
-        const em = cave ? 0.5 : 0;
-        this.quad(v[3], v[2], v[6], v[7], [0.7, 0.76, 0.86], o);
-        this.quad(v[0], v[1], v[2], v[3], side, o, em);
-        this.quad(v[5], v[4], v[7], v[6], side, o, em);
-        this.quad(v[4], v[0], v[3], v[7], side, o, em);
-        this.quad(v[1], v[5], v[6], v[2], side, o, em);
+        const side = neon ? nc : cave ? [0.4, 0.9, 1.0] : w.mapId === 'sunset' || w.mapId === 'triple' ? [1.0, 0.45, 0.25] : [1.0, 0.72, 0.12];
+        const em = neon ? 0.75 : cave ? 0.5 : 0;
+        const topCol = neon ? [0.85, 0.85, 0.95] : [0.7, 0.76, 0.86];
+        for (let i = 0; i < N; i++) {
+          const a = P[i], b = P[i + 1];
+          const o = [(a.x + b.x) / 2, (a.top + a.gy) / 2 - 0.2, (a.z + b.z) / 2];
+          const v = [
+            [a.x - sx, a.gy - 0.4, a.z - sz], [a.x + sx, a.gy - 0.4, a.z + sz], [a.x + sx, a.top, a.z + sz], [a.x - sx, a.top, a.z - sz],
+            [b.x - sx, b.gy - 0.4, b.z - sz], [b.x + sx, b.gy - 0.4, b.z + sz], [b.x + sx, b.top, b.z + sz], [b.x - sx, b.top, b.z - sz],
+          ];
+          this.quad(v[3], v[2], v[6], v[7], topCol, o, neon ? 0.3 : 0);
+          this.quad(v[4], v[0], v[3], v[7], side, o, em);
+          this.quad(v[1], v[5], v[6], v[2], side, o, em);
+          if (i === 0) this.quad(v[0], v[1], v[2], v[3], side, o, em);
+          if (i === N - 1) this.quad(v[5], v[4], v[7], v[6], side, o, em);
+        }
+        const x0 = P[0].x, z0 = P[0].z, t0 = P[0].top, g0 = P[0].gy - 0.4;
         const rx = x0 - f.dx * f.ramp, rz = z0 - f.dz * f.ramp;
         const gr = w.ground(rx, rz) - 0.05;
         const r = [[rx - sx, gr, rz - sz], [rx + sx, gr, rz + sz], [x0 + sx, t0, z0 + sz], [x0 - sx, t0, z0 - sz]];
@@ -1377,16 +1651,43 @@
         this.tri(r[0][0], r[0][1], r[0][2], r[3][0], r[3][1], r[3][2], x0 - sx, g0, z0 - sz, side, undefined, undefined, undefined, em);
         this.tri(r[1][0], r[1][1], r[1][2], r[2][0], r[2][1], r[2][2], x0 + sx, g0, z0 + sz, side, undefined, undefined, undefined, em);
       } else {
-        this.beam(x0, t0, z0, x1, t1, z1, 0.06, 0.06, [0.78, 0.83, 0.92]);
+        const railCol = neon ? nc : [0.78, 0.83, 0.92];
+        for (let i = 0; i < N; i++) {
+          const a = P[i], b = P[i + 1];
+          this.beam(a.x, a.top, a.z, b.x, b.top, b.z, 0.06, 0.06, railCol, neon ? 0.9 : 0);
+        }
         const posts = Math.max(2, Math.round(f.len / 4.5));
         for (let i = 0; i <= posts; i++) {
-          const k = i / posts;
-          const px = lerp(x0, x1, k), pz = lerp(z0, z1, k), top = lerp(t0, t1, k);
-          const gy = w.ground(px, pz) - 0.2;
-          this.box(px, (top + gy) / 2, pz, 0.05, (top - gy) / 2, 0.05, f.ang, [0.2, 0.22, 0.26]);
+          const p = P[Math.round((i / posts) * N)];
+          this.box(p.x, (p.top + p.gy - 0.2) / 2, p.z, 0.05, (p.top - p.gy + 0.2) / 2, 0.05, f.ang, [0.2, 0.22, 0.26]);
         }
-        this.box(x0, (f.g0 + t0) / 2 - 0.1, z0, 0.18, (t0 - f.g0) / 2 + 0.1, 0.06, f.ang, cave ? [0.5, 0.4, 1.0] : [0.9, 0.2, 0.15], cave ? 0.6 : 0);
+        this.box(P[0].x, (P[0].gy + P[0].top) / 2 - 0.1, P[0].z, 0.18, (P[0].top - P[0].gy) / 2 + 0.1, 0.06, f.ang, neon ? nc : cave ? [0.5, 0.4, 1.0] : [0.9, 0.2, 0.15], neon || cave ? 0.6 : 0);
       }
+    }
+
+    // stepped grandstand packed with fans
+    stand(st) {
+      const w = this.w;
+      const r = mulberry32(Math.floor(st.z * 7 + st.x * 3));
+      const shirts = [[0.95, 0.2, 0.2], [0.2, 0.45, 0.95], [1, 0.8, 0.15], [0.2, 0.75, 0.4], [0.95, 0.95, 0.97], [0.6, 0.3, 0.85], [1, 0.5, 0.15], [0.1, 0.1, 0.12]];
+      const s = st.side;
+      const L = 13;
+      for (let tier = 0; tier < 5; tier++) {
+        const x = st.x + s * tier * 1.3, gy = Math.min(w.ground(st.x, st.z), w.ground(x, st.z));
+        const top = gy + 0.3 + tier * 0.7;
+        this.box(x, (top + gy - 1) / 2, st.z, 0.65, (top - gy + 1) / 2, L, 0, tier % 2 ? [0.55, 0.58, 0.66] : [0.48, 0.52, 0.6]);
+        for (let zz = -L + 0.5; zz < L; zz += 0.75 + r() * 0.3) {
+          if (r() < 0.12) continue;
+          const c = shirts[(r() * shirts.length) | 0];
+          const hh = 0.5 + r() * 0.15;
+          this.box(x + s * 0.1, top + hh / 2, st.z + zz, 0.17, hh / 2, 0.2, 0, c);
+          this.box(x + s * 0.1, top + hh + 0.12, st.z + zz, 0.11, 0.11, 0.11, 0, r() < 0.3 ? [0.95, 0.95, 0.97] : [0.85, 0.66, 0.5]);
+        }
+      }
+      // back wall with a banner
+      const xb = st.x + s * 6.6, gyb = w.ground(st.x, st.z);
+      this.box(xb, gyb + 2.4, st.z, 0.15, 3.4, L, 0, [0.2, 0.25, 0.4]);
+      this.box(xb - s * 0.17, gyb + 4.6, st.z, 0.02, 0.7, L - 1, 0, [1.0, 0.82, 0.15], 0.3);
     }
 
     lamp(l) {
@@ -1395,7 +1696,7 @@
       this.box(l.x, base + 0.75, l.z, 0.26, 0.75, 0.26, 0, [0.75, 0.12, 0.08]);
       this.box(l.x, base + 5.4, l.z, 0.09, 5.1, 0.09, 0, [0.16, 0.17, 0.2]);
       this.beam(l.x, l.hy + 0.25, l.z, l.hx, l.hy + 0.25, l.z, 0.05, 0.05, [0.16, 0.17, 0.2]);
-      this.box(l.hx, l.hy, l.z, 0.42, 0.18, 0.55, 0, [1.25, 1.18, 1.0], true);
+      this.box(l.hx, l.hy, l.z, 0.42, 0.18, 0.55, 0, l.neon ? [l.c[0] * 1.3, l.c[1] * 1.3, l.c[2] * 1.3] : [1.25, 1.18, 1.0], true);
       this.box(l.hx + s * 0.05, l.hy + 0.22, l.z, 0.48, 0.06, 0.62, 0, [0.12, 0.13, 0.15]);
     }
 

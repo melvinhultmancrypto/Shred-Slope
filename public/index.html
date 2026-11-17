@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Shred Slope</title>
-  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Six mountains: sunny day, sunset, floodlit night, moonlit woods, an ice cave and giant big-air kickers. Ride solo or race up to 10 friends.">
+  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Twelve mountains: sunny days, sunsets, floodlit nights, an ice cave, giant big-air kickers, rail parks, cliff drops and an Olympic-style slopestyle course. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -38,7 +38,7 @@
       <div class="bar"><i id="speedBar"></i></div>
       <div id="subStats" class="brush"></div>
       <div id="timer" class="brush">00:00</div>
-      <div id="boostBox"><span class="brush">BOOST</span><div class="bbar"><i id="boostFill"></i></div><kbd id="boostKey">B</kbd></div>
+      <div id="boostBox"><span class="brush">BOOST</span><div class="bbar"><i id="boostFill"></i></div><kbd id="boostKey">F</kbd></div>
     </div>
     <div id="mapBox">
       <canvas id="minimap" width="72" height="170"></canvas>
@@ -60,7 +60,7 @@
   <section id="title" class="overlay">
     <div class="title-wrap">
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
-      <p class="tag">Six mountains: sun, dusk, floodlights, an ice cave and giant kickers.</p>
+      <p class="tag">Twelve mountains, from rail parks to giant kickers and cliff drops.</p>
       <div class="pass">
         <div class="pass-head"><span class="brush">Season pass</span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></div>
         <div class="pass-body">
@@ -84,8 +84,8 @@
         <div><kbd>Space</kbd> jump</div>
         <div><kbd>W</kbd> speed up &middot; air: front flip</div>
         <div><kbd>S</kbd> powerslide &middot; air: back flip</div>
-        <div><kbd>Shift</kbd> grab in the air</div>
-        <div><kbd>B</kbd> boost (tricks fill it up)</div>
+        <div><kbd>Shift</kbd> crouch for a bigger pop &middot; air: grab (tap to switch)</div>
+        <div><kbd>F</kbd> boost (tricks fill it up)</div>
         <div>On rails <kbd>A</kbd><kbd>D</kbd> keep your balance</div>
         <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> mute</div>
       </div>
@@ -98,7 +98,12 @@
       <h2 class="brush">PICK A MOUNTAIN</h2>
       <p class="lead">Every mountain has 3 stars to earn, and every run builds a fresh course.</p>
       <div id="mapGrid"></div>
-      <button id="mapsBack" class="btn ghost" type="button">BACK</button>
+      <div class="pager">
+        <button id="mapPrev" class="btn ghost icon arrow" type="button" aria-label="Previous mountains" title="Previous">&#9664;</button>
+        <button id="mapsBack" class="btn ghost" type="button">BACK</button>
+        <button id="mapNext" class="btn ghost icon arrow" type="button" aria-label="More mountains" title="More">&#9654;</button>
+      </div>
+      <div id="mapDots" aria-hidden="true"></div>
     </div>
   </section>
 

@@ -30,6 +30,12 @@ const MAPS = [
   { id: 'woods', name: 'Moonlit Woods' },
   { id: 'cave', name: 'Crystal Caverns' },
   { id: 'bigair', name: 'Big Air Valley' },
+  { id: 'railking', name: 'Rail Kingdom' },
+  { id: 'triple', name: 'Triple Giants' },
+  { id: 'slopestyle', name: 'Gold Medal Slopestyle' },
+  { id: 'jumpline', name: 'Jump Line' },
+  { id: 'cliffs', name: 'Cliff Drops' },
+  { id: 'neon', name: 'Neon Park' },
 ];
 
 const SERVER_DEFS = [

@@ -23,8 +23,9 @@
   const BOOST_TIME = 2.8;    // seconds a full boost meter lasts
   const TARGET_TIME = 150;   // s: finishing faster than this earns a time bonus
   const TOKEN_PTS = 50;
-  const SPIN_PTS = [0, 150, 350, 700, 1100, 1600, 2300, 3100, 4000];
-  const GRABS = ['METHOD', 'INDY', 'MUTE', 'STALEFISH', 'MELON', 'TAIL GRAB', 'NOSE GRAB'];
+  const SPIN_PTS = [0, 150, 350, 700, 1100, 1600, 2300, 3100, 4000, 5000, 6200, 7500, 9000, 10600, 12400];
+  // grab names; the index is also the pose the rider takes (see rider.js)
+  const GRABS = ['METHOD', 'INDY', 'MUTE', 'MELON', 'STALEFISH', 'NOSE GRAB', 'TAIL GRAB', 'JAPAN'];
   const SEND_MS = 1000 / 12;
   const BEST_KEY = 'shredSlope3d.best';
   const NAME_KEY = 'shredSlope.name';
@@ -64,7 +65,7 @@
     'bestScore', 'servers', 'serverList', 'serverMsg', 'backBtn', 'pauseMenu', 'resumeBtn', 'restartBtn', 'pauseSettingsBtn', 'quitBtn',
     'results', 'resTitle', 'resBody', 'againBtn', 'newBtn', 'resMenuBtn', 'resNote', 'settings', 'settingsDone', 'loading', 'loadingText',
     'nogl', 'touch', 'fx', 'boostBox', 'boostFill', 'balance', 'balMark', 'mapIntro', 'miTime', 'miName', 'miGoals', 'maps', 'mapGrid', 'mapsBack',
-    'starsTotal', 'resMapsBtn', 'avatar'].forEach((id) => { ui[id] = $(id); });
+    'starsTotal', 'resMapsBtn', 'avatar', 'mapPrev', 'mapNext', 'mapDots'].forEach((id) => { ui[id] = $(id); });
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
@@ -158,6 +159,8 @@
       case 'time': return !!final && run.finalTime <= g.v;
       case 'nobail': return !!final && run.bails === 0;
       case 'air': return run.bigAir >= g.v;
+      case 'grind': return run.grindT >= g.v;
+      case 'giants': return run.giantLands >= g.v;
     }
     return false;
   }
@@ -173,10 +176,12 @@
   const touch = { left: false, right: false, flip: false, pop: false, boost: false };
   const ai = { on: false, steer: 0, flip: 0, brake: false, tuck: false, grab: false, boost: false, plan: null, popped: false };
   const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ShiftLeft: 'grab', ShiftRight: 'grab', KeyE: 'grab',
-    KeyB: 'boost', KeyX: 'boost' };
+    KeyF: 'boost' };
   const steerInput = () => (ai.on ? ai.steer : (keys.right || touch.right ? 1 : 0) - (keys.left || touch.left ? 1 : 0));
   const flipInput = () => (ai.on ? ai.flip : (keys.up ? 1 : 0) - (keys.down || touch.flip ? 1 : 0));
+  // shift: crouch on the snow, grab in the air
   const grabbing = () => (ai.on ? ai.grab : keys.grab || (touch.pop && !P.grounded));
+  const crouching = () => !ai.on && keys.grab && P.grounded;
   // on the snow: W / up speeds you up, S / down powerslides to brake (in the air they flip)
   const brakeInput = () => (ai.on ? ai.brake : keys.down);
   const tuckInput = () => (ai.on ? ai.tuck : keys.up);
@@ -186,6 +191,11 @@
   window.addEventListener('keydown', (e) => {
     if (typing()) {
       if (e.code === 'Enter') ui.nameInput.blur();
+      return;
+    }
+    if (!hidden(ui.maps) && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+      e.preventDefault();
+      setMapPage(mapPage + (e.code === 'ArrowRight' ? 1 : -1), e.code === 'ArrowRight' ? 1 : -1);
       return;
     }
     const k = KEYMAP[e.code];
@@ -346,9 +356,10 @@
       stance: 0, lean: 0, crouch: 0.2, comp: 0, compV: 0, charge: 0, chargeT: 0, charging: false, coyote: 0,
       bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, inv: 0, finished: false, yawOff: 0,
       steerS: 0, slide: 0, wind: 0, wobble: 0, boosting: false, bal: 0, balV: 0, balPush: 0, balT: 0, balErr: 0, giant: false, ref: null,
+      grabs: [], grabType: 0, grabAmt: 0, grabHeld: false, crouchT: 0,
     });
     P.y = world.H(P.x, P.z);
-    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false] });
+    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0 });
     tokenGot = new Set();
     raceT = 0;
     zoneName = '';
@@ -482,7 +493,8 @@
   // ------------------------------------------------------------------ rider physics
   const POP = 0.8; // how hard a jump pops
   function pop() {
-    const c = POP;
+    const c = POP + (P.crouchT > 0.12 ? 0.4 : 0);
+    P.crouchT = 0;
     if (P.grounded) {
       const sh = Math.sin(P.heading), ch = Math.cos(P.heading);
       const vx = sh * P.speed + ch * P.slip, vz = ch * P.speed - sh * P.slip;
@@ -509,6 +521,8 @@
     P.spinVel = 0;
     P.flipVel = 0;
     P.grabT = 0;
+    P.grabs = [];
+    P.grabHeld = grabbing();
     P.spinLock = steerInput();
     P.flipLock = flipInput();
     P.giant = P.surf === 1 && !!P.ref && P.ref.size === 'G';
@@ -600,7 +614,12 @@
       gz = (w.Hk(P.x, P.z + e) - w.Hk(P.x, P.z - e)) / (2 * e);
     }
     const sh = Math.sin(P.heading), ch = Math.cos(P.heading);
-    const along = grinding ? -(P.grindRef.g1 - P.grindRef.g0) / P.grindRef.len : -(gx * sh + gz * ch);
+    let along = -(gx * sh + gz * ch);
+    if (grinding) {
+      // straight rails slope with the snow; arched ones go up, then down
+      const f = P.grindRef, tA = (P.x - f.ax) * f.dx + (P.z - f.az) * f.dz;
+      along = -((f.g1 - f.g0) / f.len + (f.arch ? ((f.arch * Math.PI) / f.len) * Math.cos((Math.PI * clamp(tA, 0, f.len)) / f.len) : 0));
+    }
     const sinA = along / Math.sqrt(1 + along * along);
     const skid = Math.abs(s) * clamp((P.speed - 12) / 22, 0, 1);
     const tuck = tuckInput() && !grinding && P.slide < 0.2;
@@ -676,17 +695,41 @@
     if (nSurf === 2) {
       if (!wasGrind || P.grindRef !== nRef) startGrind(nRef);
       P.grind += dt;
+      run.grindT += dt;
     } else if (wasGrind) endGrind();
 
     P.lean = lerp(P.lean, grinding ? P.bal * 0.6 : s * clamp(P.speed / 16, 0.3, 1) * 0.5 - P.slide * 0.3, Math.min(1, dt * 6));
     P.yawOff = lerp(P.yawOff, grinding ? 0 : -s * 0.12 - P.slide * 1.05, Math.min(1, dt * 6));
-    const cTarget = tuck ? 0.42 : 0.18 + Math.abs(s) * 0.18 + P.slide * 0.25;
+    const crouch = crouching() && !grinding;
+    P.crouchT = crouch ? P.crouchT + dt : 0;
+    const cTarget = crouch ? 0.85 : tuck ? 0.42 : 0.18 + Math.abs(s) * 0.18 + P.slide * 0.25;
     P.crouch = lerp(P.crouch, cTarget, Math.min(1, dt * 10));
     if (P.wobble > 0) P.lean += Math.sin(time * 30) * 0.08 * P.wobble;
     if (run.pot > 0 && P.surf !== 2) {
       run.bankT -= dt;
       if (run.bankT <= 0) bank();
     }
+  }
+
+  // first grab of a jump follows the rotation; tapping grab again switches to a new one
+  const GRAB_CYCLE = [0, 5, 6, 7, 1, 2, 3, 4];
+  function pickGrab() {
+    const used = P.grabs.map((g) => g.type);
+    let t;
+    if (!used.length) {
+      if (Math.abs(P.flipVel) > 1.5) t = P.flipVel > 0 ? 2 : 4;
+      else if (Math.abs(P.spinVel) > 1.5) t = P.spinVel > 0 ? 1 : 3;
+      else t = 0;
+    } else {
+      let i = GRAB_CYCLE.indexOf(used[used.length - 1]);
+      for (let n = 0; n < GRAB_CYCLE.length; n++) {
+        i = (i + 1) % GRAB_CYCLE.length;
+        if (!used.includes(GRAB_CYCLE[i])) break;
+      }
+      t = GRAB_CYCLE[i];
+    }
+    P.grabType = t;
+    P.grabs.push({ type: t, t: 0 });
   }
 
   // the giant kicker you're lined up with and about to hit, if any
@@ -726,16 +769,16 @@
     const fi = flipInput();
     if (P.flipLock && fi !== P.flipLock) P.flipLock = 0;
     const f = P.flipLock ? 0 : fi;
-    if (s) P.spinVel += (s * SPIN_RATE - P.spinVel) * Math.min(1, dt * 9);
+    if (s) P.spinVel += (s * SPIN_RATE - P.spinVel) * Math.min(1, dt * 6);
     else {
-      P.spinVel *= Math.exp(-7 * dt);
+      P.spinVel *= Math.exp(-5 * dt);
       const tgt = Math.round((P.spin + P.stance) / Math.PI) * Math.PI - P.stance;
       P.spin += clamp(tgt - P.spin, -2.6 * dt, 2.6 * dt);
     }
     P.spin += P.spinVel * dt;
-    if (f) P.flipVel += (f * FLIP_RATE - P.flipVel) * Math.min(1, dt * 9);
+    if (f) P.flipVel += (f * FLIP_RATE - P.flipVel) * Math.min(1, dt * 6);
     else {
-      P.flipVel *= Math.exp(-7 * dt);
+      P.flipVel *= Math.exp(-5 * dt);
       const tgt = Math.round(P.flip / TAU) * TAU;
       P.flip += clamp(tgt - P.flip, -2.3 * dt, 2.3 * dt);
     }
@@ -747,7 +790,11 @@
         if (P.vy > 0) { P.vy = -1.5; if (!ai.on) { shake = Math.max(shake, 0.35); Sfx.land(false); } }
       }
     }
-    if (grabbing()) P.grabT += dt;
+    const gNow = grabbing();
+    if (gNow && (!P.grabHeld || !P.grabs.length)) pickGrab();
+    P.grabHeld = gNow;
+    if (gNow) { P.grabT += dt; P.grabs[P.grabs.length - 1].t += dt; }
+    P.grabAmt += ((gNow ? 1 : 0) - P.grabAmt) * Math.min(1, dt * (gNow ? 9 : 6));
     P.lean *= Math.exp(-4 * dt);
     P.yawOff = lerp(P.yawOff, 0, Math.min(1, dt * 3));
     P.crouch = lerp(P.crouch, grabbing() ? 0.55 : 0.28, Math.min(1, dt * 8));
@@ -777,7 +824,10 @@
     const impact = Math.max(0, groundVy - P.vy);
     const hs = Math.hypot(P.vx, P.vz);
     P.heading = clamp(Math.atan2(P.vx, P.vz), -1.45, 1.45);
-    P.speed = hs * clamp(1 - Math.max(0, impact - 7 * (P.giant ? 3 : 1)) * 0.02, 0.65, 1);
+    // the longer you fly, the more your legs soak up: big airs off normal kickers land on a slope
+    // you can't always reach, so grade them a bit kinder (giants have their own landing hill)
+    const soft = P.giant ? 3 : 1 + 0.5 * Math.max(0, P.airT - 0.9);
+    P.speed = hs * clamp(1 - Math.max(0, impact - 7 * soft) * 0.02, 0.65, 1);
     P.vy = groundVy;
     P.slip = 0;
     P.grounded = true;
@@ -790,14 +840,14 @@
     run.bigAir = Math.max(run.bigAir, air);
     // landing quality
     let qual = 'clean';
-    // a giant drops you a long way, so the hill takes more of the hit
-    const soft = P.giant ? 3 : 1;
+    if (P.giant) run.giantLands++;
     P.giant = false;
     if (air > 0.5) {
       if (spinErr < 0.22 && flipErr < 0.22 && impact < 10 * soft) qual = 'perfect';
-      else if (spinErr > 0.6 || flipErr > 0.5 || impact > 17 * soft) qual = 'sketchy';
+      else if (spinErr > 0.6 || flipErr > 0.5 || impact > 15 * soft) qual = 'sketchy';
     }
-    if (qual === 'perfect') { P.speed = Math.min(MAX_SPEED, P.speed * 1.06); run.perfects++; addBoost(0.12); }
+    if (window.ShredSlopeDebug && air > 0.5) (window.ShredSlopeDebug.landLog = window.ShredSlopeDebug.landLog || []).push([Math.round(P.z), qual, +air.toFixed(2), +spinErr.toFixed(2), +flipErr.toFixed(2), +impact.toFixed(1)]);
+    if (qual === 'perfect') { if (P.speed < 32) P.speed = Math.min(32, P.speed * 1.05); run.perfects++; addBoost(0.12); }
     else if (qual === 'sketchy') { P.speed *= 0.82; P.wobble = 0.7; }
     P.compV += Math.min(5, 0.6 + impact * 0.2);
     awardAir(half, Math.abs(m), Math.sign(m), grabT, air, qual);
@@ -817,16 +867,18 @@
     if (flips) {
       const base = dir < 0 ? (half ? 'RODEO' : 'BACKFLIP') : (half ? 'MISTY' : 'FRONTFLIP');
       name = (flips === 2 ? 'DOUBLE ' : flips >= 3 ? 'TRIPLE ' : '') + base + (half ? ' ' + deg : '');
-      pts = flips * (dir < 0 ? 900 : 800) + SPIN_PTS[Math.min(half, 8)];
+      pts = flips * (dir < 0 ? 900 : 800) + SPIN_PTS[Math.min(half, 14)];
       if (half) pts *= 1.3;
     } else if (half) {
       name = String(deg);
-      pts = SPIN_PTS[Math.min(half, 8)];
+      pts = SPIN_PTS[Math.min(half, 14)];
     }
-    if (grabT > 0.2) {
-      const g = GRABS[Math.floor(Math.abs(P.x * 7 + P.z)) % GRABS.length];
+    const held = (P.grabs || []).filter((g) => g.t > 0.15);
+    if (held.length) {
+      const g = held.map((h) => GRABS[h.type]).join(' TO ');
       name = name ? name + ' ' + g : g;
-      pts += 150 + grabT * 300;
+      for (const h of held) pts += 150 + Math.min(2.5, h.t) * 300;
+      if (held.length > 1) pts *= 1 + 0.25 * (held.length - 1);
     }
     if (air > 1.1) {
       pts += (air - 1.1) * 250;
@@ -916,7 +968,7 @@
     const c = world.center(P.z);
     P.x = clamp(P.x, c - C.HALF + 3, c + C.HALF - 3);
     P.y = world.H(P.x, P.z);
-    Object.assign(P, { heading: 0, speed: 7, slip: 0, vy: 0, vx: 0, vz: 0, grounded: true, stance: 0, spin: 0, flip: 0, inv: 1.3, surf: 0, tumble: 0, tumbleRoll: 0, lean: 0, slide: 0, wobble: 0, giant: false, ref: null });
+    Object.assign(P, { heading: 0, speed: 7, slip: 0, vy: 0, vx: 0, vz: 0, grounded: true, stance: 0, spin: 0, flip: 0, inv: 1.3, surf: 0, tumble: 0, tumbleRoll: 0, lean: 0, slide: 0, wobble: 0, giant: false, ref: null, grabs: [], grabAmt: 0 });
     if (mode !== 'menu') setTrick('BACK ON YOUR FEET', '', false, 1.6);
   }
 
@@ -1322,10 +1374,15 @@
     st.slide = flags & 32 ? 1 : 0;
     st.tuck = !!(flags & 64);
     st.surf = flags & 16 ? 2 : 0;
+    st.grabType = (flags >> 7) & 7;
+    st.grabK = lerp(st.grabK || 0, st.grab ? 1 : 0, 0.25);
+    st.airT = st.air ? (st.airT || 0) + 1 / 60 : 0;
     st.score = B[9];
     st.dist = B[10];
     const dt = (c.t - a.t) / 1000 || 0.08;
     st.vx = (B[0] - A[0]) / dt; st.vz = (B[2] - A[2]) / dt;
+    st.spinV = st.air && !st.bail ? clamp(wrap(B[4] - A[4]) / dt / SPIN_RATE, -1, 1) : 0;
+    st.flipV = st.air && !st.bail ? clamp(wrap(B[5] - A[5]) / dt / FLIP_RATE, -1, 1) : 0;
     st.speed = Math.hypot(st.vx, st.vz);
     st.t = time;
     if (now - c.t > 3000) r.st = null;
@@ -1333,7 +1390,7 @@
 
   function sendState() {
     const bailing = P.bailT > 0;
-    const flags = (P.grounded ? 1 : 0) | (grabbing() && !P.grounded ? 2 : 0) | (bailing ? 4 : 0) | (P.finished ? 8 : 0) | (P.surf === 2 ? 16 : 0) |
+    const flags = (P.grounded ? 1 : 0) | (grabbing() && !P.grounded ? 2 : 0) | (bailing ? 4 : 0) | (P.finished ? 8 : 0) | (P.surf === 2 ? 16 : 0) | ((P.grabType & 7) << 7) |
       (P.slide > 0.3 ? 32 : 0) | (tuckInput() && P.grounded ? 64 : 0);
     net.send({
       t: 's',
@@ -1434,7 +1491,7 @@
     P.finished = true;
     bank();
     run.finalTime = raceT;
-    run.bonus = Math.max(0, Math.round((TARGET_TIME - raceT) * 20));
+    run.bonus = Math.max(0, Math.round((TARGET_TIME * (C.LENGTH / 2600) - raceT) * 20));
     run.score += run.bonus;
     finishedAt = time;
     fireworksT = 3.2;
@@ -1569,6 +1626,72 @@
       body = `<defs>${grad(gid, [[0, '#03071a'], [0.7, '#0e1d48'], [1, '#1b2f66']])}<radialGradient id="m${gid}"><stop offset="0.3" stop-color="#dfe8ff" stop-opacity="0.5"/><stop offset="1" stop-color="#dfe8ff" stop-opacity="0"/></radialGradient></defs>
         <rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(30, '#fff', 70)}<circle cx="200" cy="40" r="46" fill="url(#m${gid})"/><circle cx="200" cy="40" r="17" fill="#eef3ff"/><circle cx="194" cy="36" r="4" fill="#cfd8ee"/><circle cx="206" cy="46" r="3" fill="#cfd8ee"/>
         ${trees}${slope('#b8c8ee', '#8ea3d4')}${front}${dots(40, '#fff', 150)}`;
+    } else if (m.id === 'railking') {
+      // long rails and a rainbow rail on a sunny slope
+      body = `<defs>${grad(gid, [[0, '#1a63d8'], [0.6, '#7cb6f2'], [1, '#e8f3ff']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <circle cx="250" cy="30" r="16" fill="#fff6c8"/><g fill="#fff" opacity="0.95"><ellipse cx="80" cy="26" rx="30" ry="8"/></g>
+        ${peaks('#6f8fc4', '#ffffff', 92, 61, 6)}${slope('#ffffff', '#dbe8fb')}
+        <path d="M20 128 L150 96" stroke="#c9d3e3" stroke-width="5" stroke-linecap="round"/><path d="M20 128 L150 96" stroke="#5f6b80" stroke-width="2"/>
+        <path d="M150 118 Q205 70 262 104" stroke="#c9d3e3" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M150 118 Q205 70 262 104" stroke="#5f6b80" stroke-width="2" fill="none"/>
+        ${[40, 80, 120].map((x) => `<rect x="${x}" y="${123 - (x - 20) * 0.25}" width="2.5" height="${8 + (x - 20) * 0.1}" fill="#333"/>`).join('')}
+        <path d="M60 140 L240 120 L240 128 L60 148Z" fill="#ffb21f" stroke="#10204a" stroke-width="1.5"/>`;
+    } else if (m.id === 'triple') {
+      // side view: three giant kickers stepping down the hill into a golden sunset
+      const ys = (x) => 70 + x * 0.26;
+      let k = '';
+      [46, 142, 238].forEach((x) => {
+        const h = 16;
+        k += `<path d="M${x - 34} ${ys(x - 34)} Q${x - 8} ${ys(x - 8)} ${x} ${ys(x) - h} L${x + 16} ${ys(x + 16) - h} L${x + 22} ${ys(x + 22) - h + 2} Q${x + 34} ${ys(x + 40) - 4} ${x + 52} ${ys(x + 52)}Z" fill="#fff4ec" stroke="#c4786a" stroke-width="1"/><path d="M${x} ${ys(x) - h} L${x + 16} ${ys(x + 16) - h}" stroke="#ff7a2e" stroke-width="3" stroke-linecap="round"/>`;
+      });
+      body = `<defs>${grad(gid, [[0, '#3a3c7a'], [0.45, '#d0688a'], [0.75, '#ffa45a'], [1, '#ffe08a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <circle cx="246" cy="44" r="22" fill="#ffe6a8"/>${peaks('#5a2f62', '#ffb9a0', 80, 71, 6)}
+        <path d="M0 ${H} L0 ${ys(0)} L300 ${ys(300)} L300 ${H}Z" fill="#e9a58f"/>${k}
+        <path d="M62 ${ys(62) - 18} Q100 10 150 ${ys(150) - 30}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 4" fill="none" opacity="0.85"/>
+        <g transform="translate(102 34) rotate(25)"><rect x="-12" y="6" width="24" height="5" rx="2.5" fill="#2f7dff"/><rect x="-5" y="-11" width="10" height="15" rx="4" fill="#ff6d17"/><circle cx="0" cy="-14" r="5" fill="#1c1d22"/></g>`;
+    } else if (m.id === 'slopestyle') {
+      // competition course: rails up top, three jumps, grandstands and gold
+      body = `<defs>${grad(gid, [[0, '#1c55c4'], [0.55, '#6fb0f2'], [1, '#f5f9ff']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        ${peaks('#7d97c8', '#ffffff', 80, 81, 6)}
+        <path d="M0 ${H} L0 86 L300 96 L300 ${H}Z" fill="#ffffff"/>
+        ${[60, 150, 240].map((x) => `<path d="M${x - 26} 128 L${x} 108 L${x + 14} 108 L${x + 36} 128Z" fill="#e6eefb"/><path d="M${x} 108 L${x + 14} 108" stroke="#2f7dff" stroke-width="3"/>`).join('')}
+        ${[40, 140, 240].map((x) => `<path d="M${x} 96 L${x + 40} 92" stroke="#5f6b80" stroke-width="3"/>`).join('')}
+        <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${4 + (i % 20) * 4}" y="${132 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ff4060', '#2f7dff', '#ffc21a', '#2fbf71', '#fff'][i % 5]}"/>`).join('')}</g>
+        <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${216 + (i % 20) * 4}" y="${132 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ffc21a', '#fff', '#ff4060', '#2f7dff', '#2fbf71'][i % 5]}"/>`).join('')}</g>
+        <path d="M136 0 L146 28 L152 26 L144 0Z" fill="#2f7dff"/><path d="M164 0 L154 28 L148 26 L156 0Z" fill="#ff4060"/><circle cx="150" cy="42" r="15" fill="#ffd23f" stroke="#b07a00" stroke-width="3"/><path d="M150 34 L152.5 39.5 L158 40 L154 44 L155 50 L150 47 L145 50 L146 44 L142 40 L147.5 39.5Z" fill="#fff3b0"/>`;
+    } else if (m.id === 'jumpline') {
+      // side view: floodlit kickers lined up down the slope, a rider flying between them
+      const ys = (x) => 84 + x * 0.22;
+      let k = '';
+      [44, 118, 192, 266].forEach((x, i) => {
+        const h = 7 + i * 1.5;
+        k += `<path d="M${x - 26} ${ys(x - 26)} Q${x - 6} ${ys(x - 6)} ${x} ${ys(x) - h} L${x + 10} ${ys(x + 10) - h} Q${x + 18} ${ys(x + 18) - h} ${x + 34} ${ys(x + 34)}Z" fill="#e3ebfa"/><path d="M${x} ${ys(x) - h} L${x + 10} ${ys(x + 10) - h}" stroke="#4fa8ff" stroke-width="2.5" stroke-linecap="round"/>`;
+      });
+      body = `<defs>${grad(gid, [[0, '#040a1c'], [0.6, '#123064'], [1, '#2a4f8a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(30, '#fff', 60)}
+        <path d="M-10 34 Q80 14 160 30 T320 20" stroke="#4dffa6" stroke-width="8" fill="none" opacity="0.3"/>
+        ${peaks('#16244a', '#9fb2d8', 70, 91, 6)}
+        <path d="M0 ${H} L0 ${ys(0)} L300 ${ys(300)} L300 ${H}Z" fill="#c7d4ef"/>${k}
+        <path d="M128 ${ys(128) - 10} Q160 40 196 ${ys(196) - 22}" stroke="#fff" stroke-width="1.5" stroke-dasharray="3 4" fill="none" opacity="0.8"/>
+        <g transform="translate(160 56) rotate(-20)"><rect x="-11" y="5" width="22" height="4.5" rx="2.2" fill="#ffc21a"/><rect x="-4.5" y="-10" width="9" height="14" rx="4" fill="#2fbf71"/><circle cx="0" cy="-13" r="4.5" fill="#1c1d22"/></g>
+        ${[[20, 66], [236, 58]].map(([x, y]) => `<rect x="${x}" y="${y}" width="2.5" height="${ys(x) - y}" fill="#222"/><circle cx="${x + 1}" cy="${y}" r="11" fill="#ffd27a" opacity="0.35"/><circle cx="${x + 1}" cy="${y}" r="3.5" fill="#fff4cc"/>`).join('')}`;
+    } else if (m.id === 'cliffs') {
+      // a rock band in a snowstorm with pillows below
+      let snow = '';
+      for (let i = 0; i < 60; i++) snow += `<circle cx="${(r() * W).toFixed(0)}" cy="${(r() * H).toFixed(0)}" r="${(0.6 + r()).toFixed(1)}" fill="#fff" opacity="0.8"/>`;
+      body = `<defs>${grad(gid, [[0, '#8d97a8'], [0.6, '#c4cad4'], [1, '#eef1f5']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        ${peaks('#a3acbb', '#eef1f5', 70, 101, 5)}
+        <path d="M0 80 L300 70 L300 84 L0 96Z" fill="#f4f6fa"/>
+        <path d="M0 96 L300 84 L300 104 L210 110 L150 106 L80 112 L0 108Z" fill="#4c5260"/><path d="M40 98 L60 108 M120 94 L130 106 M200 90 L216 104 M260 88 L270 100" stroke="#353a45" stroke-width="2"/>
+        <path d="M0 108 L80 112 L150 106 L210 110 L300 104 L300 ${H} L0 ${H}Z" fill="#ffffff"/>
+        ${[50, 110, 180, 245].map((x, i) => `<ellipse cx="${x}" cy="${128 + (i % 2) * 8}" rx="18" ry="7" fill="#e4e9f2"/>`).join('')}
+        ${pine(16, 90, 0.8, '#3b5446', '#fff')}${pine(284, 82, 0.9, '#3b5446', '#fff')}${snow}`;
+    } else if (m.id === 'neon') {
+      // glowing boxes and rails under pink and cyan lights
+      body = `<defs>${grad(gid, [[0, '#0a0420'], [0.55, '#3b0f5c'], [1, '#6a1a86']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(25, '#fff', 60)}
+        ${peaks('#1a0d33', '#5a3d8a', 86, 111, 6)}<path d="M0 ${H} L0 96 Q150 80 300 96 L300 ${H}Z" fill="#d9ccf2"/>
+        ${[[30, '#ff3fbf'], [270, '#38e8ff']].map(([x, c]) => `<rect x="${x}" y="50" width="2.5" height="50" fill="#222"/><circle cx="${x + 1}" cy="50" r="16" fill="${c}" opacity="0.35"/><circle cx="${x + 1}" cy="50" r="4" fill="#fff"/>`).join('')}
+        <path d="M60 128 L150 108 L150 116 L60 136Z" fill="#ff3fbf"/><path d="M60 128 L150 108" stroke="#ffd0f2" stroke-width="2"/>
+        <path d="M170 120 Q215 86 262 116" stroke="#38e8ff" stroke-width="4" fill="none"/><path d="M180 104 L180 120 M244 104 L244 118" stroke="#333" stroke-width="2"/>
+        <path d="M100 100 L120 92 L132 92 L146 100Z" fill="#b48cff"/>`;
     } else if (m.id === 'bigair') {
       // a giant kicker with a rider spinning high above the landing hill
       let arc = '';
@@ -1601,9 +1724,25 @@
   }
 
   let previewTimer = 0;
-  function buildMaps() {
+  // the picker shows a page of mountains at a time; the arrows by BACK flip pages
+  let mapPage = 0;
+  const perPage = () => (window.innerWidth < 700 ? 4 : 5);
+  const pageCount = () => Math.ceil(SS.MAP_IDS.length / perPage());
+  function setMapPage(p, dir) {
+    const n = pageCount();
+    mapPage = clamp(p, 0, n - 1);
+    buildMaps(dir);
+  }
+  function buildMaps(dir) {
     ui.mapGrid.innerHTML = '';
-    for (const id of SS.MAP_IDS) {
+    const pp = perPage(), n = pageCount();
+    mapPage = clamp(mapPage, 0, n - 1);
+    ui.mapGrid.classList.remove('slide-l', 'slide-r');
+    if (dir) { void ui.mapGrid.offsetWidth; ui.mapGrid.classList.add(dir > 0 ? 'slide-l' : 'slide-r'); }
+    ui.mapPrev.disabled = mapPage === 0;
+    ui.mapNext.disabled = mapPage >= n - 1;
+    ui.mapDots.innerHTML = n > 1 ? Array.from({ length: n }, (_, i) => `<i class="${i === mapPage ? 'on' : ''}"></i>`).join('') + `<span>${mapPage + 1} / ${n}</span>` : '';
+    for (const id of SS.MAP_IDS.slice(mapPage * pp, mapPage * pp + pp)) {
       const m = SS.MAPS[id], pr = prog(id);
       const b = document.createElement('button');
       b.type = 'button';
@@ -1611,7 +1750,7 @@
       b.dataset.id = id;
       b.style.setProperty('--acc', m.accent);
       b.innerHTML = `<div class="art">${mapArt(m)}<span class="play">RIDE &#9654;</span></div>
-        <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}${esc(m.name)}</div>
+        <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}<span>${esc(m.name)}</span></div>
         <div class="mc-tags">${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}</div>
         <div class="mc-sub">${esc(m.sub)}</div>
         <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'Best ' + fmt(pr.best) : 'Not ridden yet'}</span></div></div>`;
@@ -1634,6 +1773,7 @@
   }
   function openMaps() {
     hideOverlays();
+    mapPage = Math.floor(Math.max(0, SS.MAP_IDS.indexOf(spMap)) / perPage());
     buildMaps();
     show(ui.maps, true);
     const sel = ui.mapGrid.querySelector(`[data-id="${spMap}"]`);
@@ -1809,6 +1949,8 @@
   const click = (el, fn) => el.addEventListener('click', (e) => { e.currentTarget.blur(); fn(); });
   click(ui.spBtn, () => { saveName(); Sfx.init(); openMaps(); });
   click(ui.mapsBack, () => closeMaps());
+  click(ui.mapPrev, () => setMapPage(mapPage - 1, -1));
+  click(ui.mapNext, () => setMapPage(mapPage + 1, 1));
   click(ui.resMapsBtn, () => { mode = 'menu'; phase = 'attract'; show(ui.hud, false); show(ui.menuBtn, false); show(ui.touch, false); Sfx.silence(); startAttract(); openMaps(); });
   click(ui.mpBtn, () => { saveName(); Sfx.init(); openServers(); });
   click(ui.settingsBtn, () => { Sfx.init(); openSettings(ui.title); });
@@ -2201,7 +2343,8 @@
     L.sky = e.sky; L.ground = e.ground; L.moonDir = e.sunDir; L.moonCol = e.sun;
     engine.rim = e.rim;
     engine.fogCol = e.fog;
-    engine.fog = [lerp(60, 14, e.k), lerp(q.fog, 250, e.k)];
+    const mf = world.map;
+    engine.fog = [lerp(mf.fogNear || 60, 14, e.k), lerp(Math.min(q.fog, mf.fogFar || q.fog), 250, e.k)];
   }
 
   function render(g) {
@@ -2243,6 +2386,7 @@
           x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip, lean: P.lean,
           crouch: P.crouch, comp: P.comp, grab: grabbing() && !P.grounded, air: !P.grounded, tuck: tuckInput() && P.grounded,
           slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time,
+          spinV: P.grounded ? 0 : P.spinVel / SPIN_RATE, flipV: P.grounded ? 0 : P.flipVel / FLIP_RATE, grabType: P.grabType, grabK: P.grounded ? 0 : P.grabAmt, airT: P.grounded ? 0 : P.airT,
         },
         color: mode === 'mp' ? myColor : settings.outfit | 0,
         alpha: 1,
