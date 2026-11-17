@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Shred Slope</title>
-  <meta name="description" content="Shred Slope: a 3D night-time snowboarding game in the browser. Ride solo or race up to 10 friends.">
+  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Five mountains: sunny day, sunset, floodlit night, moonlit woods and an ice cave. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -38,12 +38,15 @@
       <div class="bar"><i id="speedBar"></i></div>
       <div id="subStats" class="brush"></div>
       <div id="timer" class="brush">00:00</div>
+      <div id="boostBox"><span class="brush">BOOST</span><div class="bbar"><i id="boostFill"></i></div><kbd id="boostKey">B</kbd></div>
     </div>
     <div id="mapBox">
       <canvas id="minimap" width="72" height="170"></canvas>
       <div id="alt" class="brush">0 M</div>
       <div id="left" class="brush">0 KM LEFT</div>
     </div>
+    <div id="balance" class="hidden"><div class="track"><i id="balMark"></i></div><span class="brush">BALANCE &larr; &rarr;</span></div>
+    <div id="mapIntro" class="hidden"><div id="miTime"></div><div id="miName" class="brush"></div><div id="miGoals"></div></div>
     <div id="popMeter" class="hidden"><div class="bar"><i id="popBar"></i></div><span class="brush">RELEASE TO POP</span></div>
     <div id="standings" class="hidden"></div>
     <div id="feed"></div>
@@ -57,7 +60,7 @@
   <section id="title" class="overlay">
     <div class="title-wrap">
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
-      <p class="tag">Night session. Floodlights on. Send it.</p>
+      <p class="tag">Five mountains. Sun, dusk, floodlights and a frozen cave. Send it.</p>
       <label class="name">Rider name <input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
       <div class="outfits"><span class="olbl">Outfit</span><div id="swatches"></div><span id="outfitName"></span></div>
       <div class="buttons">
@@ -72,10 +75,22 @@
         <div><kbd>&darr;</kbd> on the snow: tuck for speed</div>
         <div><kbd>&uarr;</kbd> on the snow: powerslide</div>
         <div><kbd>Shift</kbd> grab</div>
+        <div><kbd>B</kbd> boost (tricks fill it up)</div>
+        <div>On rails: <kbd>&larr;</kbd><kbd>&rarr;</kbd> keep your balance</div>
         <div>Hold <kbd>&larr;</kbd>/<kbd>&rarr;</kbd> while you pop: pre-spin</div>
         <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> mute</div>
       </div>
-      <p class="small">Best run: <b id="bestScore">0</b></p>
+      <p class="small">Stars <b id="starsTotal">0/15</b> &nbsp;&middot;&nbsp; Best run: <b id="bestScore">0</b></p>
+    </div>
+  </section>
+
+  <!-- Map select -->
+  <section id="maps" class="overlay hidden">
+    <div class="panel wide">
+      <h2 class="brush">PICK A MOUNTAIN</h2>
+      <p class="small dim">Each mountain has 3 star challenges. Every run builds a fresh course.</p>
+      <div id="mapGrid"></div>
+      <button id="mapsBack" class="btn ghost" type="button">BACK</button>
     </div>
   </section>
 
@@ -83,7 +98,7 @@
   <section id="servers" class="overlay hidden">
     <div class="panel">
       <h2 class="brush">MULTIPLAYER</h2>
-      <p class="small dim">Race the same mountain with up to 10 riders per server. New round every few minutes.</p>
+      <p class="small dim">Race the same course with up to 10 riders per server. Every round moves to the next mountain.</p>
       <div id="serverList"></div>
       <p id="serverMsg" class="small"></p>
       <button id="backBtn" class="btn ghost" type="button">BACK</button>
@@ -108,7 +123,8 @@
       <div id="resBody"></div>
       <div class="buttons">
         <button id="againBtn" class="btn" type="button">SAME MOUNTAIN</button>
-        <button id="newBtn" class="btn alt" type="button">NEW MOUNTAIN</button>
+        <button id="newBtn" class="btn alt" type="button">NEW COURSE</button>
+        <button id="resMapsBtn" class="btn ghost" type="button">MAPS</button>
         <button id="resMenuBtn" class="btn ghost" type="button">MENU</button>
       </div>
       <p id="resNote" class="small dim"></p>
@@ -140,7 +156,7 @@
   <!-- Touch controls (phones and tablets) -->
   <div id="touch" class="hidden">
     <div class="pad"><button data-k="left" type="button" aria-label="Left">&#9664;</button><button data-k="right" type="button" aria-label="Right">&#9654;</button></div>
-    <div class="pad"><button data-k="flip" type="button">FLIP</button><button data-k="pop" type="button">POP</button></div>
+    <div class="pad"><button data-k="flip" type="button">FLIP</button><button data-k="boost" type="button">BOOST</button><button data-k="pop" type="button">POP</button></div>
   </div>
 
   <script src="js/engine.js"></script>

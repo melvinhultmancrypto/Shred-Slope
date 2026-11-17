@@ -159,7 +159,8 @@ void main() {
   vec3 c = vCol * uBright;
   if (uDetail > 0.0) {
     float lum = dot(vCol, vec3(0.3, 0.5, 0.2));
-    float snow = smoothstep(0.3, 0.55, lum) * step(vCol.g * 0.92, vCol.b);
+    float mx = max(max(vCol.r, vCol.g), vCol.b), mn = min(min(vCol.r, vCol.g), vCol.b);
+    float snow = smoothstep(0.3, 0.55, lum) * step(mx - mn, mx * 0.42);
     if (snow > 0.0) {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
@@ -242,47 +243,52 @@ void main() {
   const FS_SKY = HEAD + NOISE + `
 varying vec3 vDir;
 uniform float uTime; uniform vec3 uMoon; uniform float uDetail; uniform vec3 uFogCol;
+uniform vec3 uZen; uniform vec3 uHor; uniform vec3 uSunCol; uniform float uDisk; uniform vec4 uGlow;
+uniform float uAurora; uniform vec3 uCloudDark; uniform vec3 uCloudLit; uniform float uClouds; uniform float uDay;
 float fbm(vec2 p) { float a = 0.5, s = 0.0; for (int i = 0; i < 4; i++) { s += vnoise(p) * a; p = p * 2.03 + 17.1; a *= 0.5; } return s; }
 void main() {
   vec3 d = normalize(vDir);
   float el = d.y;
-  vec3 zen = vec3(0.012, 0.02, 0.058), hor = vec3(0.10, 0.15, 0.28);
-  vec3 col = mix(hor, zen, pow(clamp(el, 0.0, 1.0), 0.45));
-  if (el < 0.0) col = mix(hor, uFogCol, clamp(-el * 8.0, 0.0, 1.0));
+  vec3 col = mix(uHor, uZen, pow(clamp(el, 0.0, 1.0), 0.45));
+  if (el < 0.0) col = mix(uHor, uFogCol, clamp(-el * 8.0, 0.0, 1.0));
   float m = max(dot(d, uMoon), 0.0);
-  col += vec3(0.35, 0.42, 0.62) * pow(m, 14.0) * 0.28 + vec3(0.7, 0.75, 0.9) * pow(m, 300.0) * 0.35;
-  float disk = smoothstep(0.99955, 0.9998, m);
+  // glow around the sun or moon, plus a warm band along the horizon toward a low sun
+  col += uSunCol * (pow(m, uGlow.x) * uGlow.y + pow(m, uGlow.z) * uGlow.w);
+  col += uSunCol * uDay * 0.22 * pow(m, 2.5) * exp(-max(el, 0.0) * 7.0);
+  float disk = smoothstep(uDisk, uDisk + (1.0 - uDisk) * 0.45, m);
 
   // northern lights, mostly down the valley
   float az = atan(d.z, d.x);
   float t = uTime * 0.05;
-  float sector = exp(-pow(az - 1.5708, 2.0) / 1.6) * smoothstep(0.0, 0.05, el);
-  float aur = 0.0; vec3 aurCol = vec3(0.0);
-  if (sector > 0.01) {
-    for (int k = 0; k < 2; k++) {
-      float fk = float(k);
-      float base = 0.16 + fk * 0.12 + sin(az * 3.0 + t * 2.0 + fk * 2.0) * 0.07 + sin(az * 7.0 - t * 3.0) * 0.025;
-      float h = el - base;
-      float curtain = smoothstep(-0.015, 0.012, h) * exp(-max(h, 0.0) * (7.0 + fk * 4.0));
-      float rays = 0.45 + 0.55 * sin(az * 70.0 + sin(az * 9.0 + t * 5.0) * 4.0 + t * 8.0 + fk * 3.0);
-      float a = curtain * (0.55 + 0.45 * rays) * (1.0 - fk * 0.45);
-      aurCol += mix(vec3(0.1, 1.0, 0.55), vec3(0.55, 0.25, 0.95), clamp(h * 7.0, 0.0, 1.0)) * a;
-      aur += a;
+  vec3 aurCol = vec3(0.0);
+  if (uAurora > 0.0) {
+    float sector = exp(-pow(az - 1.5708, 2.0) / 1.6) * smoothstep(0.0, 0.05, el);
+    if (sector > 0.01) {
+      for (int k = 0; k < 2; k++) {
+        float fk = float(k);
+        float base = 0.16 + fk * 0.12 + sin(az * 3.0 + t * 2.0 + fk * 2.0) * 0.07 + sin(az * 7.0 - t * 3.0) * 0.025;
+        float h = el - base;
+        float curtain = smoothstep(-0.015, 0.012, h) * exp(-max(h, 0.0) * (7.0 + fk * 4.0));
+        float rays = 0.45 + 0.55 * sin(az * 70.0 + sin(az * 9.0 + t * 5.0) * 4.0 + t * 8.0 + fk * 3.0);
+        float a = curtain * (0.55 + 0.45 * rays) * (1.0 - fk * 0.45);
+        aurCol += mix(vec3(0.1, 1.0, 0.55), vec3(0.55, 0.25, 0.95), clamp(h * 7.0, 0.0, 1.0)) * a;
+      }
+      aurCol *= sector * 0.42 * uAurora;
     }
-    aurCol *= sector * 0.42;
   }
 
-  // drifting night clouds
+  // drifting clouds: dark wisps at night, bright puffs by day
   float cover = 0.0;
-  if (uDetail > 0.0 && el > -0.02) {
+  if (uDetail > 0.0 && el > -0.02 && uClouds > 0.0) {
     vec2 cp = d.xz / max(el + 0.12, 0.06) * 0.9 + vec2(uTime * 0.012, uTime * 0.005);
     float c = fbm(cp);
-    cover = smoothstep(0.5, 0.82, c) * smoothstep(-0.02, 0.2, el) * 0.85;
-    vec3 cloudCol = mix(vec3(0.05, 0.07, 0.14), vec3(0.2, 0.24, 0.36), pow(m, 6.0) + 0.15);
-    col = mix(col, cloudCol, cover);
+    cover = smoothstep(0.5 - uDay * 0.04, 0.82, c) * smoothstep(-0.02, 0.2, el) * uClouds;
+    float shade = clamp(0.15 + pow(m, 6.0) + uDay * (1.25 - c * 0.9), 0.0, 1.0);
+    col = mix(col, mix(uCloudDark, uCloudLit, shade), cover);
   }
   col += aurCol * (1.0 - cover * 0.8);
-  col += vec3(0.85, 0.88, 0.95) * disk * (1.0 - cover);
+  float mare = 0.86 + 0.14 * vnoise(d.xz * 900.0) * (1.0 - uDay);
+  col += uSunCol * (1.0 + uDay * 0.6) * disk * mare * (1.0 - cover * (0.9 - uDay * 0.4));
   gl_FragColor = vec4(col, 1.0);
 }`;
 
@@ -522,16 +528,35 @@ void main() {
       gl.drawArrays(mode === undefined ? gl.TRIANGLES : mode, 0, count);
     }
 
-    // procedural night sky on the dome mesh (positions only are used)
-    drawSky(mesh, moonDir) {
+    // sky colours for the current map
+    setSky(k) {
+      this.sky = {
+        dir: k.dir, zen: k.zen, hor: k.hor, col: k.col, disk: k.disk, glow: k.glow, aurora: k.aurora,
+        cloudDark: k.cloudDark, cloudLit: k.cloudLit, clouds: k.clouds, day: k.stars > 0.5 ? 0 : 1,
+      };
+    }
+
+    // procedural sky on the dome mesh (positions only are used)
+    drawSky(mesh) {
       const gl = this.gl;
       const u = this.use(this.skyP);
+      const k = this.sky;
       gl.uniformMatrix4fv(u.uVP, false, this.vp);
       gl.uniform3fv(u.uCam, this.eye);
       gl.uniform1f(u.uTime, this.time);
-      gl.uniform3fv(u.uMoon, moonDir);
-      gl.uniform1f(u.uDetail, this.detail);
+      gl.uniform3fv(u.uMoon, k.dir);
+      gl.uniform1f(u.uDetail, this.detail > 0 ? 1 : 0);
       gl.uniform3fv(u.uFogCol, this.fogCol);
+      gl.uniform3fv(u.uZen, k.zen);
+      gl.uniform3fv(u.uHor, k.hor);
+      gl.uniform3fv(u.uSunCol, k.col);
+      gl.uniform1f(u.uDisk, k.disk);
+      gl.uniform4fv(u.uGlow, k.glow);
+      gl.uniform1f(u.uAurora, k.aurora);
+      gl.uniform3fv(u.uCloudDark, k.cloudDark);
+      gl.uniform3fv(u.uCloudLit, k.cloudLit);
+      gl.uniform1f(u.uClouds, k.clouds);
+      gl.uniform1f(u.uDay, k.day);
       this.attribs([0]);
       gl.bindBuffer(gl.ARRAY_BUFFER, mesh.b);
       gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
@@ -576,14 +601,15 @@ void main() {
       return u;
     }
 
-    // lights: array of {x,y,z,i} (up to 4); positions are sent relative to the camera
+    // lights: array of {x,y,z,i,c} (up to 4); positions are sent relative to the camera
     setLights(lights) {
       const L = this.light, u = this.lit.u, e = this.eye;
       for (let i = 0; i < 4; i++) {
         const l = lights && lights[i];
         if (l) {
           L.lp[i * 3] = l.x - e[0]; L.lp[i * 3 + 1] = l.y - e[1]; L.lp[i * 3 + 2] = l.z - e[2];
-          L.lc[i * 3] = l.i; L.lc[i * 3 + 1] = l.i * 0.93; L.lc[i * 3 + 2] = l.i * 0.8;
+          const c = l.c || WARM;
+          L.lc[i * 3] = l.i * c[0]; L.lc[i * 3 + 1] = l.i * c[1]; L.lc[i * 3 + 2] = l.i * c[2];
         } else {
           L.lp[i * 3] = 0; L.lp[i * 3 + 1] = 1e4; L.lp[i * 3 + 2] = 0;
           L.lc[i * 3] = L.lc[i * 3 + 1] = L.lc[i * 3 + 2] = 0;
@@ -643,6 +669,7 @@ void main() {
     }
   }
 
+  const WARM = [1, 0.93, 0.8];
   function norm(v) {
     const l = Math.hypot(v[0], v[1], v[2]) || 1;
     return [v[0] / l, v[1] / l, v[2] / l];

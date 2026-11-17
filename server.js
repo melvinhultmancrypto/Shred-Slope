@@ -22,6 +22,15 @@ const RESULTS_MS = Number(process.env.RESULTS_MS) || 12000;
 const MAX_FRAME = 4096;
 const LATE_JOIN_MS = 30000;
 
+// the mountains rotate every round (ids match public/js/world.js)
+const MAPS = [
+  { id: 'night', name: 'Floodlit Night' },
+  { id: 'bluebird', name: 'Bluebird Peak' },
+  { id: 'sunset', name: 'Golden Ridge' },
+  { id: 'woods', name: 'Moonlit Woods' },
+  { id: 'cave', name: 'Crystal Caverns' },
+];
+
 const SERVER_DEFS = [
   { id: 1, name: 'Server 1 · Avalanche' },
   { id: 2, name: 'Server 2 · Powder Peak' },
@@ -223,6 +232,7 @@ class Room {
     this.ends = 0;
     this.seed = 0;
     this.round = 0;
+    this.mapIdx = (def.id - 1) % MAPS.length; // each server starts on a different mountain
     this.racers = new Set();
     this.results = [];
     this.timer = null;
@@ -231,7 +241,10 @@ class Room {
   }
 
   info() {
-    return { id: this.id, name: this.name, players: this.players.size, max: MAX_PLAYERS, phase: this.phase };
+    // between rounds, show the mountain the next round will use
+    const between = (this.phase === 'results' || this.phase === 'idle') && this.round > 0;
+    const map = MAPS[(this.mapIdx + (between ? 1 : 0)) % MAPS.length];
+    return { id: this.id, name: this.name, players: this.players.size, max: MAX_PLAYERS, phase: this.phase, map: map.id, mapName: map.name };
   }
 
   send(p, obj) {
@@ -244,7 +257,7 @@ class Room {
   }
 
   phaseMsg() {
-    const m = { t: 'phase', phase: this.phase, seed: this.seed, round: this.round, ends: Math.max(0, this.ends - Date.now()), racers: [...this.racers] };
+    const m = { t: 'phase', phase: this.phase, seed: this.seed, map: MAPS[this.mapIdx].id, round: this.round, ends: Math.max(0, this.ends - Date.now()), racers: [...this.racers] };
     if (this.phase === 'results') m.results = this.results;
     return m;
   }
@@ -278,6 +291,7 @@ class Room {
 
   startCountdown() {
     this.seed = (Math.random() * 2147483647) | 0;
+    if (this.round > 0) this.mapIdx = (this.mapIdx + 1) % MAPS.length;
     this.round++;
     this.racers = new Set(this.players.keys());
     for (const p of this.players.values()) this.resetPlayer(p);

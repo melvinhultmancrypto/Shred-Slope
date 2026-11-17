@@ -14,6 +14,9 @@
   const SPIN_RATE = 7.8;     // rad/s while holding left/right in the air
   const FLIP_RATE = 6.2;     // rad/s while holding up/down in the air
   const MAX_SPEED = 44;      // m/s
+  const BOOST_MAX = 53;      // m/s while boosting
+  const BOOST_ACC = 10;      // extra m/s^2 while boosting
+  const BOOST_TIME = 2.8;    // seconds a full boost meter lasts
   const TARGET_TIME = 150;   // s: finishing faster than this earns a time bonus
   const TOKEN_PTS = 50;
   const SPIN_PTS = [0, 150, 350, 700, 1100, 1600, 2300, 3100, 4000];
@@ -22,6 +25,7 @@
   const BEST_KEY = 'shredSlope3d.best';
   const NAME_KEY = 'shredSlope.name';
   const SET_KEY = 'shredSlope.settings';
+  const PROG_KEY = 'shredSlope.maps';
 
   // ------------------------------------------------------------------ helpers
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
@@ -51,11 +55,13 @@
     'big', 'bigText', 'bigSub', 'note', 'tags', 'menuBtn', 'title', 'nameInput', 'swatches', 'outfitName', 'spBtn', 'mpBtn', 'settingsBtn',
     'bestScore', 'servers', 'serverList', 'serverMsg', 'backBtn', 'pauseMenu', 'resumeBtn', 'restartBtn', 'pauseSettingsBtn', 'quitBtn',
     'results', 'resTitle', 'resBody', 'againBtn', 'newBtn', 'resMenuBtn', 'resNote', 'settings', 'settingsDone', 'loading', 'loadingText',
-    'nogl', 'touch', 'fx'].forEach((id) => { ui[id] = $(id); });
+    'nogl', 'touch', 'fx', 'boostBox', 'boostFill', 'balance', 'balMark', 'mapIntro', 'miTime', 'miName', 'miGoals', 'maps', 'mapGrid', 'mapsBack',
+    'starsTotal', 'resMapsBtn'].forEach((id) => { ui[id] = $(id); });
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', music: 'on', sfx: 'on', camera: 'close', outfit: 0 }, store.get(SET_KEY, {}));
+  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', music: 'on', sfx: 'on', camera: 'close', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
+  if (!SS.MAPS[settings.map]) settings.map = 'bluebird';
   const Q = {
     low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: false },
     medium: { detail: 0.6, dpr: 1.25, draw: 400, fog: 380, particles: 0.8, trails: true },
@@ -114,11 +120,38 @@
   let fireworksT = 0, fireworksNext = 0;
   let tokenGot = new Set();
   let lastSpSeed = null;
+  let spMap = settings.map;
+  let envK = 0;           // 0 outside, 1 deep inside the cave (for the camera)
+  let glare = 0;
+  let introT = 0;
+  let previewLock = false;
 
   const P = {};
   const run = {};
   let best = Number(store.get(BEST_KEY, 0)) || 0;
   ui.bestScore.textContent = fmt(best);
+
+  // per-map progress: best score and the 3 challenge stars
+  const progress = store.get(PROG_KEY, {}) || {};
+  const prog = (id) => {
+    const p = progress[id] || (progress[id] = { best: 0, stars: [false, false, false] });
+    if (!Array.isArray(p.stars)) p.stars = [false, false, false];
+    return p;
+  };
+  const starCount = () => SS.MAP_IDS.reduce((n, id) => n + prog(id).stars.filter(Boolean).length, 0);
+  const updateStars = () => { ui.starsTotal.textContent = starCount() + '/' + SS.MAP_IDS.length * 3; };
+  updateStars();
+  function goalMet(g, final) {
+    switch (g.k) {
+      case 'finish': return !!final;
+      case 'score': return run.score >= g.v;
+      case 'tokens': return run.tokens >= g.v;
+      case 'perfects': return run.perfects >= g.v;
+      case 'time': return !!final && run.finalTime <= g.v;
+      case 'nobail': return !!final && run.bails === 0;
+    }
+    return false;
+  }
 
   let playerName = String(store.get(NAME_KEY, '') || '').slice(0, 16);
   if (!playerName) playerName = 'Rider' + Math.floor(100 + Math.random() * 900);
@@ -127,15 +160,17 @@
   const riding = () => phase === 'riding' || phase === 'attract';
 
   // ------------------------------------------------------------------ input
-  const keys = { left: false, right: false, up: false, down: false, grab: false };
-  const touch = { left: false, right: false, flip: false, pop: false };
-  const ai = { on: false, steer: 0, flip: 0, brake: false, tuck: false, grab: false, plan: null, popped: false };
-  const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ShiftLeft: 'grab', ShiftRight: 'grab', KeyE: 'grab' };
+  const keys = { left: false, right: false, up: false, down: false, grab: false, boost: false };
+  const touch = { left: false, right: false, flip: false, pop: false, boost: false };
+  const ai = { on: false, steer: 0, flip: 0, brake: false, tuck: false, grab: false, boost: false, plan: null, popped: false };
+  const KEYMAP = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down', ShiftLeft: 'grab', ShiftRight: 'grab', KeyE: 'grab',
+    KeyB: 'boost', KeyX: 'boost' };
   const steerInput = () => (ai.on ? ai.steer : (keys.right || touch.right ? 1 : 0) - (keys.left || touch.left ? 1 : 0));
   const flipInput = () => (ai.on ? ai.flip : (keys.up ? 1 : 0) - (keys.down || touch.flip ? 1 : 0));
   const grabbing = () => (ai.on ? ai.grab : keys.grab || (touch.pop && !P.grounded));
   const brakeInput = () => (ai.on ? ai.brake : keys.up);
   const tuckInput = () => (ai.on ? ai.tuck : keys.down);
+  const boostInput = () => (ai.on ? ai.boost : keys.boost || touch.boost);
   const typing = () => document.activeElement === ui.nameInput;
 
   window.addEventListener('keydown', (e) => {
@@ -148,6 +183,10 @@
       keys[k] = true;
       e.preventDefault();
       if (phase === 'spectate' && !e.repeat && (k === 'left' || k === 'right')) cycleSpectate(k === 'right' ? 1 : -1);
+      return;
+    }
+    if (e.code === 'Escape' && !hidden(ui.maps)) {
+      closeMaps();
       return;
     }
     if (e.code === 'Space') {
@@ -233,10 +272,14 @@
 
   // ------------------------------------------------------------------ world
   let mapBase = null;
-  function useWorld(seed) {
-    if (world && world.seed === (seed >>> 0)) return;
+  function useWorld(seed, mapId) {
+    mapId = SS.MAPS[mapId] ? mapId : 'night';
+    if (world && world.seed === (seed >>> 0) && world.mapId === mapId) return;
     if (world) world.dispose(engine);
-    world = new SS.World(seed);
+    world = new SS.World(seed, mapId);
+    engine.setSky(world.map.sky);
+    document.body.classList.toggle('day', world.map.sky.stars < 0.5);
+    ui.hud.style.setProperty('--acc', world.map.accent);
     world.featSorted = world.features.slice().sort((a, b) => (a.kind === 'kicker' ? a.z0 : a.az) - (b.kind === 'kicker' ? b.z0 : b.az));
     world.ensureChunks(engine, 0, 14);
     mapBase = document.createElement('canvas');
@@ -254,10 +297,10 @@
       spin: 0, flip: 0, spinVel: 0, flipVel: 0, spinLock: 0, flipLock: 0, grabT: 0,
       stance: 0, lean: 0, crouch: 0.2, comp: 0, compV: 0, charge: 0, chargeT: 0, charging: false, coyote: 0,
       bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, inv: 0, finished: false, yawOff: -0.3,
-      steerS: 0, slide: 0, wind: 0, wobble: 0,
+      steerS: 0, slide: 0, wind: 0, wobble: 0, boosting: false, bal: 0, balV: 0, balPush: 0, balT: 0, balErr: 0,
     });
     P.y = world.H(P.x, P.z);
-    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0 });
+    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false] });
     tokenGot = new Set();
     raceT = 0;
     zoneName = '';
@@ -336,11 +379,23 @@
     flakes[o + 2] = cam.z + rand(-10, 70);
     flakes[o + 3] = 0.9; flakes[o + 4] = 0.93; flakes[o + 5] = 1.0; flakes[o + 6] = rand(0.35, 0.8); flakes[o + 7] = rand(0.04, 0.09);
   }
+  let motes = false;
+  const MOTE_COLS = [[0.4, 0.95, 1.0], [0.7, 0.5, 1.0], [0.4, 1.0, 0.8], [1.0, 0.55, 0.9]];
+  function tintFlakes(cave) {
+    motes = cave;
+    for (let i = 0; i < FLAKES; i++) {
+      const o = i * 8, c = cave ? MOTE_COLS[i % 4] : [0.9, 0.93, 1.0];
+      flakes[o + 3] = c[0]; flakes[o + 4] = c[1]; flakes[o + 5] = c[2];
+    }
+  }
   function updateFlakes(dt) {
-    const sway = Math.sin(time * 0.7) * 0.6;
+    if ((envK > 0.5) !== motes) tintFlakes(envK > 0.5);
+    const sf = world ? world.map.snowfall : 1;
+    const fall = motes ? 0.3 : sf > 1 ? 2.1 : 1.6;
+    const sway = Math.sin(time * 0.7) * (motes ? 0.3 : sf > 1 ? 1.4 : 0.6);
     for (let i = 0; i < FLAKES; i++) {
       const o = i * 8;
-      flakes[o + 1] -= 1.6 * dt;
+      flakes[o + 1] -= fall * dt;
       flakes[o] += sway * dt;
       const dx = flakes[o] - cam.x, dy = flakes[o + 1] - cam.y, dz = flakes[o + 2] - cam.z;
       if (dy < -10 || dz < -12 || dz > 75 || Math.abs(dx) > 40) resetFlake(i, dz < -12 || dz > 75 || Math.abs(dx) > 40);
@@ -430,13 +485,48 @@
   function startGrind(f) {
     P.grindRef = f;
     P.grind = 0;
+    // landing off-centre on the rail starts you off balance
+    const lat = (P.x - f.ax) * f.dz - (P.z - f.az) * f.dx;
+    P.bal = clamp(lat / f.w * 0.35 + (Math.random() < 0.5 ? -1 : 1) * rand(0.05, 0.16), -0.6, 0.6);
+    P.balV = 0;
+    P.balT = 0;
+    P.balErr = 0;
   }
 
   function endGrind() {
     const f = P.grindRef;
-    if (f && P.grind > 0.25) addTrick(f.type === 'box' ? 'BOX 50-50' : 'RAIL 50-50', Math.round(150 + P.grind * 450));
+    if (f && P.grind > 0.25) {
+      let name = f.type === 'box' ? 'BOX 50-50' : 'RAIL 50-50';
+      let pts = 150 + P.grind * 450;
+      const perfect = P.grind > 0.45 && P.balErr / P.grind < 0.22;
+      if (perfect) pts *= 1.3;
+      if (f.type === 'rail') pts *= 1.2;
+      addTrick(name, Math.round(pts));
+      if (perfect && mode !== 'menu') {
+        ui.landTag.textContent = 'PERFECT BALANCE +30%';
+        ui.landTag.className = 'brush show perfect';
+        landT = 1.6;
+      }
+    }
     P.grindRef = null;
     P.grind = 0;
+    P.bal = 0;
+  }
+
+  // the rail tips you off unless you steer against the lean
+  function balanceStep(dt, steer) {
+    const rail = P.grindRef.type === 'rail';
+    P.balT -= dt;
+    if (P.balT <= 0) { P.balT = rand(0.22, 0.45); P.balPush = rand(-1, 1) * (rail ? 1.7 : 1.0); }
+    P.balV += (P.bal * (rail ? 3.6 : 2.3) + P.balPush + steer * 7 - P.balV * 1.7) * dt;
+    P.bal += P.balV * dt;
+    P.balErr += Math.abs(P.bal) * dt;
+    if (Math.abs(P.bal) >= 1) {
+      P.bal = 0;
+      bail('LOST BALANCE');
+      return false;
+    }
+    return true;
   }
 
   function groundStep(dt, steer) {
@@ -449,10 +539,11 @@
     P.slide += ((braking ? 1 : 0) - P.slide) * Math.min(1, dt * (braking ? 6 : 3.5));
 
     if (grinding) {
+      if (!balanceStep(dt, steer)) return;
       const f = P.grindRef;
-      P.heading = lerpAngle(P.heading, f.ang, Math.min(1, dt * 12));
+      P.heading = lerpAngle(P.heading, f.ang, Math.min(1, dt * 28));
       const lat = (P.x - f.ax) * f.dz - (P.z - f.az) * f.dx;
-      const k = Math.min(1, dt * 10);
+      const k = Math.min(1, dt * 26);
       P.x -= f.dz * lat * k;
       P.z += f.dx * lat * k;
       P.slip = 0;
@@ -477,7 +568,18 @@
     const mu = grinding ? 0.015 : 0.035 + 0.045 * Math.abs(s) + 0.05 * skid + 0.62 * P.slide + (P.finished ? 0.45 : 0) + (P.charging ? 0.02 : 0);
     let acc = 9.8 * sinA - 9.8 * mu - (tuck ? 0.00048 : 0.0008) * P.speed * P.speed;
     if (P.wobble > 0) acc -= 1.5;
-    P.speed = clamp(P.speed + acc * dt, P.finished || P.slide > 0.5 ? 0 : 1.2, MAX_SPEED);
+    // boost: burn the meter for a shove of speed
+    const boosting = boostInput() && run.boost > 0.01 && !grinding && !P.finished && P.slide < 0.3 && phase !== 'countdown';
+    if (boosting) {
+      acc += BOOST_ACC;
+      run.boost = Math.max(0, run.boost - dt / BOOST_TIME);
+      if (!P.boosting && !ai.on && mode !== 'menu') { Sfx.hiss(0.6, 0.3, 1500, 'bandpass'); Sfx.tone(150, 0.5, 'sawtooth', 0.05, 420); }
+    }
+    P.boosting = boosting;
+    const cap = boosting ? BOOST_MAX : MAX_SPEED;
+    let v = P.speed + acc * dt;
+    if (v > cap) v = P.speed > cap ? Math.max(cap, Math.min(v, P.speed) - 7 * dt) : cap;
+    P.speed = Math.max(v, P.finished || P.slide > 0.5 ? 0 : 1.2);
 
     if (!grinding) {
       const cross = -(gx * ch - gz * sh);
@@ -490,6 +592,22 @@
     const nSurf = w.surf, nRef = w.surfRef;
 
     if (nSurf === 2 && P.surf !== 2 && nh - P.y > 0.3) {
+      const f = nRef;
+      const along = (nx - f.ax) * f.dx + (nz - f.az) * f.dz;
+      const lat = (nx - f.ax) * f.dz - (nz - f.az) * f.dx;
+      if (along > 0.8 && Math.abs(wrap(P.heading - f.ang)) < 0.6) {
+        // brushed the side of a box or rail: scrape along it instead of bailing
+        const away = lat > 0 ? 1 : -1;
+        P.x += f.dz * away * 0.06;
+        P.z -= f.dx * away * 0.06;
+        P.heading = lerpAngle(P.heading, f.ang + away * 0.05, 0.5);
+        P.slip = 0;
+        P.steerS *= 0.5;
+        P.speed *= 0.995;
+        if (P.wobble <= 0 && !ai.on && mode !== 'menu') Sfx.hiss(0.18, 0.12, 2800, 'bandpass');
+        P.wobble = Math.max(P.wobble, 0.3);
+        return;
+      }
       P.x = nx; P.z = nz;
       bail('CAUGHT AN EDGE');
       return;
@@ -513,7 +631,7 @@
       P.grind += dt;
     } else if (wasGrind) endGrind();
 
-    P.lean = lerp(P.lean, grinding ? 0 : s * clamp(P.speed / 16, 0.3, 1) * 0.5 - P.slide * 0.3, Math.min(1, dt * 6));
+    P.lean = lerp(P.lean, grinding ? P.bal * 0.6 : s * clamp(P.speed / 16, 0.3, 1) * 0.5 - P.slide * 0.3, Math.min(1, dt * 6));
     P.yawOff = lerp(P.yawOff, grinding ? 0 : -0.3 - s * 0.18 - P.slide * 1.05, Math.min(1, dt * 6));
     const cTarget = P.charging ? 0.45 + P.charge * 0.5 : tuck ? 0.8 : 0.18 + Math.abs(s) * 0.18 + P.slide * 0.25;
     P.crouch = lerp(P.crouch, cTarget, Math.min(1, dt * 10));
@@ -528,6 +646,17 @@
     P.airT += dt;
     if (P.coyote > 0) P.coyote -= dt;
     P.vy -= G * dt;
+    // gentle air control: the flight bends with the course so big airs land on the piste
+    const hs = Math.hypot(P.vx, P.vz);
+    if (hs > 2) {
+      const course = Math.atan2(world.center(P.z + 2) - world.center(P.z - 2), 4);
+      const ang = Math.atan2(P.vx, P.vz);
+      const na = ang + clamp(wrap(course - ang), -0.35 * dt, 0.35 * dt);
+      P.vx = Math.sin(na) * hs;
+      P.vz = Math.cos(na) * hs;
+      const off = P.x - world.center(P.z);
+      if (Math.abs(off) > C.HALF - 3) P.vx -= Math.sign(off) * 4 * dt;
+    }
     P.x += P.vx * dt;
     P.z += P.vz * dt;
     P.y += P.vy * dt;
@@ -551,6 +680,13 @@
       P.flip += clamp(tgt - P.flip, -2.3 * dt, 2.3 * dt);
     }
     P.flip += P.flipVel * dt;
+    if (world.cave && world.inCave(P.z)) {
+      const roof = world.ceilingY(P.x, P.z) - 1.9;
+      if (P.y > roof) {
+        P.y = roof;
+        if (P.vy > 0) { P.vy = -1.5; if (!ai.on) { shake = Math.max(shake, 0.35); Sfx.land(false); } }
+      }
+    }
     if (grabbing()) P.grabT += dt;
     P.lean *= Math.exp(-4 * dt);
     P.yawOff = lerp(P.yawOff, -0.15, Math.min(1, dt * 3));
@@ -598,7 +734,7 @@
       if (spinErr < 0.22 && flipErr < 0.22 && impact < 10) qual = 'perfect';
       else if (spinErr > 0.6 || flipErr > 0.5 || impact > 17) qual = 'sketchy';
     }
-    if (qual === 'perfect') { P.speed = Math.min(MAX_SPEED, P.speed * 1.06); run.perfects++; }
+    if (qual === 'perfect') { P.speed = Math.min(MAX_SPEED, P.speed * 1.06); run.perfects++; addBoost(0.12); }
     else if (qual === 'sketchy') { P.speed *= 0.82; P.wobble = 0.7; }
     P.compV += Math.min(5, 0.6 + impact * 0.2);
     awardAir(half, Math.abs(m), Math.sign(m), grabT, air, qual);
@@ -640,7 +776,14 @@
 
   const mult = () => Math.min(3, 1 + 0.15 * Math.max(0, run.combo - 1));
 
+  function addBoost(a) {
+    const was = run.boost;
+    run.boost = Math.min(1, run.boost + a);
+    if (was < 1 && run.boost >= 1 && mode !== 'menu' && !ai.on) { Sfx.tone(660, 0.12, 'square', 0.05); Sfx.tone(990, 0.2, 'square', 0.05, 0, 0.08); }
+  }
+
   function addTrick(name, pts) {
+    addBoost(Math.min(0.4, pts / 4500));
     run.combo++;
     run.pot += pts;
     run.tricks++;
@@ -662,6 +805,7 @@
 
   function bail(reason) {
     if (P.bailT > 0) return;
+    if (window.ShredSlopeDebug) (window.ShredSlopeDebug.bailLog = window.ShredSlopeDebug.bailLog || []).push(reason + '@' + Math.round(P.z) + (window.ShredSlopeDebug.verbose ? ' off=' + (P.x - world.center(P.z)).toFixed(1) + ' hd=' + P.heading.toFixed(2) + ' sp=' + P.speed.toFixed(1) + ' ref=' + (world.surfRef ? world.surfRef.type || world.surfRef.kind : '-') + ' wasSurf=' + P.surf : ''));
     const lost = Math.round(run.pot * mult());
     run.pot = 0;
     run.combo = 0;
@@ -672,6 +816,7 @@
     P.tumbleRoll = 0;
     P.tumbleV = 8 + P.speed * 0.15;
     P.charging = false;
+    P.boosting = false;
     P.spin = 0; P.flip = 0; P.slide = 0;
     show(ui.popMeter, false);
     burst(P.x, P.y, P.z, 60, 5, P.vx || 0, P.vz || 0);
@@ -730,6 +875,7 @@
           tokenGot.add(t.id);
           run.tokens++;
           run.score += TOKEN_PTS;
+          addBoost(0.025);
           if (run.pot > 0) run.bankT = Math.max(run.bankT, 1.2);
           if (mode !== 'menu') Sfx.token();
           sparkle(t.x, t.y, t.z, Math.round(16 * q.particles), 0.4, 0.9, 1.0, 3.5);
@@ -757,6 +903,7 @@
       if (hit) bail(hit.r > 0.6 ? 'WALL' : 'TREE');
     }
     if (Math.abs(P.x - world.center(P.z)) > C.HALF + 55 && P.bailT <= 0) bail('OUT OF BOUNDS');
+    if (world.cave && world.inCave(P.z) && Math.abs(P.x - world.center(P.z)) > C.HALF + 7.5 && P.bailT <= 0) bail('ICE WALL');
   }
 
   function emitSpray(dt) {
@@ -784,6 +931,16 @@
         sh * P.speed * 0.55 + ch * side * rand(1, 2 + carve * 4), rand(0.6, 1.6 + carve * 2.2), ch * P.speed * 0.55 - sh * side * rand(1, 2 + carve * 4),
         rand(0.35, 0.8), rand(0.14, 0.3), 0.9, 0.94, 1.0, 0.75, false);
     }
+    // boost flames off the tail of the board
+    if (P.boosting) {
+      const m = Math.round(5 * q.particles + Math.random());
+      for (let i = 0; i < m; i++) {
+        const hot = Math.random();
+        emit(P.x - sh * 0.9 + rand(-0.2, 0.2), P.y + rand(0.1, 0.5), P.z - ch * 0.9 + rand(-0.2, 0.2),
+          -sh * rand(3, 7) + rand(-1, 1), rand(0.5, 2.5), -ch * rand(3, 7) + rand(-1, 1),
+          rand(0.25, 0.55), rand(0.14, 0.3), 1.0, 0.45 + hot * 0.45, 0.12 + hot * 0.2, 0.9, true);
+      }
+    }
     // a soft powder cloud at speed
     if (P.speed > 24 && Math.random() < 0.5 * q.particles) {
       emit(P.x - sh * 1.2 + rand(-0.4, 0.4), P.y + 0.3, P.z - ch * 1.2, sh * P.speed * 0.3, rand(0.2, 0.8), ch * P.speed * 0.3, rand(1, 1.6), rand(0.6, 1.1), 0.85, 0.9, 1.0, 0.18, false);
@@ -808,8 +965,12 @@
 
   // ------------------------------------------------------------------ AI rider (title screen)
   function aiThink() {
-    ai.steer = 0; ai.flip = 0; ai.grab = false; ai.brake = false; ai.tuck = false;
+    ai.steer = 0; ai.flip = 0; ai.grab = false; ai.brake = false; ai.tuck = false; ai.boost = false;
     if (P.bailT > 0) return;
+    if (P.surf === 2 && P.grindRef) {
+      ai.steer = clamp(-(P.bal * 4 + P.balV * 1.3), -1, 1);
+      return;
+    }
     if (!P.grounded) {
       const pl = ai.plan;
       if (pl) {
@@ -837,6 +998,7 @@
     const want = Math.atan2(target - P.x, 22);
     ai.steer = clamp((want - P.heading) * 4, -1, 1);
     ai.tuck = !feat && P.speed < 30;
+    ai.boost = !feat && run.boost > 0.6 && P.speed < 42;
     if (P.surf === 1 && world.surfRef && world.surfRef.kind === 'kicker') {
       const f = world.surfRef, u = P.z - f.z0;
       if (!ai.popped && u > f.Lu - 1.4) {
@@ -860,8 +1022,17 @@
     ai.on = true;
     ai.plan = null;
     ai.popped = false;
-    resetRider(rand(40, 1600));
+    resetRider(world.cave ? rand(world.cave[0] + 20, world.cave[1] - 400) : rand(40, 1600));
     P.speed = 18;
+    run.boost = 1;
+  }
+  // the title screen tours all the mountains
+  function nextAttract() {
+    if (!previewLock) {
+      const i = SS.MAP_IDS.indexOf(world.mapId);
+      useWorld((Math.random() * 2147483647) | 0, SS.MAP_IDS[(i + 1) % SS.MAP_IDS.length]);
+    }
+    startAttract();
   }
 
   // ------------------------------------------------------------------ camera
@@ -886,7 +1057,8 @@
       if (world.ground(ex, ez) + 1.4 <= t.y + hgt + 0.6 || dist < 3) break;
       dist *= 0.78;
     }
-    const ey = Math.max(t.y + hgt, world.ground(ex, ez) + 1.4);
+    let ey = Math.max(t.y + hgt, world.ground(ex, ez) + 1.4);
+    if (world.cave && world.inCave(ez)) ey = Math.min(ey, world.ceilingY(ex, ez) - 1.2);
     const kp = cam.snap ? 1 : 1 - Math.exp(-dt * 9);
     const ky = cam.snap ? 1 : 1 - Math.exp(-dt * (t.grounded === false ? 3 : 6));
     cam.x += (ex - cam.x) * kp;
@@ -902,7 +1074,8 @@
     cam.ty += (ty - cam.ty) * (cam.snap ? 1 : 1 - Math.exp(-dt * 6));
     const rollT = -(t.lean || 0) * 0.14;
     cam.roll += (rollT - cam.roll) * Math.min(1, dt * 4);
-    cam.fov = lerp(cam.fov, (62 + clamp(sp / MAX_SPEED, 0, 1) * 13) * (Math.PI / 180), cam.snap ? 1 : Math.min(1, dt * 2));
+    const boostFov = t === P && P.boosting ? 9 : 0;
+    cam.fov = lerp(cam.fov, (62 + clamp(sp / MAX_SPEED, 0, 1) * 13 + boostFov) * (Math.PI / 180), cam.snap ? 1 : Math.min(1, dt * (boostFov ? 4 : 2)));
     cam.snap = false;
   }
 
@@ -923,7 +1096,7 @@
     ghostRec.push([raceT, P.x, P.y, P.z, P.heading, P.spin + P.stance + P.yawOff, P.flip, P.lean, P.crouch, P.bailT > 0 ? 1 : 0, P.grounded ? 1 : 0]);
   }
   function ghostState() {
-    if (mode !== 'sp' || !bestGhost || !world || bestGhost.seed !== world.seed || !(phase === 'riding' || phase === 'finished')) return null;
+    if (mode !== 'sp' || !bestGhost || !world || bestGhost.seed !== world.seed || bestGhost.map !== world.mapId || !(phase === 'riding' || phase === 'finished')) return null;
     const f = bestGhost.frames;
     if (!f.length) return null;
     let i = 0;
@@ -1026,7 +1199,11 @@
     serverPhase = m.phase;
     phaseEnds = performance.now() + (m.ends || 0);
     racers = new Set(m.racers || []);
-    if (m.seed !== undefined && m.phase !== 'idle') useWorld(m.seed);
+    if (m.seed !== undefined && m.phase !== 'idle') {
+      const fresh = !world || world.seed !== (m.seed >>> 0) || world.mapId !== (m.map || 'night');
+      useWorld(m.seed, m.map || 'night');
+      if (fresh && m.phase === 'countdown') showIntro(3.4);
+    }
     const amRacer = racers.has(myId);
     ai.on = false;
     if (m.phase === 'countdown') {
@@ -1050,7 +1227,7 @@
     }
     show(ui.hud, true);
     show(ui.menuBtn, true);
-    if (touchMode) show(ui.touch, true);
+    if (touchMode) show(ui.touch, m.phase !== 'results');
   }
 
   function interpRemote(r, now) {
@@ -1159,7 +1336,9 @@
     Sfx.init();
   }
 
-  function startSingle(sameMountain) {
+  function startSingle(sameMountain, mapId) {
+    if (mapId) { spMap = mapId; settings.map = mapId; store.set(SET_KEY, settings); }
+    const reuse = !sameMountain && mode === 'menu' && world && world.mapId === spMap ? world.seed : null;
     Sfx.init();
     mode = 'sp';
     paused = false;
@@ -1170,20 +1349,21 @@
     ui.loadingText.textContent = 'Building the mountain…';
     show(ui.loading, true);
     setTimeout(() => {
-      const seed = sameMountain && lastSpSeed !== null ? lastSpSeed : (Math.random() * 2147483647) | 0;
+      const seed = sameMountain && lastSpSeed !== null ? lastSpSeed : reuse !== null ? reuse : (Math.random() * 2147483647) | 0;
       lastSpSeed = seed;
-      useWorld(seed);
+      useWorld(seed, spMap);
       resetRider();
       show(ui.loading, false);
       phase = 'countdown';
-      countdownT = 3.2;
+      countdownT = 4.6;
+      showIntro(1.5);
       myColor = settings.outfit | 0;
       show(ui.hud, true);
       show(ui.menuBtn, true);
       show(ui.standings, false);
       show(ui.mpbar, false);
       if (touchMode) show(ui.touch, true);
-      if (bestGhost && bestGhost.seed === world.seed) feed('Racing your best run on this mountain');
+      if (bestGhost && bestGhost.seed === world.seed && bestGhost.map === world.mapId) feed('Racing your best run on this course');
     }, 30);
   }
 
@@ -1200,33 +1380,45 @@
     ui.landTag.classList.remove('show');
     Sfx.finish();
     setBig('FINISH!', fmtTime(raceT) + (run.bonus ? '   +' + fmt(run.bonus) + ' TIME BONUS' : ''), 3);
-    if (mode === 'sp' && (!bestGhost || bestGhost.seed !== world.seed || run.score > bestGhost.score)) {
-      bestGhost = { seed: world.seed, score: run.score, frames: ghostRec };
+    if (mode === 'sp' && (!bestGhost || bestGhost.seed !== world.seed || bestGhost.map !== world.mapId || run.score > bestGhost.score)) {
+      bestGhost = { seed: world.seed, map: world.mapId, score: run.score, frames: ghostRec };
     }
     if (mode === 'mp') net.send({ t: 'fin', score: Math.round(run.score), time: Math.round(raceT * 1000), dist: C.LENGTH });
   }
 
   function showSpResults() {
     phase = 'results';
+    const map = world.map, pr = prog(map.id);
+    const mapBest = run.score > pr.best;
+    if (mapBest) pr.best = Math.round(run.score);
+    const got = map.goals.map((g) => goalMet(g, true));
+    const chal = map.goals.map((g, i) => {
+      const cls = got[i] ? (pr.stars[i] ? 'on was' : 'on new') : pr.stars[i] ? 'was on' : '';
+      return `<div class="${cls}" style="animation-delay:${0.25 + i * 0.25}s"><i>&#9733;</i>${esc(g.t)}</div>`;
+    }).join('');
+    pr.stars = pr.stars.map((v, i) => v || got[i]);
+    store.set(PROG_KEY, progress);
+    updateStars();
     const newBest = run.score > best;
     if (newBest) { best = Math.round(run.score); store.set(BEST_KEY, best); ui.bestScore.textContent = fmt(best); }
     ui.resTitle.textContent = 'RUN COMPLETE';
-    ui.resBody.innerHTML = `<div class="stats">
+    ui.resBody.innerHTML = `<div class="resMap">${esc(map.name.toUpperCase())} &middot; ${map.time}</div><div class="chal">${chal}</div><div class="stats" style="margin-top:12px">
       <div class="total"><span>SCORE</span><b>${fmt(run.score)}</b></div>
-      <div><span>TIME</span><b>${fmtTime(run.finalTime)}</b></div>
+      <div><span>TIME</span><b>${fmtTime(run.finalTime)}</b>${run.bonus ? `<small>+${fmt(run.bonus)} bonus</small>` : ''}</div>
       <div><span>TRICKS</span><b>${run.tricks}</b></div>
       <div><span>PERFECT LANDINGS</span><b>${run.perfects}</b></div>
       <div><span>TOKENS</span><b>${run.tokens}/${world.tokens.length}</b></div>
       <div><span>TOP SPEED</span><b>${Math.round(run.topSpeed * 3.6)} km/h</b></div>
       <div><span>BIGGEST AIR</span><b>${run.bigAir.toFixed(1)} s</b></div>
       <div><span>BAILS</span><b>${run.bails}</b></div>
-      <div><span>TIME BONUS</span><b>+${fmt(run.bonus)}</b></div>
-      <div><span>BEST</span><b>${fmt(best)}</b></div>
-    </div>${newBest ? '<div class="newbest">NEW BEST!</div>' : ''}`;
+      <div><span>MAP BEST</span><b>${fmt(pr.best)}</b></div>
+    </div>${mapBest ? '<div class="newbest">NEW BEST ON ' + esc(map.name.toUpperCase()) + '!</div>' : ''}`;
     show(ui.againBtn, true);
     show(ui.newBtn, true);
+    show(ui.resMapsBtn, true);
+    show(ui.touch, false);
     ui.resMenuBtn.textContent = 'MENU';
-    ui.resNote.textContent = 'Same mountain lets you race a ghost of your best run. Enter = same mountain.';
+    ui.resNote.textContent = 'Same mountain = the same course again, racing a ghost of your best run (Enter).';
     show(ui.results, true);
   }
 
@@ -1237,13 +1429,15 @@
       : '<p class="small">Nobody finished this round.</p>';
     show(ui.againBtn, false);
     show(ui.newBtn, false);
+    show(ui.resMapsBtn, false);
     ui.resMenuBtn.textContent = 'LEAVE SERVER';
     ui.resNote.textContent = '';
     show(ui.results, true);
   }
 
   function hideOverlays() {
-    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings]) show(el, false);
+    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps]) show(el, false);
+    show(ui.mapIntro, false);
   }
 
   function toMenu() {
@@ -1256,8 +1450,132 @@
     show(ui.loading, false);
     show(ui.title, true);
     Sfx.silence();
-    if (!world) useWorld(20261117);
+    previewLock = false;
+    if (!world) useWorld(20261117, spMap);
     startAttract();
+  }
+
+  // ------------------------------------------------------------------ map select
+  function mapArt(m) {
+    const W = 300, H = 150;
+    const peaks = (col, cap, y, seed, n) => {
+      let d = `M0 ${H}`, cd = '';
+      const r = SS.rng(seed);
+      for (let i = 0; i <= n; i++) {
+        const x = (i / n) * W, px = x + (r() - 0.5) * 20, py = y - 18 - r() * 34;
+        d += ` L${(x - W / n / 2).toFixed(0)} ${y} L${px.toFixed(0)} ${py.toFixed(0)}`;
+        cd += `<path d="M${(px - 12).toFixed(0)} ${(py + 12).toFixed(0)} L${px.toFixed(0)} ${py.toFixed(0)} L${(px + 12).toFixed(0)} ${(py + 12).toFixed(0)} L${(px + 4).toFixed(0)} ${(py + 9).toFixed(0)} L${(px - 3).toFixed(0)} ${(py + 13).toFixed(0)}Z" fill="${cap}"/>`;
+      }
+      return `<path d="${d} L${W} ${y} L${W} ${H}Z" fill="${col}"/>` + cd;
+    };
+    const pine = (x, y, s, col, snow) => `<path d="M${x} ${y - 30 * s} L${x + 9 * s} ${y - 12 * s} L${x + 5 * s} ${y - 12 * s} L${x + 12 * s} ${y} L${x - 12 * s} ${y} L${x - 5 * s} ${y - 12 * s} L${x - 9 * s} ${y - 12 * s}Z" fill="${col}"/>` +
+      (snow ? `<path d="M${x} ${y - 30 * s} L${x + 5 * s} ${y - 22 * s} L${x - 5 * s} ${y - 22 * s}Z" fill="${snow}"/>` : '');
+    const slope = (col, shade) => `<path d="M0 ${H} L0 118 Q150 92 300 104 L300 ${H}Z" fill="${col}"/><path d="M120 ${H} Q150 110 170 98 L200 99 Q185 120 200 ${H}Z" fill="${shade}"/>`;
+    const r = SS.rng(m.id.length * 97);
+    const dots = (n, col, y1) => { let o = ''; for (let i = 0; i < n; i++) o += `<circle cx="${(r() * W).toFixed(0)}" cy="${(r() * y1).toFixed(0)}" r="${(0.5 + r() * 1.1).toFixed(1)}" fill="${col}" opacity="${(0.4 + r() * 0.6).toFixed(2)}"/>`; return o; };
+    const grad = (id, stops) => `<linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1">${stops.map(([o, c]) => `<stop offset="${o}" stop-color="${c}"/>`).join('')}</linearGradient>`;
+    let body = '';
+    const gid = 'g' + m.id;
+    if (m.id === 'night') {
+      body = `<defs>${grad(gid, [[0, '#040918'], [0.6, '#10265a'], [1, '#22417a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(40, '#fff', 80)}
+        <path d="M-10 46 Q60 20 130 40 T300 30" stroke="#4dffa6" stroke-width="10" fill="none" opacity="0.35"/><path d="M20 58 Q90 36 170 52 T320 44" stroke="#9a6bff" stroke-width="6" fill="none" opacity="0.25"/>
+        <circle cx="250" cy="28" r="9" fill="#e6ecff"/>${peaks('#16244a', '#9fb2d8', 104, 3, 6)}${slope('#cdd9f2', '#a9bbe0')}
+        ${[40, 92, 232, 276].map((x, i) => `<rect x="${x}" y="${78 + i * 3}" width="2.5" height="36" fill="#222"/><circle cx="${x + 1}" cy="${78 + i * 3}" r="9" fill="#ffd27a" opacity="0.35"/><circle cx="${x + 1}" cy="${78 + i * 3}" r="3.5" fill="#fff4cc"/>`).join('')}`;
+    } else if (m.id === 'bluebird') {
+      body = `<defs>${grad(gid, [[0, '#1556c9'], [0.65, '#5ea3f2'], [1, '#cfe6ff']])}<radialGradient id="s${gid}"><stop offset="0" stop-color="#fffbe6"/><stop offset="0.25" stop-color="#fff2b0" stop-opacity="0.9"/><stop offset="1" stop-color="#fff2b0" stop-opacity="0"/></radialGradient></defs>
+        <rect width="${W}" height="${H}" fill="url(#${gid})"/><circle cx="70" cy="36" r="40" fill="url(#s${gid})"/>
+        <g fill="#fff" opacity="0.95"><ellipse cx="200" cy="34" rx="34" ry="10"/><ellipse cx="224" cy="28" rx="20" ry="11"/><ellipse cx="128" cy="58" rx="22" ry="6"/></g>
+        ${peaks('#6f8fc4', '#ffffff', 106, 11, 5)}${slope('#ffffff', '#d6e5ff')}${pine(26, 124, 1, '#1f6b45', '#fff')}${pine(278, 118, 0.9, '#1f6b45', '#fff')}
+        ${[90, 210, 250].map((x, i) => `<rect x="${x}" y="${96 - i}" width="2" height="22" fill="#ccc"/><path d="M${x + 2} ${96 - i} q8 3 8 12 l-8 2Z" fill="${['#ff4060', '#ffc21a', '#2a8cff'][i]}"/>`).join('')}`;
+    } else if (m.id === 'sunset') {
+      body = `<defs>${grad(gid, [[0, '#2b2a6e'], [0.45, '#c8577a'], [0.75, '#ff9a52'], [1, '#ffd27a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <circle cx="210" cy="96" r="30" fill="#ffe6a8" opacity="0.95"/><circle cx="210" cy="96" r="52" fill="#ffd27a" opacity="0.25"/>
+        <g stroke="#ffcf9c" stroke-width="3" opacity="0.5"><line x1="150" y1="40" x2="270" y2="40"/><line x1="120" y1="56" x2="230" y2="56"/></g>
+        ${peaks('#5a2f62', '#ffb9a0', 110, 21, 6)}${slope('#ffe3d6', '#d9a7b8')}
+        <path d="M60 128 L160 112" stroke="#9a5a8a" stroke-width="5" opacity="0.5"/>${pine(48, 128, 1, '#3a1d3e', '#ffd9c8')}${pine(78, 122, 0.7, '#3a1d3e', '#ffd9c8')}`;
+    } else if (m.id === 'woods') {
+      let trees = '';
+      for (let i = 0; i < 16; i++) trees += pine((i * 21 + r() * 8) | 0, 96 + ((r() * 10) | 0), 0.9 + r() * 0.5, '#0b1a2c', '#d6e2ff');
+      let front = '';
+      for (const x of [10, 44, 254, 290]) front += pine(x, 150, 1.6, '#06101e', '#e8efff');
+      body = `<defs>${grad(gid, [[0, '#03071a'], [0.7, '#0e1d48'], [1, '#1b2f66']])}<radialGradient id="m${gid}"><stop offset="0.3" stop-color="#dfe8ff" stop-opacity="0.5"/><stop offset="1" stop-color="#dfe8ff" stop-opacity="0"/></radialGradient></defs>
+        <rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(30, '#fff', 70)}<circle cx="200" cy="40" r="46" fill="url(#m${gid})"/><circle cx="200" cy="40" r="17" fill="#eef3ff"/><circle cx="194" cy="36" r="4" fill="#cfd8ee"/><circle cx="206" cy="46" r="3" fill="#cfd8ee"/>
+        ${trees}${slope('#b8c8ee', '#8ea3d4')}${front}${dots(40, '#fff', 150)}`;
+    } else {
+      let cr = '';
+      const cols = ['#5ff4ff', '#a77bff', '#5fffc0', '#ff7ad9'];
+      for (let i = 0; i < 9; i++) {
+        const x = i < 5 ? 18 + i * 14 : 200 + (i - 5) * 22, y = 132 - (r() * 18) | 0, h = 14 + r() * 26, c = cols[i % 4];
+        cr += `<path d="M${x - 5} ${y} L${x} ${y - h} L${x + 5} ${y}Z" fill="${c}"/><circle cx="${x}" cy="${y - h / 2}" r="12" fill="${c}" opacity="0.18"/>`;
+      }
+      let ic = '';
+      for (let i = 0; i < 14; i++) { const x = 30 + i * 18 + r() * 6; ic += `<path d="M${x - 4} 0 L${x} ${16 + r() * 22} L${x + 4} 0Z" fill="#bfe7ff" opacity="0.8"/>`; }
+      body = `<defs><radialGradient id="${gid}" cx="0.5" cy="0.6" r="0.6"><stop offset="0" stop-color="#e9fbff"/><stop offset="0.25" stop-color="#7cf0ff"/><stop offset="0.55" stop-color="#3a2aa0"/><stop offset="1" stop-color="#0a0620"/></radialGradient></defs>
+        <rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <path d="M0 0 L${W} 0 L${W} ${H} L250 ${H} Q240 60 150 50 Q60 60 50 ${H} L0 ${H}Z" fill="#160f33"/>
+        <path d="M0 0 L${W} 0 L${W} 20 Q150 -6 0 20Z" fill="#241a4e"/>${ic}
+        <path d="M50 ${H} Q150 112 250 ${H}Z" fill="#cfefff" opacity="0.9"/>${cr}`;
+    }
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${body}</svg>`;
+  }
+
+  let previewTimer = 0;
+  function buildMaps() {
+    ui.mapGrid.innerHTML = '';
+    for (const id of SS.MAP_IDS) {
+      const m = SS.MAPS[id], pr = prog(id);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'mapCard';
+      b.dataset.id = id;
+      b.style.setProperty('--acc', m.accent);
+      b.innerHTML = `<div class="art">${mapArt(m)}<span class="play">RIDE &#9654;</span></div>
+        <div class="mc-body"><div class="mc-name brush">${esc(m.name)}</div>
+        <div class="mc-tags"><span class="t">${m.time}</span><span class="${m.diff}">${m.diff}</span></div>
+        <div class="mc-sub">${esc(m.sub)}</div>
+        <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'BEST ' + fmt(pr.best) : 'NOT RIDDEN'}</span></div></div>`;
+      b.title = m.goals.map((g, i) => (pr.stars[i] ? '★ ' : '☆ ') + g.t).join('\n');
+      b.addEventListener('click', (e) => { e.currentTarget.blur(); clearTimeout(previewTimer); saveName(); startSingle(false, id); });
+      const preview = () => {
+        if (coarse || mode !== 'menu') return;
+        clearTimeout(previewTimer);
+        previewTimer = setTimeout(() => {
+          if (hidden(ui.maps) || (world && world.mapId === id)) return;
+          previewLock = true;
+          useWorld((Math.random() * 2147483647) | 0, id);
+          startAttract();
+        }, 380);
+      };
+      b.addEventListener('pointerenter', preview);
+      b.addEventListener('focus', preview);
+      ui.mapGrid.appendChild(b);
+    }
+  }
+  function openMaps() {
+    hideOverlays();
+    buildMaps();
+    show(ui.maps, true);
+    const sel = ui.mapGrid.querySelector(`[data-id="${spMap}"]`);
+    if (sel && !coarse) sel.focus({ preventScroll: true });
+  }
+  function closeMaps() {
+    clearTimeout(previewTimer);
+    previewLock = false;
+    show(ui.maps, false);
+    if (mode === 'menu') show(ui.title, true);
+    else toMenu();
+  }
+
+  // big map title card at the start of a run
+  function showIntro(dur) {
+    const m = world.map;
+    ui.mapIntro.style.setProperty('--acc', m.accent);
+    ui.miTime.textContent = m.time + ' · ' + m.diff;
+    ui.miName.textContent = m.name.toUpperCase();
+    ui.miGoals.innerHTML = mode === 'sp' ? m.goals.map((g) => `<span>${esc(g.t)}</span>`).join('') : '<span>' + esc(m.sub) + '</span>';
+    ui.mapIntro.classList.remove('out');
+    show(ui.mapIntro, true);
+    introT = dur;
   }
 
   function leaveMp() {
@@ -1310,15 +1628,19 @@
           row = document.createElement('div');
           row.className = 'srv';
           row.dataset.id = s.id;
-          row.innerHTML = `<div class="info"><div class="nm"></div><div class="st"></div></div>
+          row.innerHTML = `<div class="info"><div class="nm"><span class="sn"></span><span class="mapTag"></span></div><div class="st"></div></div>
             <div><div class="cnt"></div><div class="fill"><i></i></div></div>
             <button class="btn" type="button" data-id="${s.id}">JOIN</button>`;
-          row.querySelector('.nm').textContent = s.name;
+          row.querySelector('.sn').textContent = s.name;
           row.querySelector('button').addEventListener('click', (e) => { e.currentTarget.blur(); joinServer(s.id); });
           ui.serverList.appendChild(row);
         }
         const full = s.players >= s.max;
-        row.querySelector('.st').textContent = s.players === 0 ? 'EMPTY · JOIN TO START A ROUND' : s.phase === 'racing' ? 'RACE IN PROGRESS' : s.phase === 'countdown' ? 'STARTING SOON' : s.phase === 'results' ? 'RESULTS' : 'OPEN';
+        const tag = row.querySelector('.mapTag');
+        const mm = SS.MAPS[s.map];
+        tag.textContent = mm ? mm.name.toUpperCase() : '';
+        tag.style.setProperty('--acc', mm ? mm.accent : '#fff');
+        row.querySelector('.st').textContent = (s.players === 0 ? 'EMPTY · JOIN TO START A ROUND' : s.phase === 'racing' ? 'RACE IN PROGRESS' : s.phase === 'countdown' ? 'STARTING SOON' : s.phase === 'results' ? 'RESULTS · NEXT MOUNTAIN SOON' : 'OPEN') + (mm ? ' · ' + mm.time : '');
         row.querySelector('.cnt').textContent = s.players + '/' + s.max;
         row.querySelector('.fill i').style.width = (s.players / s.max) * 100 + '%';
         const btn = row.querySelector('button');
@@ -1382,7 +1704,9 @@
 
   // buttons
   const click = (el, fn) => el.addEventListener('click', (e) => { e.currentTarget.blur(); fn(); });
-  click(ui.spBtn, () => { saveName(); startSingle(false); });
+  click(ui.spBtn, () => { saveName(); Sfx.init(); openMaps(); });
+  click(ui.mapsBack, () => closeMaps());
+  click(ui.resMapsBtn, () => { mode = 'menu'; phase = 'attract'; show(ui.hud, false); show(ui.menuBtn, false); show(ui.touch, false); Sfx.silence(); startAttract(); openMaps(); });
   click(ui.mpBtn, () => { saveName(); Sfx.init(); openServers(); });
   click(ui.settingsBtn, () => { Sfx.init(); openSettings(ui.title); });
   click(ui.pauseSettingsBtn, () => openSettings(ui.pauseMenu));
@@ -1392,7 +1716,7 @@
   click(ui.restartBtn, () => { if (mode === 'mp') toMenu(); else startSingle(true); });
   click(ui.quitBtn, () => toMenu());
   click(ui.againBtn, () => startSingle(true));
-  click(ui.newBtn, () => startSingle(false));
+  click(ui.newBtn, () => startSingle(false, spMap));
   click(ui.resMenuBtn, () => toMenu());
   click(ui.menuBtn, () => toggleMenu());
   document.querySelectorAll('.seg').forEach((seg) => {
@@ -1496,6 +1820,27 @@
     setText(ui.left, 'left', Math.max(0, (C.LENGTH - focus.z) / 1000).toFixed(1) + ' KM LEFT');
     show(ui.popMeter, P.charging && phase === 'riding');
     if (P.charging) ui.popBar.style.width = (P.charge * 100).toFixed(0) + '%';
+    // boost meter and rail balance
+    const bst = mine ? run.boost : 0;
+    ui.boostFill.style.width = (bst * 100).toFixed(0) + '%';
+    ui.boostBox.classList.toggle('full', bst >= 0.999);
+    ui.boostBox.classList.toggle('on', mine && P.boosting);
+    const bal = mine && P.surf === 2 && P.grindRef && P.bailT <= 0;
+    show(ui.balance, bal);
+    if (bal) {
+      ui.balMark.style.left = (50 + clamp(P.bal, -1, 1) * 50).toFixed(1) + '%';
+      ui.balance.classList.toggle('danger', Math.abs(P.bal) > 0.7);
+    }
+    if (introT > 0) {
+      introT -= dt;
+      if (introT <= 0) { ui.mapIntro.classList.add('out'); setTimeout(() => { if (introT <= 0) show(ui.mapIntro, false); }, 420); }
+    }
+    // challenges done during the run pop up as you go
+    if (mode === 'sp' && phase === 'riding' && world.map.goals) {
+      world.map.goals.forEach((g, i) => {
+        if (!run.goals[i] && g.k !== 'finish' && goalMet(g, false)) { run.goals[i] = true; feed('★ CHALLENGE DONE · ' + g.t.toUpperCase()); Sfx.perfect(); }
+      });
+    }
     const combo = mine && run.pot > 0 && P.bailT <= 0;
     show(ui.comboBar, combo);
     if (combo) ui.comboFill.style.width = (clamp(run.bankT / 2.4, 0, 1) * 100).toFixed(0) + '%';
@@ -1555,7 +1900,7 @@
     fxCtx.clearRect(0, 0, W, H);
     const mine = phase === 'riding' || phase === 'finished' || phase === 'attract';
     const sp = mine ? P.speed : 0;
-    const k = clamp((sp - 24) / 16, 0, 1) * (P.grounded || phase === 'attract' ? 1 : 0.6);
+    const k = Math.max(clamp((sp - 24) / 16, 0, 1) * (P.grounded || phase === 'attract' ? 1 : 0.6), mine && P.boosting ? 1 : 0);
     if (k > 0 && settings.quality !== 'low' && !paused) {
       while (streaks.length < 26) streaks.push({ a: rand(0, TAU), r: rand(0.3, 1.2), l: rand(0.08, 0.2), v: rand(1.2, 2.2) });
       const cx = W / 2, cy = H * 0.48, R = Math.hypot(W, H) * 0.5;
@@ -1573,10 +1918,50 @@
         fxCtx.stroke();
       }
     }
+    drawGlare(dt, W, H);
     if (flash > 0) {
       flash -= dt;
       fxCtx.fillStyle = `rgba(200,255,225,${(flash * 0.25).toFixed(3)})`;
       fxCtx.fillRect(0, 0, W, H);
+    }
+  }
+
+  // lens glare when looking toward the sun on the day maps
+  const sunOut = [0, 0, 0];
+  function drawGlare(dt, W, H) {
+    if (!world) return;
+    const sk = world.map.sky;
+    let target = 0;
+    const sd = sk.dir;
+    if (sk.stars < 0.5 && envK < 0.95 && engine.project(eyeV[0] + sd[0] * 1000, eyeV[1] + sd[1] * 1000, eyeV[2] + sd[2] * 1000, sunOut, 1 / dpr)) {
+      const dx = sunOut[0] - W / 2, dy = sunOut[1] - H / 2;
+      target = clamp(1.25 - Math.hypot(dx, dy) / (Math.hypot(W, H) * 0.42), 0, 1) * (1 - envK);
+      // hidden behind the mountain?
+      for (let d = 12; d < 220 && target > 0; d *= 1.45) {
+        const x = eyeV[0] + sd[0] * d, z = eyeV[2] + sd[2] * d;
+        if (world.ground(x, z) > eyeV[1] + sd[1] * d) target = 0;
+      }
+    }
+    glare += (target - glare) * Math.min(1, dt * 5);
+    if (glare < 0.01 || paused) return;
+    const warm = world.mapId === 'sunset';
+    const sx = sunOut[0], sy = sunOut[1], R = Math.min(W, H);
+    const g = fxCtx.createRadialGradient(sx, sy, 0, sx, sy, R * 0.55);
+    g.addColorStop(0, `rgba(255,${warm ? 220 : 250},${warm ? 170 : 225},${(0.55 * glare).toFixed(3)})`);
+    g.addColorStop(0.25, `rgba(255,${warm ? 180 : 240},${warm ? 120 : 200},${(0.16 * glare).toFixed(3)})`);
+    g.addColorStop(1, 'rgba(255,240,200,0)');
+    fxCtx.fillStyle = g;
+    fxCtx.fillRect(0, 0, W, H);
+    fxCtx.fillStyle = `rgba(255,${warm ? 200 : 245},${warm ? 160 : 230},${(0.06 * glare).toFixed(3)})`;
+    fxCtx.fillRect(0, 0, W, H);
+    // lens ghosts on the line through the centre of the screen
+    const cx = W / 2, cy = H / 2;
+    const ghosts = [[0.45, 0.05, '160,220,255', 0.08], [0.85, 0.09, '255,200,120', 0.06], [1.25, 0.03, '200,160,255', 0.1], [1.6, 0.13, '140,255,200', 0.04]];
+    for (const [t, r, c, a] of ghosts) {
+      fxCtx.fillStyle = `rgba(${c},${(a * glare).toFixed(3)})`;
+      fxCtx.beginPath();
+      fxCtx.arc(sx + (cx - sx) * t * 2, sy + (cy - sy) * t * 2, R * r, 0, TAU);
+      fxCtx.fill();
     }
   }
 
@@ -1586,7 +1971,7 @@
     if (paused || mode === 'menu' || !(phase === 'riding' || phase === 'finished')) { Sfx.silence(); return; }
     const sp = P.speed / MAX_SPEED;
     const ground = P.grounded && P.bailT <= 0;
-    Sfx.set('wind', 0.03 + sp * 0.16 + (!P.grounded ? 0.05 : 0), 300 + sp * 900);
+    Sfx.set('wind', 0.03 + sp * 0.16 + (!P.grounded ? 0.05 : 0) + (P.boosting ? 0.1 : 0), 300 + sp * 900 + (P.boosting ? 500 : 0));
     Sfx.set('carve', ground && P.surf !== 2 ? (0.02 + Math.abs(P.steerS) * 0.12) * Math.min(1, sp * 2.5) : 0, 900 + sp * 1200);
     Sfx.set('grind', ground && P.surf === 2 ? 0.18 : 0, 2600 + sp * 1000);
     Sfx.set('slide', ground ? P.slide * 0.3 * Math.min(1, sp * 3) : 0, 600 + sp * 600);
@@ -1618,7 +2003,8 @@
       if (world && phase === 'attract') {
         aiThink();
         simulate(dt);
-        if (P.finished || P.z > C.LENGTH - 30) startAttract();
+        if (P.finished || P.z > C.LENGTH - 30) nextAttract();
+        else if (world.cave && P.z > world.cave[1] + 60) nextAttract();
         const wide = window.innerWidth > 760;
         follow(dt, P, { orbit: Math.sin(time * 0.11) * 0.55 + 0.25, far: true, side: wide ? -3.2 : 0 });
       }
@@ -1627,12 +2013,12 @@
         const before = Math.ceil(countdownT);
         countdownT -= dt;
         const now = Math.ceil(countdownT);
-        if (now !== before && now > 0 && now <= 3) { setBig(String(now), '', 0.9); Sfx.beep(false); }
+        if (now !== before && now > 0 && now <= 3) { setBig(String(now), '', 0.9); Sfx.beep(false); if (introT > 0.3) introT = 0.3; }
         if (countdownT <= 0) go();
       } else {
         const left = (phaseEnds - performance.now()) / 1000;
         const n = Math.ceil(left);
-        if (n <= 3 && n >= 1 && ui.bigText.textContent !== String(n)) { setBig(String(n), '', 0.95); Sfx.beep(false); }
+        if (n <= 3 && n >= 1 && ui.bigText.textContent !== String(n)) { setBig(String(n), '', 0.95); Sfx.beep(false); if (introT > 0.3) introT = 0.3; }
       }
       P.crouch = lerp(P.crouch || 0, 0.35, dt * 4);
       if (world && P.x !== undefined) follow(dt, P);
@@ -1679,12 +2065,47 @@
     updateAudio();
   }
 
+  // long shadow cast away from a low sun (day maps)
+  const SH = M4.create();
+  function sunShadow(st, h, alpha) {
+    const sd = world.L.sunDir;
+    const hl = Math.hypot(sd[0], sd[2]) || 1;
+    const ux = -sd[0] / hl, uz = -sd[2] / hl;
+    const tanE = Math.max(0.2, sd[1] / hl);
+    const len = Math.min(4, 1.7 / tanE);
+    const off = Math.min(16, Math.max(0, h) / tanE) + len * 0.5 - 0.2;
+    const x = st.x + ux * off, z = st.z + uz * off;
+    const e = 0.5;
+    const gx = (world.Hk(x + e, z) - world.Hk(x - e, z)) / (2 * e);
+    const gz = (world.Hk(x, z + e) - world.Hk(x, z - e)) / (2 * e);
+    const k = Math.max(0.25, 1 - h * 0.07);
+    M4.identity(SH);
+    M4.translate(SH, x, Math.max(world.Hk(x, z), world.H(x, z)) + 0.07, z);
+    M4.rotX(SH, -Math.atan(gz));
+    M4.rotZ(SH, Math.atan(gx));
+    M4.rotY(SH, Math.atan2(ux, uz));
+    M4.scale(SH, 0.4, 1, len * 0.5);
+    engine.drawBaked(engine.disc, SH, 0.42 * k * (alpha === undefined ? 1 : alpha));
+  }
+
   const MV = M4.create();
   const riderList = [];
   const tokenGlow = new Float32Array(120 * 8);
+  // light, fog and sky for the current spot on the mountain (the cave darkens everything)
+  function applyEnv() {
+    const e = world.env(cam.z);
+    envK = e.k;
+    const L = engine.light;
+    L.sky = e.sky; L.ground = e.ground; L.moonDir = e.sunDir; L.moonCol = e.sun;
+    engine.rim = e.rim;
+    engine.fogCol = e.fog;
+    engine.fog = [lerp(60, 14, e.k), lerp(q.fog, 250, e.k)];
+  }
+
   function render(g) {
+    if (!world) { engine.clear(engine.fogCol); return; }
+    applyEnv();
     engine.clear(engine.fogCol);
-    if (!world) return;
     const sx = shake ? (Math.random() - 0.5) * shake * 0.25 : 0;
     const sy = shake ? (Math.random() - 0.5) * shake * 0.2 : 0;
     eyeV[0] = cam.x + sx; eyeV[1] = cam.y + sy + cam.bump; eyeV[2] = cam.z;
@@ -1692,14 +2113,16 @@
     engine.setCamera(eyeV, tgtV, cam.fov, cam.roll);
 
     // sky (procedural), stars and distant mountains
-    engine.drawSky(backdrop.sky, backdrop.moonDir);
-    gl.depthMask(false);
-    engine.drawPoints(null, backdrop.starCount, { mesh: backdrop.stars, offset: eyeV, additive: true, max: 48 });
-    engine.beginBaked(700, 2300);
-    M4.identity(MV);
-    M4.translate(MV, eyeV[0], eyeV[1] - 70, eyeV[2]);
-    engine.drawBaked(backdrop.mountains, MV);
-    gl.depthMask(true);
+    if (envK < 0.99) {
+      engine.drawSky(backdrop.sky);
+      gl.depthMask(false);
+      if (world.map.sky.stars > 0.5) engine.drawPoints(null, backdrop.starCount, { mesh: backdrop.stars, offset: eyeV, additive: true, max: 48 });
+      engine.beginBaked(700, 2300);
+      M4.identity(MV);
+      M4.translate(MV, eyeV[0], eyeV[1] - 70, eyeV[2]);
+      engine.drawBaked(world.mountains(engine), MV);
+      gl.depthMask(true);
+    }
 
     // the mountain
     engine.beginBaked();
@@ -1731,9 +2154,12 @@
     engine.beginBaked();
     gl.enable(gl.BLEND);
     gl.depthMask(false);
+    const sunny = world.map.shadows && envK < 0.5;
     for (const r of riderList) {
       if (Math.abs(r.st.z - cam.z) > 260) continue;
-      SS.drawShadow(engine, world, r.st.x, r.st.z, r.st.heading, r.st.y - world.Hk(r.st.x, r.st.z), r.alpha);
+      const h = r.st.y - world.Hk(r.st.x, r.st.z);
+      if (sunny) sunShadow(r.st, h, r.alpha);
+      else SS.drawShadow(engine, world, r.st.x, r.st.z, r.st.heading, h, r.alpha);
     }
     gl.depthMask(true);
     gl.disable(gl.BLEND);
@@ -1767,7 +2193,10 @@
     engine.drawPoints(null, world.glowCount || 0, { mesh: world.glows(engine), additive: true });
     engine.drawPoints(tokenGlow, glowN, { additive: true, soft: 1 });
     drawParticles();
-    engine.drawPoints(flakes, FLAKES, { soft: 1, max: 6 });
+    const sf = world.map.snowfall;
+    if (motes) engine.drawPoints(flakes, FLAKES >> 1, { soft: 1, max: 5, additive: true });
+    else if (sf > 0) engine.drawPoints(flakes, Math.round(FLAKES * Math.min(1, sf)), { soft: 1, max: sf > 1 ? 8 : 6 });
+    else engine.drawPoints(flakes, 150, { soft: 1, max: 4, additive: true });
   }
 
   // adaptive resolution for slower computers
@@ -1801,7 +2230,7 @@
   // ------------------------------------------------------------------ boot
   buildSwatches();
   applySettings();
-  useWorld(20261117);
+  useWorld(20261117, spMap);
   startAttract();
   for (let i = 0; i < FLAKES; i++) resetFlake(i, true);
   requestAnimationFrame(frame);
@@ -1823,6 +2252,10 @@
         }
         return { z: P.z, x: P.x, speed: P.speed, t: raceT, score: run.score, pot: run.pot, tricks: run.tricks, bails: run.bails, finished: P.finished, grounded: P.grounded, tokens: run.tokens, perfects: run.perfects };
       },
+      startMap(id, seed) { spMap = id; lastSpSeed = seed === undefined ? null : seed; startSingle(seed !== undefined, id); },
+      skipCountdown() { if (phase === 'countdown') { countdownT = 0.001; } },
+      setBoost(v) { run.boost = v; },
+      progress,
       pop(charge) { P.charging = true; P.charge = charge === undefined ? 1 : charge; P.chargeT = 0; chargeRelease(); },
       get phase() { return phase; },
       get ghost() { return bestGhost && { seed: bestGhost.seed, n: bestGhost.frames.length, first: bestGhost.frames[0], worldSeed: world.seed, state: ghostState() }; },
@@ -1832,7 +2265,8 @@
   window.ShredSlope = {
     get phase() { return phase; },
     get mode() { return mode; },
-    get player() { return { x: P.x, y: P.y, z: P.z, speed: P.speed, grounded: P.grounded, surf: P.surf, bail: P.bailT > 0, finished: P.finished }; },
+    get player() { return { x: P.x, y: P.y, z: P.z, speed: P.speed, grounded: P.grounded, surf: P.surf, bail: P.bailT > 0, finished: P.finished, boost: run.boost, bal: P.bal }; },
+    get map() { return world && world.mapId; },
     get run() { return { ...run }; },
     get remotes() { return [...remotes.values()].map((r) => ({ id: r.id, name: r.name, st: r.st && { x: r.st.x, z: r.st.z } })); },
     get net() { return { id: myId, phase: serverPhase, server: serverInfo && serverInfo.name }; },
