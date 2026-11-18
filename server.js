@@ -40,6 +40,10 @@ const MAPS = [
   { id: 'superpipe', name: 'Superpipe Final' },
   { id: 'sbx', name: 'Snowboard Cross' },
   { id: 'slopequal', name: 'Slopestyle Qualifier' },
+  { id: 'oly14', name: 'Sochi 2014 Slopestyle' },
+  { id: 'oly18', name: 'PyeongChang 2018 Slopestyle' },
+  { id: 'oly22', name: 'Beijing 2022 Slopestyle' },
+  { id: 'oly26', name: 'Livigno 2026 Slopestyle' },
 ];
 
 const SERVER_DEFS = [

@@ -42,7 +42,25 @@
     P: { Hk: 1.5, Lu: 6, Lt: 1.5, Ll: 7, w: 2.2, pe: 2 },
     // giant big-air kicker: steep lip, long table, then a short drop onto a huge landing hill
     G: { Hk: 7, Lu: 22, Lt: 20, Ll: 10, w: 6.5, pe: 2.2 },
+    // Olympic course jumps, named by their gap (take-off to the knuckle) in metres
+    J15: { Hk: 3.6, Lu: 12, Lt: 15, Ll: 30, w: 3.6 },
+    J18: { Hk: 4.4, Lu: 14, Lt: 18, Ll: 36, w: 5 },
+    J19: { Hk: 4.4, Lu: 14, Lt: 19, Ll: 36, w: 4 },
+    J21: { Hk: 5, Lu: 16, Lt: 21, Ll: 42, w: 5.5 },
+    J22: { Hk: 5.2, Lu: 17, Lt: 22, Ll: 44, w: 5.5 },
+    J25: { Hk: 5.6, Lu: 18, Lt: 25, Ll: 48, w: 6 },
+    // quarterpipe-style side take-off: steep, sends you up more than out
+    Q: { Hk: 3.4, Lu: 7, Lt: 1.5, Ll: 16, w: 2.6, pe: 2.6 },
+    // rollers: rounded humps you can pop off or roll over
+    RK: { Hk: 1.8, Lu: 7, Lt: 1, Ll: 9, w: 3, sh: 's' },
+    RK2: { Hk: 2.6, Lu: 11, Lt: 4, Ll: 24, w: 4, sh: 's' },
+    // little kicker that sends you onto a rail
+    GK: { Hk: 1.3, Lu: 5, Lt: 0.6, Ll: 3, w: 1.6, pe: 2.2 },
+    // snow deck / ledge that rails start from (sizes set per deck)
+    D: { Hk: 1.5, Lu: 7, Lt: 4, Ll: 3.2, w: 2.2, sh: 's' },
   };
+  // features that are not jumps: no flags, no lip line, no tokens, and the riders' AI doesn't pop off them
+  const NOT_JUMP = { P: 1, D: 1, B: 1, RK: 1, GK: 1 };
   // where a giant's lip sits in its zone, and how its landing hill is shaped
   const GIANT = { at: 70, land: 125, landSlope: 0.6, runSlope: 0.12, inSlope: 0.25 };
 
@@ -337,9 +355,80 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'win', t: 'Win the race' }, { k: 'time', v: 70, t: 'Finish under 1:10' }],
       card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ff4060',
     },
+    oly14: {
+      id: 'oly14', name: 'Sochi 2014 Slopestyle', time: 'SUNNY DAY', diff: 'HARD', oly: true,
+      sub: 'The first Olympic slopestyle: open with a jump onto a rail, three jib sections, then three jumps that grow, each with a smaller one beside it. Look out for the giant nesting doll.',
+      half: 24, curve: [6, 360, 3, 160], slope: 0.22, alt: 1162, length: 1980,
+      zones: [Z('JIB 1', 'oly', 190, { c: 14, s: 0 }), Z('JIB 2', 'oly', 190, { c: 14, s: 1 }), Z('JIB 3', 'oly', 190, { c: 14, s: 2 }),
+        Z('JUMP 1 · 18 M', 'oly', 320, { c: 14, s: 3 }), Z('JUMP 2 · 18 M', 'oly', 320, { c: 14, s: 4 }), Z('JUMP 3 · 22 M', 'oly', 320, { c: 14, s: 5 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.4, 0.46, 0.6], ground: [0.28, 0.27, 0.3], sunDir: norm3([0.4, 0.62, 0.68]), sun: [0.68, 0.62, 0.52], fog: [0.8, 0.85, 0.94], rim: [0.28, 0.3, 0.36], snow: [0.93, 0.93, 0.95], powder: [0.9, 0.9, 0.94] },
+      sky: { zen: [0.14, 0.38, 0.8], hor: [0.78, 0.86, 0.96], dir: norm3([0.4, 0.62, 0.68]), col: [1.0, 0.95, 0.82], disk: 0.9993, glow: [8, 0.34, 120, 0.6], aurora: 0, cloudDark: [0.76, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.45, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.95, 0.15, 0.55], [0.15, 0.5, 1.0], [1.0, 0.78, 0.1], [0.2, 0.75, 0.35], [0.6, 0.25, 0.85], [1.0, 0.45, 0.1]],
+      boxCol: [0.95, 0.2, 0.5], railCol: [0.8, 0.84, 0.92],
+      trees: { near: 0.75, far: 0.9, snow: 0.55, green: [0.07, 0.19, 0.13] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.4, 0.46, 0.6], cap: [0.97, 0.98, 1.0], k: [0.62, 0.42] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 13000, t: 'Score 13,000' }, { k: 'perfects', v: 3, t: 'Land 3 perfect landings' }],
+      card: 'linear-gradient(180deg,#1b5fd0 0%,#78b6f2 55%,#fbe9f2 100%)', accent: '#ff3d8b',
+    },
+    oly18: {
+      id: 'oly18', name: 'Pyeong\u00adChang 2018 Slopestyle', time: 'COLD AND WINDY', diff: 'HARD', oly: true,
+      sub: 'Rail tiers with a butter pad, a wallride, a high bar and a skate bowl, then skewed jumps, quarterpipe side hits and a cheese-wedge kicker.',
+      half: 26, curve: [6, 360, 3, 160], slope: 0.23, alt: 1050, length: 1980,
+      zones: [Z('RAIL TIER 1', 'oly', 190, { c: 18, s: 0 }), Z('RAIL TIER 2', 'oly', 190, { c: 18, s: 1 }), Z('RAIL TIER 3 · BOWL', 'oly', 190, { c: 18, s: 2 }),
+        Z('JUMP 1 · SKEWED', 'oly', 320, { c: 18, s: 3 }), Z('JUMP 2 · QUARTERPIPES', 'oly', 320, { c: 18, s: 4 }), Z('JUMP 3 · CHEESE WEDGE', 'oly', 320, { c: 18, s: 5 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.36, 0.44, 0.62], ground: [0.24, 0.26, 0.32], sunDir: norm3([0.25, 0.55, 0.8]), sun: [0.56, 0.56, 0.54], fog: [0.74, 0.82, 0.95], rim: [0.25, 0.3, 0.4], snow: [0.9, 0.93, 0.98], powder: [0.88, 0.91, 0.98] },
+      sky: { zen: [0.08, 0.3, 0.78], hor: [0.66, 0.8, 0.96], dir: norm3([0.25, 0.55, 0.8]), col: [1.0, 0.97, 0.9], disk: 0.9994, glow: [8, 0.3, 120, 0.5], aurora: 0, cloudDark: [0.72, 0.78, 0.9], cloudLit: [1, 1, 1], clouds: 0.3, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.12, 0.35, 0.85], [0.95, 0.95, 0.98], [0.9, 0.15, 0.2], [1.0, 0.8, 0.1], [0.12, 0.6, 0.45]],
+      boxCol: [0.15, 0.42, 0.95], railCol: [0.82, 0.86, 0.94], wallCol: [0.94, 0.96, 0.99],
+      trees: { near: 0.85, far: 0.95, snow: 0.45, green: [0.07, 0.16, 0.12] },
+      snowfall: 0.12, nets: true, shadows: true,
+      mtn: { dark: [0.3, 0.36, 0.44], cap: [0.86, 0.9, 0.96], k: [0.5, 0.5] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 13000, t: 'Score 13,000' }, { k: 'grind', v: 5, t: 'Grind for 5 seconds in total' }],
+      card: 'linear-gradient(180deg,#0b3fae 0%,#5c9cf0 55%,#eef5ff 100%)', accent: '#2f7dff',
+    },
+    oly22: {
+      id: 'oly22', name: 'Beijing 2022 Slopestyle', time: 'COLD AND CLEAR', diff: 'HARD', oly: true,
+      sub: 'Rails stepped down behind a Great Wall, a watch tower with a rail on its roof, then the twisted sisters, the matrix, and a 5 m kicker over a 21 m table.',
+      half: 26, curve: [6, 360, 3, 160], slope: 0.22, alt: 1950, length: 1980,
+      zones: [Z('JIB 1', 'oly', 190, { c: 22, s: 0 }), Z('JIB 2 · WATCH TOWER', 'oly', 190, { c: 22, s: 1 }), Z('JIB 3', 'oly', 190, { c: 22, s: 2 }),
+        Z('TWISTED SISTERS', 'oly', 320, { c: 22, s: 3 }), Z('THE MATRIX', 'oly', 320, { c: 22, s: 4 }), Z('THE BIG ONE · 21 M', 'oly', 320, { c: 22, s: 5 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.36, 0.44, 0.64], ground: [0.3, 0.27, 0.26], sunDir: norm3([0.5, 0.5, 0.7]), sun: [0.66, 0.62, 0.56], fog: [0.78, 0.84, 0.95], rim: [0.28, 0.3, 0.38], snow: [0.92, 0.94, 0.98], powder: [0.9, 0.92, 0.97] },
+      sky: { zen: [0.06, 0.26, 0.74], hor: [0.7, 0.82, 0.96], dir: norm3([0.5, 0.5, 0.7]), col: [1.0, 0.96, 0.86], disk: 0.9994, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.76, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.15, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.25, 0.4, 0.95], [0.45, 0.3, 0.9], [0.9, 0.2, 0.25], [0.2, 0.7, 0.95], [0.95, 0.95, 0.98]],
+      boxCol: [0.4, 0.32, 0.92], railCol: [0.8, 0.83, 0.9],
+      trees: { near: 0.3, far: 0.35, snow: 0.15, green: [0.1, 0.16, 0.12] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.5, 0.44, 0.4], cap: [0.84, 0.82, 0.8], k: [0.7, 0.25] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 13000, t: 'Score 13,000' }, { k: 'grind', v: 6, t: 'Grind for 6 seconds in total' }],
+      card: 'linear-gradient(180deg,#0a2f9e 0%,#4f8de8 55%,#e9e2f7 100%)', accent: '#6b5cff',
+    },
+    oly26: {
+      id: 'oly26', name: 'Livigno 2026 Slopestyle', time: 'SNOWY DAY', diff: 'HARD', oly: true,
+      sub: 'Big, clean modules in the Italian Alps: a long box, down and kinked rails, a rainbow box, then three jumps of 22 to 25 metres.',
+      half: 26, curve: [6, 360, 3, 160], slope: 0.25, alt: 2000, length: 1980,
+      zones: [Z('JIB 1', 'oly', 190, { c: 26, s: 0 }), Z('JIB 2', 'oly', 190, { c: 26, s: 1 }), Z('JIB 3', 'oly', 190, { c: 26, s: 2 }),
+        Z('JUMP 1 · 22 M', 'oly', 320, { c: 26, s: 3 }), Z('JUMP 2 · 25 M', 'oly', 320, { c: 26, s: 4 }), Z('JUMP 3 · 25 M', 'oly', 320, { c: 26, s: 5 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.5, 0.54, 0.62], ground: [0.32, 0.33, 0.37], sunDir: norm3([0.3, 0.75, 0.55]), sun: [0.32, 0.32, 0.32], fog: [0.78, 0.81, 0.86], rim: [0.22, 0.24, 0.28], snow: [0.93, 0.94, 0.97], powder: [0.92, 0.93, 0.97] },
+      sky: { zen: [0.5, 0.55, 0.64], hor: [0.8, 0.83, 0.88], dir: norm3([0.3, 0.6, 0.7]), col: [0.95, 0.94, 0.9], disk: 0.9998, glow: [5, 0.18, 80, 0.2], aurora: 0, cloudDark: [0.62, 0.65, 0.72], cloudLit: [0.9, 0.91, 0.94], clouds: 0.95, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.1, 0.75, 0.7], [0.95, 0.95, 0.98], [0.2, 0.45, 0.95], [0.95, 0.35, 0.3], [0.55, 0.8, 0.25]],
+      boxCol: [0.12, 0.7, 0.66], railCol: [0.82, 0.85, 0.9],
+      trees: { near: 0.85, far: 0.95, snow: 1.1, green: [0.08, 0.17, 0.12] },
+      fogNear: 70, fogFar: 520,
+      snowfall: 0.55, nets: true, shadows: true,
+      mtn: { dark: [0.48, 0.52, 0.6], cap: [0.95, 0.96, 0.98], k: [0.7, 0.35] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'perfects', v: 4, t: 'Land 4 perfect landings' }],
+      card: 'linear-gradient(180deg,#6f7b8f 0%,#a9b6c8 55%,#f2f5f9 100%)', accent: '#15c2b0',
+    },
   };
   SS.MAPS = MAPS;
-  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal'];
+  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26'];
+  // the courses built like the ones at the Games get an OLYMPIC STYLE badge
+  for (const id of ['slopestyle', 'slopequal', 'bigairfinal', 'superpipe', 'sbx']) MAPS[id].oly = true;
   SS.GIANT = GIANT;
 
   const CRYSTAL_COLS = [[0.35, 0.95, 1.0], [0.65, 0.45, 1.0], [0.3, 1.0, 0.75], [1.0, 0.45, 0.85]];
@@ -586,16 +675,44 @@
     }
 
     kickerH(f, x, z) {
+      if (f.fn) return f.fn(x, z);
       const u = z - f.z0;
       if (u < 0 || u > f.len) return 0;
-      const dx = Math.abs(x - (this.center(z) + f.off));
-      if (dx >= f.w + 2.5) return 0;
-      const lat = dx <= f.w ? 1 : smooth(1 - (dx - f.w) / 2.5);
+      const dxs = x - (this.center(z) + f.off), dx = Math.abs(dxs);
+      const ew = f.ew || 2.5;
+      if (dx >= f.w + ew) return 0;
+      const lat = dx <= f.w ? 1 : smooth(1 - (dx - f.w) / ew);
       let p;
-      if (u < f.Lu) p = f.Hk * Math.pow(u / f.Lu, f.pe || 1.7);
-      else if (u < f.Lu + f.Lt) p = f.Hk;
-      else p = f.Hk * 0.5 * (1 + Math.cos(Math.PI * ((u - f.Lu - f.Lt) / f.Ll)));
+      if (u < f.Lu) {
+        const q = u / f.Lu;
+        // 's': rounded hump; 'q': deck ramp, steepest at the bottom and easing out, so it never throws you at the top
+        p = f.sh === 's' ? f.Hk * smooth(q) : f.sh === 'q' ? f.Hk * (1 - (1 - q) * (1 - q)) : f.Hk * Math.pow(q, f.pe || 1.7);
+      }
+      else if (u < f.Lu + f.Lt) p = f.Hk + (f.lv || 0) * (u - f.Lu);
+      else p = (f.Hk + (f.lv || 0) * f.Lt) * 0.5 * (1 + Math.cos(Math.PI * ((u - f.Lu - f.Lt) / f.Ll)));
+      // skew jumps: one side of the lip is built higher than the other
+      if (f.tw) p *= 1 + f.tw * clamp(dxs / f.w, -1, 1);
       return p * lat;
+    }
+
+    // height of a rail's top at distance t along it (kinked rails follow their own points)
+    railY(f, t) {
+      const p = f.pts;
+      if (p) {
+        if (t <= 0) return p[0][1];
+        for (let i = 1; i < p.length; i++) if (t <= p[i][0]) { const a = p[i - 1], b = p[i]; return a[1] + ((b[1] - a[1]) * (t - a[0])) / (b[0] - a[0]); }
+        return p[p.length - 1][1];
+      }
+      const k = t / f.len;
+      return lerp(f.g0, f.g1, k) + f.h + (f.arch ? f.arch * Math.sin(Math.PI * k) : 0);
+    }
+    // how steeply the rail climbs (+) or drops (-) per metre at t
+    railDY(f, t) {
+      const p = f.pts;
+      if (p) {
+        for (let i = 1; i < p.length; i++) if (t <= p[i][0] || i === p.length - 1) { const a = p[i - 1], b = p[i]; return (b[1] - a[1]) / (b[0] - a[0]); }
+      }
+      return (f.g1 - f.g0) / f.len + (f.arch ? ((f.arch * Math.PI) / f.len) * Math.cos((Math.PI * clamp(t, 0, f.len)) / f.len) : 0);
     }
 
     // height of the drawn snow mesh (2 m rows, flat triangles), so decals like board dents sit exactly on it
@@ -632,25 +749,29 @@
       this.surfRef = null;
       const b = this.fb[((z - C.Z0) / 10) | 0];
       if (!b) return y;
+      for (let i = 0; i < b.length; i++) {
+        const f = b[i];
+        if (f.kind !== 'kicker') continue;
+        const h = this.kickerH(f, x, z);
+        if (h > 0.001) {
+          y += h;
+          this.surf = 1;
+          this.surfRef = f;
+        }
+      }
+      // rails and boxes stand on the snow or on the deck under them
       const g = y;
       for (let i = 0; i < b.length; i++) {
         const f = b[i];
-        if (f.kind === 'kicker') {
-          const h = this.kickerH(f, x, z);
-          if (h > 0.001) {
-            y += h;
-            this.surf = 1;
-            this.surfRef = f;
-          }
-        } else {
+        if (f.kind === 'rail') {
           const rx = x - f.ax, rz = z - f.az;
           const t = rx * f.dx + rz * f.dz;
           if (t < -f.ramp || t > f.len) continue;
           const lat = Math.abs(rx * f.dz - rz * f.dx);
           if (lat > f.w) continue;
           let top;
-          if (t >= 0) top = Math.max(lerp(f.g0, f.g1, t / f.len) + f.h + (f.arch ? f.arch * Math.sin((Math.PI * t) / f.len) : 0), g + 0.25);
-          else top = g + (f.h * (t + f.ramp)) / f.ramp;
+          if (t >= 0) top = Math.max(this.railY(f, t), g + 0.25);
+          else top = g + ((this.railY(f, 0) - g) * (t + f.ramp)) / f.ramp;
           if (top > y) {
             y = top;
             this.surf = 2;
@@ -678,14 +799,94 @@
       this.pillars = [];
       this.icicles = [];
 
-      const kicker = (z0, off, size) => {
-        const k = KICK[size];
+      const kicker = (z0, off, size, extra) => {
+        const k = extra ? { ...KICK[size], ...extra } : KICK[size];
         const f = { kind: 'kicker', size, z0, off, ...k, len: k.Lu + k.Lt + k.Ll };
         this.features.push(f);
         const lipZ = z0 + k.Lu;
-        if (size !== 'P') for (const s of [-1, 1]) this.flags.push({ x: this.center(lipZ) + off + s * (k.w + 1.4), z: lipZ });
+        if (!NOT_JUMP[size] && !k.noFlags) for (const s of [-1, 1]) this.flags.push({ x: this.center(lipZ) + off + s * (k.w * (1 + Math.abs(k.tw || 0)) + 1.4), z: lipZ });
         return f;
       };
+      // ---- Olympic course building blocks
+      // snow surface including the decks placed so far (rails start on them)
+      const surfAt = (x, z) => {
+        let y = this.ground(x, z);
+        for (const f of this.features) if (f.kind === 'kicker') y += this.kickerH(f, x, z);
+        return y;
+      };
+      // a snow deck or ledge: ramp up, a table, then a drop. lv makes the table level instead of following the slope
+      const deck = (z0, off, H, top, w, o) => kicker(z0, off, 'D', { Hk: H, Lt: top, w, sh: 'q', Lu: Math.max(7, H * 4.5), ...(o || {}) });
+      // a rail or box made of straight pieces: each piece is [length, pitch], where pitch is how much steeper (+)
+      // or flatter (-) than the slope it runs, 'f' for dead flat and 'u' for climbing. It starts h above the surface.
+      const srail = (z, off, segs, o) => {
+        o = o || {};
+        const type = o.type || 'rail', isBox = type === 'box';
+        const est = segs.reduce((a, q) => a + q[0], 0);
+        const zMid = z + est / 2;
+        const ang = Math.atan((this.center(zMid + 1) - this.center(zMid - 1)) / 2) + (o.yaw || 0);
+        const dx = Math.sin(ang), dz = Math.cos(ang);
+        const ax = this.center(z) + off, az = z;
+        const gs = (this.ground(ax, az) - this.ground(ax + dx * est, az + dz * est)) / est;
+        const s0 = surfAt(ax, az);
+        const h = o.h !== undefined ? o.h : isBox ? 0.5 : 0.75;
+        let y = s0 + h, t = 0;
+        const pts = [[0, y]];
+        segs.forEach(([L, pq], i) => {
+          let pa = pq === 'f' ? 0 : pq === 'u' ? -0.14 : gs + pq;
+          // the first piece never cuts down into the deck it starts on
+          if (i === 0 && typeof pq === 'number' && o.table) pa = Math.min(pa, gs + (h - 0.32) / Math.min(L, o.table));
+          // the last downhill piece lands about 0.6 m above the snow, whatever came before
+          if (i === segs.length - 1 && i > 0 && typeof pq === 'number' && o.fit !== false) {
+            const xe = ax + dx * (t + L), ze = az + dz * (t + L);
+            pa = (y - (this.ground(xe, ze) + (o.end || 0.6))) / L;
+          }
+          t += L;
+          y -= pa * L;
+          pts.push([t, y]);
+        });
+        const ramp = o.ramp !== undefined ? o.ramp : isBox ? 2.4 : 0;
+        const f = {
+          kind: 'rail', type, ax, az, dx, dz, len: t, ang, pts, h,
+          w: o.w || (isBox ? 0.42 : 0.34), ramp, z0: az - ramp, z1: az + dz * t,
+          label: o.label || '', style: o.style || '', g0: s0, g1: surfAt(ax + dx * t, az + dz * t),
+        };
+        this.features.push(f);
+        return f;
+      };
+      // relative pitches for a rainbow (or half of one): rise metres over L metres in n pieces
+      const arc = (L, rise, n, from, to) => {
+        const out = [];
+        from = from || 0; to = to || 1;
+        for (let i = 0; i < n; i++) {
+          const a = from + ((to - from) * i) / n, b = from + ((to - from) * (i + 1)) / n;
+          const ya = rise * Math.sin(Math.PI * a), yb = rise * Math.sin(Math.PI * b);
+          out.push([(L * (b - a)), -(yb - ya) / (L * (b - a))]);
+        }
+        return out;
+      };
+      // a skate-style bowl built up out of snow: open at the top to drop in, walls round the sides, a gap out the bottom
+      const bowl = (zc, off, rx, rz, Hw) => {
+        const f = { kind: 'kicker', size: 'B', z0: zc - rz * 1.34, off, w: rx * 1.34 - 2.3, Hk: Hw, Lu: -99, Lt: 0, Ll: 1, len: rz * 2.68, aiSkip: true, ring: { zc, rx, rz } };
+        f.fn = (x, z) => {
+          if (z < f.z0 || z > f.z0 + f.len) return 0;
+          const ex = (x - (this.center(z) + off)) / rx, ez = (z - zc) / rz;
+          const rr = Math.hypot(ex, ez);
+          if (rr >= 1.32) return 0;
+          const aa = Math.abs(Math.atan2(ex, -ez));
+          const gate = smooth(clamp((aa - 0.55) / 0.5, 0, 1)) * smooth(clamp((Math.PI - 0.45 - aa) / 0.4, 0, 1));
+          if (gate <= 0) return 0;
+          let p;
+          if (rr < 0.42) p = 0;
+          else if (rr < 1) { const q = (rr - 0.42) / 0.58; p = Hw * q * q; }
+          else p = Hw * (1 - smooth((rr - 1) / 0.32));
+          return p * gate;
+        };
+        this.features.push(f);
+        return f;
+      };
+      this.props = [];
+      const prop = (o) => { this.props.push(o); return o; };
+      const solid = (x, z, rad, top) => this.colliders.push({ x, z, r: rad, top: top === undefined ? 1e4 : top });
       const rail = (zStart, off, type, len, arch) => {
         const isBox = type === 'box';
         const zMid = zStart + len / 2;
@@ -713,6 +914,157 @@
       };
       this.gates = [];
       this.gateFlags = [];
+
+      // ---- the Olympic slopestyle courses, laid out section by section like the real ones (+ off is the rider's right)
+      const slopeAt = (off, z, L) => (this.ground(this.center(z) + off, z) - this.ground(this.center(z + L) + off, z + L)) / L;
+      // a deck with a rail on it: the rail starts a little way onto the table, so there's room to pop
+      const deckRail = (z, off, H, top, w, segs, o, dOpt) => {
+        const d = deck(z, off, H, top + 0.8, w, dOpt);
+        return srail(z + d.Lu + 1.4, off, segs, { table: top - 0.6, ...(o || {}) });
+      };
+      const DFD = [[3.5, 0.06], [4, 'f'], [4, 0.4]];
+      const oly = (c, sec, z0) => {
+        if (c === 14) {
+          // Sochi 2014, Rosa Khutor: three jib sections, then three jumps that get bigger, each with a smaller jump beside it
+          if (sec === 0) {
+            // the very first hit: jump from a kicker onto a rail
+            kicker(z0 + 34, 0, 'GK');
+            srail(z0 + 44, 0, [[16, 0]], { h: 0.8, label: 'GAP TO RAIL' });
+            deckRail(z0 + 30, -11, 1.0, 4.8, 1.6, [[4, 'f'], [8, 0.2]], { type: 'box', h: 0.45, ramp: 0, label: 'FLAT-DOWN BOX' });
+            deckRail(z0 + 30, 11, 1.6, 3, 1.6, [[3, 0.03], [10, 0.15]], { label: 'DOWN RAIL' });
+          } else if (sec === 1) {
+            deckRail(z0 + 36, -11, 1.3, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            srail(z0 + 40, 0, arc(14, 1.1, 7), { type: 'box', h: 0.45, fit: false, label: 'RAINBOW BOX' });
+            deckRail(z0 + 34, 11, 0.9, 4.8, 1.6, [[4, 'f'], [8, 0.25]], { label: 'FLAT-DOWN RAIL' });
+          } else if (sec === 2) {
+            deckRail(z0 + 34, -11, 1.8, 4, 1.6, [[3.5, 0.03], [12.5, 0.15]], { label: 'LONG DOWN RAIL' });
+            srail(z0 + 40, 0, [[2.5, 'u'], [3, 'f'], [4, 0.3]], { type: 'box', h: 0.4, label: 'UP-FLAT-DOWN BOX' });
+            kicker(z0 + 36, 11, 'GK');
+            srail(z0 + 45, 11, [[14, 0]], { type: 'box', h: 0.6, ramp: 1.2, label: 'GAP TO BOX' });
+          } else if (sec === 3) {
+            kicker(z0 + 50, 0, 'J18');
+            kicker(z0 + 58, 14, 'J15');
+          } else if (sec === 4) {
+            kicker(z0 + 50, 0, 'J18');
+            kicker(z0 + 58, -14, 'J15');
+            // the giant nesting doll that stood by the jumps
+            const dz = z0 + 50 + KICK.J18.Lu + KICK.J18.Lt + 6, dx = this.center(dz) + 19;
+            prop({ type: 'doll', x: dx, z: dz, s: 1 });
+            solid(dx, dz, 2.3);
+          } else {
+            kicker(z0 + 50, 0, 'J22');
+            kicker(z0 + 58, -14, 'J19');
+          }
+        } else if (c === 18) {
+          // PyeongChang 2018, Phoenix Park: three rail tiers (with a skate bowl), then skewed, multi-option and wedge jumps
+          if (sec === 0) {
+            srail(z0 + 30, 13, [[5, 0]], { type: 'box', h: 0.22, w: 1.1, ramp: 1.0, style: 'pad', label: 'BUTTER PAD' });
+            deckRail(z0 + 37, 13, 1.4, 2.5, 1.6, [[2.5, 0.03], [6.5, 0.3]], { label: 'DOWN RAIL' }, { Lu: 4.5 });
+            srail(z0 + 40, 0, [[2, 'u'], [3, 'f'], [3.5, 0.4]], { h: 0.55, label: 'TRAPEZOID RAIL' });
+            srail(z0 + 40, -12, [...arc(10, 1.0, 6), [4, 'f'], [5, 0.2]], { h: 0.6, label: 'RAINBOW TO FLAT-DOWN' });
+            prop({ type: 'wallride', off: -20.5, z: z0 + 42, len: 13, h: 3.4 });
+          } else if (sec === 1) {
+            // a high bar with three take-offs at different angles
+            [[-3.2, -0.3], [0, 0], [3.2, 0.3]].forEach(([o, tw]) => kicker(z0 + 38, 13 + o, 'GK', { tw, w: 1.3 }));
+            srail(z0 + 47, 13, [[7, 0]], { h: 1.7, label: 'HIGH BAR', style: 'bar' });
+            deckRail(z0 + 36, 0, 1.8, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            // up box into an uphill closeout, then a flat-down rail
+            srail(z0 + 34, -13, [[3.5, 'u']], { type: 'box', h: 0.4, label: 'UP BOX' });
+            deckRail(z0 + 37.6, -13, 1.2, 4, 1.6, [[2.5, 'f'], [6, 0.3]], { h: 0.6, label: 'FLAT-DOWN RAIL' }, { Lu: 0.8 });
+          } else if (sec === 2) {
+            bowl(z0 + 62, 9, 7.5, 9, 2.3);
+            srail(z0 + 50, 21.5, arc(14, 0.9, 6), { fit: false, label: 'CURVED RAIL' });
+            prop({ type: 'wallride', off: -21.5, z: z0 + 46, len: 14, h: 3.6 });
+            deckRail(z0 + 40, -6, 2.2, 2, 1.5, [[2, 0.03], [6, 0.3]], { h: 0.75, label: 'HIGH DOWN BAR' });
+            deckRail(z0 + 38, -15, 0.9, 5, 1.6, [[4, 'f'], [7, 0.3]], { label: 'FLAT-DOWN RAIL' });
+            // three butter boxes to set up for the jumps
+            for (const o of [-9, 0, 9]) srail(z0 + 140, o, [[6, 0]], { type: 'box', h: 0.22, w: 1.0, ramp: 1.0, style: 'pad', label: 'BUTTER BOX' });
+          } else if (sec === 3) {
+            // skewed jumps: the middle one sits forward, the bigger skewed ones further back on each side
+            kicker(z0 + 40, 0, 'L');
+            kicker(z0 + 52, -14, 'J18', { tw: -0.26 });
+            kicker(z0 + 52, 14, 'J18', { tw: 0.26 });
+          } else if (sec === 4) {
+            kicker(z0 + 50, 0, 'J21', { w: 4 });
+            kicker(z0 + 56, -12, 'L', { w: 3 });
+            kicker(z0 + 56, 12, 'L', { w: 3 });
+            kicker(z0 + 62, -21.5, 'Q', { w: 2.4, ew: 1.5 });
+            kicker(z0 + 62, 21.5, 'Q', { w: 2.4, ew: 1.5 });
+          } else {
+            // the cheese-wedge booter: wide, and built a little higher on one side
+            kicker(z0 + 50, 0, 'J22', { w: 9, tw: 0.12 });
+          }
+        } else if (c === 22) {
+          // Beijing 2022, Genting Snow Park: rails stepped down from left to right behind a Great Wall, then the
+          // twisted sisters, the matrix and a 5 m straight kicker over a 21 m table
+          if (sec === 0) {
+            // a replica of the Great Wall runs down the left of the three rail sections (it kept the wind off the riders)
+            const zEnd = this.zones.filter((q) => q.type === 'oly' && q.opt.s === 2).map((q) => q.z1)[0] || z0 + 570;
+            for (let z = z0 - 20; z < zEnd; z += 50) prop({ type: 'gwall', z0: z, z1: Math.min(z + 50, zEnd), off: -(HALF + 5), tower: ((z - z0) / 50 | 0) % 3 === 1 });
+            deckRail(z0 + 32, 19, 0.8, 2.5, 1.5, [...arc(8, 0.9, 4, 0, 0.5), [7, 0.35]], { label: 'RAINBOW TO DOWN' });
+            deckRail(z0 + 30, 9.5, 1.3, 9, 2.0, [[14, 0]], { h: 0.6, label: 'TANK' });
+            deckRail(z0 + 34, 0, 0.9, 8, 1.8, [[8, 'f']], { h: 0.6, label: 'FLAT RAIL' }, { lv: slopeAt(0, z0 + 41, 8) });
+            deckRail(z0 + 32, -9.5, 1.5, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            // transfer mailbox: a box along the top of the highest ledge, a down rail either side of it
+            const d = deck(z0 + 28, -19, 2.3, 10, 3.0);
+            srail(z0 + 28 + d.Lu + 0.4, -19, [[10, 0]], { type: 'box', style: 'mail', w: 0.5, h: 0.45, ramp: 1.6, label: 'TRANSFER MAILBOX' });
+            for (const o of [-2.1, 2.1]) srail(z0 + 28 + d.Lu + 9.2, -19 + o, [[1, 0.1], [8, 0.3]], { h: 0.55, table: 0.8, label: 'TRANSFER DOWN RAIL' });
+          } else if (sec === 1) {
+            // the watch tower, with a curved rail on its roof
+            const d = deck(z0 + 30, 15, 2.6, 8, 3.0, { Lu: 10, Ll: 1.4, ew: 0.6 });
+            srail(z0 + 30 + 10 + 0.8, 15, arc(6.4, 0.55, 5), { h: 0.45, fit: false, label: 'WATCH TOWER RAIL' });
+            prop({ type: 'watch', f: d });
+            deckRail(z0 + 34, 5, 1.9, 2, 1.6, [[1.5, 0.05], [10, 0.25]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN MAILBOX' });
+            deckRail(z0 + 32, -6, 0.9, 4.8, 1.6, [[4, 'f'], [10, 0.25]], { label: 'FLAT-DOWN RAIL' });
+            deckRail(z0 + 30, -17, 1.4, 3, 1.8, [[3.5, 0.04], [4, 'f'], [4, 0.4]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN-FLAT-DOWN MAILBOX' });
+          } else if (sec === 2) {
+            kicker(z0 + 32, 13, 'GK');
+            const sl = slopeAt(13, z0 + 44, 8);
+            deck(z0 + 41, 13, 1.4, 8, 1.8, { Lu: 2.5, lv: sl });
+            srail(z0 + 44.1, 13, [[8, 'f']], { h: 0.6, label: 'GAP TO FLAT RAIL' });
+            kicker(z0 + 40, 0, 'RK');
+            deckRail(z0 + 36, -13, 0.8, 1.2, 1.5, [[3.5, 'u']], { h: 0.5, label: 'CANNON' }, { Lu: 5 });
+          } else if (sec === 3) {
+            // twisted sisters: twin skew jumps
+            kicker(z0 + 50, -8, 'J18', { tw: -0.28, w: 4.2 });
+            kicker(z0 + 50, 8, 'J18', { tw: 0.28, w: 4.2 });
+          } else if (sec === 4) {
+            // the matrix: roller to knuckle in the middle, transfer jumps either side, quarterpipes on the outside
+            kicker(z0 + 50, 0, 'RK2', { w: 3.6, ew: 1.5 });
+            kicker(z0 + 44, -11, 'L', { w: 3, tw: -0.25 });
+            kicker(z0 + 44, 11, 'L', { w: 3, tw: 0.25 });
+            kicker(z0 + 66, -21, 'Q', { w: 2.4, ew: 1.5 });
+            kicker(z0 + 66, 21, 'Q', { w: 2.4, ew: 1.5 });
+          } else {
+            kicker(z0 + 50, 0, 'J21', { w: 6 });
+          }
+        } else {
+          // Milano Cortina 2026, Livigno: big, clean, simple modules and jumps of 25 m and more
+          if (sec === 0) {
+            srail(z0 + 36, -12, [[18, 0]], { type: 'box', w: 0.5, label: 'LONG BOX', style: 'clean' });
+            deckRail(z0 + 32, 0, 1.1, 3, 1.8, [[3.5, 0.06], [4.5, 'f'], [4, 0.45]], { label: 'DOWN-FLAT-DOWN RAIL' });
+            deckRail(z0 + 34, 12, 1.7, 3, 1.6, [[3, 0.03], [9, 0.2]], { label: 'DOWN RAIL' });
+          } else if (sec === 1) {
+            deckRail(z0 + 34, -12, 0.9, 5.3, 1.8, [[4.5, 'f'], [9, 0.2]], { type: 'box', w: 0.5, h: 0.45, ramp: 0, label: 'FLAT-DOWN BOX', style: 'clean' });
+            srail(z0 + 40, 0, arc(16, 1.3, 8), { type: 'box', h: 0.45, w: 0.55, fit: false, label: 'RAINBOW BOX', style: 'clean' });
+            deckRail(z0 + 32, 12, 0.9, 5.3, 1.6, [[4.5, 'f'], [9, 0.24]], { label: 'FLAT-DOWN RAIL' });
+          } else if (sec === 2) {
+            kicker(z0 + 34, -12, 'GK');
+            srail(z0 + 43, -12, [[14, 0.06]], { h: 0.85, end: 0.45, label: 'GAP TO DOWN RAIL' });
+            srail(z0 + 42, 0, [[2.5, 'u'], [3, 'f'], [4, 0.4]], { h: 0.55, label: 'UP-FLAT-DOWN RAIL' });
+            deckRail(z0 + 32, 12, 1.6, 3, 1.8, [[2.5, 0.05], [14, 0.1]], { type: 'box', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN BOX', style: 'clean' });
+          } else if (sec === 3) {
+            kicker(z0 + 50, 0, 'J22', { w: 4.5 });
+            kicker(z0 + 58, 15, 'J18', { w: 4 });
+          } else if (sec === 4) {
+            kicker(z0 + 50, 0, 'J25', { w: 4.5 });
+            kicker(z0 + 58, -15, 'J21', { w: 4 });
+          } else {
+            kicker(z0 + 50, 0, 'J25', { w: 4.5 });
+            kicker(z0 + 58, 15, 'J22', { w: 4 });
+          }
+        }
+      };
 
       for (const zn of this.zones) {
         const z0 = zn.z0, L = zn.z1 - zn.z0;
@@ -848,6 +1200,9 @@
             kicker(z0 + 150, R(-5, 5), 'XL');
             kicker(z0 + 270, R(-4, 4), 'XL');
             break;
+          case 'oly':
+            oly(zn.opt.c, zn.opt.s, z0);
+            break;
           case 'jib':
             rail(z0 + 30, R(-6, 6), 'box', 14);
             kicker(z0 + 80, R(-6, 6), 'S');
@@ -862,12 +1217,38 @@
         }
       }
 
+      // Olympic dressing: a judges' tower beside the last jump; walls and towers get solid edges
+      if (M.oly) {
+        const last = this.zones.filter((q) => q.type === 'oly').pop();
+        if (last) {
+          const jz = last.z0 + 130, jx = this.center(jz) + HALF + 11;
+          prop({ type: 'judges', x: jx, z: jz });
+          solid(jx, jz, 3);
+        }
+      }
+      for (const pr of this.props) {
+        if (pr.type === 'wallride') {
+          pr.x = this.center(pr.z) + pr.off;
+          pr.ang = Math.atan((this.center(pr.z + pr.len / 2 + 1) - this.center(pr.z + pr.len / 2 - 1)) / 2);
+          for (let t = 0; t <= pr.len; t += 1.4) solid(pr.x + Math.sin(pr.ang) * t, pr.z + Math.cos(pr.ang) * t, 0.35);
+        } else if (pr.type === 'gwall') {
+          for (let z = pr.z0; z < pr.z1; z += 2.5) solid(this.center(z) + pr.off, z, 1.6);
+        }
+      }
+
       // bucket the features every 10 m
       this.fb = [];
       for (const f of this.features) {
         const za = f.kind === 'kicker' ? f.z0 : Math.min(f.z0, f.z1) - 1;
         const zb = f.kind === 'kicker' ? f.z0 + f.len : Math.max(f.az, f.z1) + 1;
         for (let b = ((za - C.Z0) / 10) | 0; b <= ((zb - C.Z0) / 10) | 0; b++) (this.fb[b] = this.fb[b] || []).push(f);
+      }
+      // where the autopilot riders shouldn't go: decks, and rails you have to pop onto
+      this.ab = [];
+      const avoidPt = (x, z, rad) => { const b = ((z - C.Z0) / 10) | 0; (this.ab[b] = this.ab[b] || []).push({ x, z, r: rad, top: 1e4 }); };
+      for (const f of this.features) {
+        if (f.kind === 'kicker' && f.size === 'D') for (let u = 0; u <= f.len; u += 2.5) { const z = f.z0 + u; avoidPt(this.center(z) + f.off, z, f.w + 0.6); }
+        else if (f.kind === 'rail' && f.ramp < 0.1) for (let t = -1.5; t <= f.len; t += 2) avoidPt(f.ax + f.dx * t, f.az + f.dz * t, 0.9);
       }
 
       // forest on both banks (none inside the cave): trees grow in groves, big ones in the middle,
@@ -899,7 +1280,16 @@
         }
       }
       // keep trees and pillars off the kickers and rails
+      const propClear = (t) => {
+        for (const pr of this.props) {
+          if (pr.type === 'gwall') { if (t.z > pr.z0 - 3 && t.z < pr.z1 + 3 && Math.abs(t.x - (this.center(t.z) + pr.off)) < 4.5) return false; }
+          else if (pr.type === 'watch') continue;
+          else if (pr.x !== undefined && Math.hypot(t.x - pr.x, t.z - (pr.z + (pr.len || 0) / 2)) < (pr.type === 'judges' ? 7 : pr.type === 'wallride' ? pr.len / 2 + 2 : 4.5)) return false;
+        }
+        return true;
+      };
       const clear = (t) => {
+        if (this.props.length && !propClear(t)) return false;
         const b = this.fb[((t.z - C.Z0) / 10) | 0];
         if (!b) return true;
         for (const f of b) {
@@ -986,7 +1376,7 @@
       this.nets = [];
       if (M.nets) {
         for (const zn of this.zones) {
-          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant', 'jumpline', 'jumpStation'].includes(zn.type)) continue;
+          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant', 'jumpline', 'jumpStation'].includes(zn.type) && !(zn.type === 'oly' && zn.opt.s >= 3)) continue;
           for (let z = Math.max(zn.z0, 10); z < Math.min(zn.z1, C.LENGTH + 40); z += 6) {
             for (const sd of [-1, 1]) if (r() < 0.92) this.nets.push({ z0: z, z1: z + 6, side: sd });
           }
@@ -1061,6 +1451,7 @@
             add(xl, y, z);
           }
         } else if (f.kind === 'kicker') {
+          if (NOT_JUMP[f.size] || f.size === 'Q') continue;
           const zl = f.z0 + f.Lu;
           const xl = this.center(zl) + f.off;
           const yl = this.Hk(xl, zl);
@@ -1075,7 +1466,7 @@
         } else {
           for (const k of [0.25, 0.5, 0.75]) {
             const x = f.ax + f.dx * f.len * k, z = f.az + f.dz * f.len * k;
-            add(x, lerp(f.g0, f.g1, k) + f.h + 1.0, z);
+            add(x, this.railY(f, f.len * k) + 1.0, z);
           }
         }
       }
@@ -1114,6 +1505,57 @@
     }
 
     // colliders near (x, z): returns the first one the rider overlaps, or null
+    // the nearest rail or box starting just ahead along the rider's line (for aiming an ollie onto it)
+    railAhead(x, z, heading, sh, ch, maxD) {
+      let best = null;
+      for (let b = ((z - C.Z0) / 10) | 0, b1 = ((z + maxD - C.Z0) / 10) | 0; b <= b1; b++) {
+        const list = this.fb[b];
+        if (!list) continue;
+        for (const f of list) {
+          if (f.kind !== 'rail' || f.ramp > 0.1) continue;
+          let da = heading - f.ang;
+          da = Math.atan2(Math.sin(da), Math.cos(da));
+          if (Math.abs(da) > 0.5) continue;
+          const rx = f.ax - x, rz = f.az - z;
+          const d = rx * sh + rz * ch;
+          if (d < 0.2 || d > maxD || Math.abs(rx * ch - rz * sh) > f.w + 0.7) continue;
+          if (!best || d < best.d) best = { f, d, top: this.railY(f, 0.6) };
+        }
+      }
+      return best;
+    }
+
+    // a rail close under a falling rider: coming down within reach of one, you lock onto it
+    railCatch(x, z, y, drop) {
+      const b = this.fb[((z - C.Z0) / 10) | 0];
+      if (!b) return null;
+      for (const f of b) {
+        if (f.kind !== 'rail') continue;
+        const rx = x - f.ax, rz = z - f.az;
+        const t = rx * f.dx + rz * f.dz;
+        if (t < 0.3 || t > f.len - 0.6) continue;
+        const lat = rx * f.dz - rz * f.dx;
+        if (Math.abs(lat) > f.w + 0.5) continue;
+        const top = this.railY(f, t);
+        if (y - top > 0.3 || y - top + drop < -0.35) continue;
+        return { f, x: f.ax + f.dx * t, z: f.az + f.dz * t };
+      }
+      return null;
+    }
+
+    avoidHit(x, z, radius) {
+      const b0 = ((z - C.Z0) / 10) | 0;
+      for (let b = b0 - 1; b <= b0 + 1; b++) {
+        const list = this.ab && this.ab[b];
+        if (!list) continue;
+        for (const c of list) {
+          const dx = x - c.x, dz = z - c.z, rr = c.r + radius;
+          if (dx * dx + dz * dz < rr * rr) return c;
+        }
+      }
+      return null;
+    }
+
     hit(x, y, z, radius) {
       const b0 = ((z - C.Z0) / 10) | 0;
       for (let b = b0 - 1; b <= b0 + 1; b++) {
@@ -1294,6 +1736,7 @@
       for (const sc of this.scaffold || []) add(sc.z, { k: 'scaffold', o: sc });
       if (this.startGate) add(this.startGate.z, { k: 'startGate', o: this.startGate });
       for (const rk of this.rocks || []) add(rk.z, { k: 'rock', o: rk });
+      for (const pr of this.props || []) add(pr.z !== undefined ? pr.z : pr.z0 !== undefined ? pr.z0 : pr.f.z0, { k: 'prop', o: pr });
       if (this.cave) {
         add(this.cave[0], { k: 'mouth', o: { z: this.cave[0], dir: -1 } });
         add(this.cave[1], { k: 'mouth', o: { z: this.cave[1], dir: 1 } });
@@ -1332,6 +1775,7 @@
           case 'scaffold': B.scaffold(o); break;
           case 'startGate': B.startGate(o); break;
           case 'rock': B.rock(o); break;
+          case 'prop': B.prop(o, ch); break;
           case 'finish': B.arch(C.LENGTH, true); B.finishFlags(); break;
           case 'start': B.arch(-3, false); break;
         }
@@ -1886,6 +2330,148 @@
       }
     }
 
+    // ---- Olympic course dressing
+    prop(p, ch) {
+      if (p.type === 'doll') this.doll(p);
+      else if (p.type === 'gwall') { this.gwall(p); ch.maxZ = Math.max(ch.maxZ, p.z1 + 6); }
+      else if (p.type === 'watch') { this.watch(p.f); ch.maxZ = Math.max(ch.maxZ, p.f.z0 + p.f.len + 4); }
+      else if (p.type === 'wallride') { this.wallride(p); ch.maxZ = Math.max(ch.maxZ, p.z + p.len + 2); }
+      else if (p.type === 'judges') this.judges(p);
+    }
+
+    // a flat oval facing up the hill (-z), for painted details
+    fan(cx, cy, cz, rx, ry, col, n, em) {
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * TAU, a1 = ((i + 1) / n) * TAU;
+        this.tri(cx, cy, cz, cx + Math.cos(a0) * rx, cy + Math.sin(a0) * ry, cz, cx + Math.cos(a1) * rx, cy + Math.sin(a1) * ry, cz, col, cx, cy, cz + 1, em);
+      }
+    }
+
+    // the giant painted nesting doll that stood beside the jumps in 2014
+    doll(p) {
+      const s = p.s || 1, x = p.x, z = p.z, gy = this.w.ground(x, z) - 0.3;
+      const RED = [0.86, 0.12, 0.1], GOLD = [1.0, 0.74, 0.16], SKIN = [1.0, 0.83, 0.7], DARK = [0.2, 0.11, 0.08], WHITE = [0.98, 0.96, 0.92], BLUE = [0.15, 0.35, 0.85];
+      const prof = [[0, 1.55], [0.7, 1.95], [1.7, 2.15], [2.8, 2.0], [3.7, 1.6], [4.2, 1.36], [4.45, 1.46], [5.3, 1.5], [6.1, 1.3], [6.75, 0.85], [7.1, 0]];
+      for (let i = 0; i < prof.length - 1; i++) {
+        const [h0, r0] = prof[i], [h1, r1] = prof[i + 1];
+        this.cyl(x, gy + h0 * s, z, r0 * s, r1 * s, (h1 - h0) * s, 20, i === 5 ? GOLD : RED, false);
+      }
+      // apron with a big flower on the belly
+      const bz = z - 2.08 * s;
+      this.fan(x, gy + 1.9 * s, bz, 1.25 * s, 1.45 * s, GOLD, 16);
+      this.fan(x, gy + 1.9 * s, bz - 0.02, 1.0 * s, 1.18 * s, WHITE, 16);
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * TAU;
+        this.fan(x + Math.cos(a) * 0.42 * s, gy + 1.95 * s + Math.sin(a) * 0.42 * s, bz - 0.04, 0.26 * s, 0.26 * s, k % 2 ? RED : BLUE, 8);
+      }
+      this.fan(x, gy + 1.95 * s, bz - 0.06, 0.2 * s, 0.2 * s, GOLD, 8);
+      // face under the headscarf
+      const fz = z - 1.47 * s, fy = gy + 5.35 * s;
+      this.fan(x, fy, fz, 0.92 * s, 0.86 * s, SKIN, 18);
+      this.fan(x, fy + 0.62 * s, fz - 0.02, 0.8 * s, 0.26 * s, DARK, 12);
+      for (const sd of [-1, 1]) {
+        this.fan(x + sd * 0.33 * s, fy + 0.1 * s, fz - 0.04, 0.12 * s, 0.15 * s, BLUE, 8);
+        this.fan(x + sd * 0.33 * s, fy + 0.1 * s, fz - 0.05, 0.06 * s, 0.07 * s, DARK, 6);
+        this.fan(x + sd * 0.52 * s, fy - 0.28 * s, fz - 0.04, 0.18 * s, 0.14 * s, [1.0, 0.45, 0.45], 8);
+      }
+      this.fan(x, fy - 0.42 * s, fz - 0.04, 0.16 * s, 0.07 * s, RED, 8);
+    }
+
+    // a stretch of the Great Wall replica: stone wall with a walkway, battlements and now and then a tower
+    gwall(p) {
+      const w = this.w;
+      const STONE = [0.6, 0.55, 0.47], TOP = [0.5, 0.46, 0.4], sn = w.L.snow;
+      const out = p.off < 0 ? -1 : 1;
+      for (let z = p.z0; z < p.z1; z += 3) {
+        const z1 = Math.min(z + 3, p.z1), zm = (z + z1) / 2;
+        const c = w.center(zm), x = c + p.off;
+        const ang = Math.atan((w.center(zm + 1) - w.center(zm - 1)) / 2);
+        const gc = w.ground(x, zm), gl = Math.min(w.ground(x - 1.4, zm), w.ground(x + 1.4, zm));
+        const top = gc + 3.3, bot = gl - 1.2;
+        const v = 0.93 + 0.12 * hash(Math.round(zm), 3);
+        this.box(x, (top + bot) / 2, zm, 1.3, (top - bot) / 2, (z1 - z) / 2 + 0.03, ang, [STONE[0] * v, STONE[1] * v, STONE[2] * v]);
+        this.box(x, top + 0.04, zm, 1.0, 0.05, (z1 - z) / 2, ang, [sn[0] * 0.95, sn[1] * 0.95, sn[2] * 0.97]);
+        for (let k = -1; k <= 1; k += 2) {
+          const mz = zm + k * 0.75;
+          this.box(x + out * 1.12, top + 0.38, mz, 0.18, 0.38, 0.38, ang, TOP);
+        }
+        this.box(x - out * 1.12, top + 0.2, zm, 0.16, 0.2, (z1 - z) / 2, ang, TOP);
+      }
+      if (p.tower) {
+        const zm = (p.z0 + p.z1) / 2, x = w.center(zm) + p.off, gc = w.ground(x, zm), bot = gc - 1.5, top = gc + 6.4;
+        this.box(x, (top + bot) / 2, zm, 2.8, (top - bot) / 2, 2.8, 0, STONE);
+        this.box(x, top + 0.05, zm, 2.5, 0.06, 2.5, 0, [sn[0] * 0.95, sn[1] * 0.95, sn[2] * 0.97]);
+        for (let i = -2; i <= 2; i++) for (const sd of [-1, 1]) {
+          this.box(x + sd * 2.65, top + 0.4, zm + i * 1.1, 0.15, 0.4, 0.32, 0, TOP);
+          this.box(x + i * 1.1, top + 0.4, zm + sd * 2.65, 0.32, 0.4, 0.15, 0, TOP);
+        }
+        for (const dy of [2.2, 4.4]) this.box(x - out * 2.82, gc + dy, zm, 0.04, 0.45, 0.3, 0, [0.12, 0.1, 0.09]);
+      }
+    }
+
+    // the watch tower feature: stone walls round the deck so the rail runs along its roof
+    watch(f) {
+      const w = this.w;
+      const STONE = [0.62, 0.56, 0.48], TOP = [0.5, 0.46, 0.4];
+      const zt0 = f.z0 + f.Lu - 0.6, zt1 = f.z0 + f.Lu + f.Lt, zf = zt1 + f.Ll;
+      const roof = (z) => w.ground(w.center(z) + f.off, z) + w.kickerH(f, w.center(z) + f.off, z);
+      for (let z = zt0; z < zf; z += 1.5) {
+        const z1 = Math.min(z + 1.5, zf), zm = (z + z1) / 2, c = w.center(zm) + f.off;
+        const top = Math.max(roof(Math.min(zm, zt1)), w.ground(c, zm) + 0.3);
+        for (const sd of [-1, 1]) {
+          const x = c + sd * (f.w + 0.35), bot = w.ground(x, zm) - 0.6;
+          this.box(x, (top + 0.5 + bot) / 2, zm, 0.35, (top + 0.5 - bot) / 2, (z1 - z) / 2 + 0.02, 0, STONE);
+          if (Math.round(zm * 2) % 3 === 0) this.box(x, top + 0.8, zm, 0.3, 0.3, 0.35, 0, TOP);
+        }
+      }
+      // the front face, with a dark arched doorway
+      const c = w.center(zt1) + f.off, top = roof(zt1), bot = w.ground(c, zt1 + 1) - 0.6;
+      this.box(c, (top + bot) / 2, zt1 + 0.7, f.w + 0.7, (top - bot) / 2, 0.7, 0, STONE);
+      this.box(c, top + 0.05, zt1 + 0.7, f.w + 0.6, 0.05, 0.6, 0, w.L.snow);
+      const gy = w.ground(c, zt1 + 1.5);
+      this.box(c, gy + 0.9, zt1 + 1.42, 0.55, 0.9, 0.02, 0, [0.1, 0.08, 0.07]);
+      this.cyl(c, gy + 1.8, zt1 + 1.42, 0.55, 0.0, 0.5, 6, [0.1, 0.08, 0.07]);
+    }
+
+    // a wallride: a tall board wall standing beside the rails
+    wallride(p) {
+      const w = this.w;
+      const FACE = w.map.wallCol || [0.95, 0.96, 0.98], STRIPE = w.map.boxCol || [0.25, 0.55, 1.0], BACK = [0.32, 0.34, 0.4];
+      const fs = p.off < 0 ? 1 : -1;
+      const n = Math.max(2, Math.ceil(p.len / 2));
+      const sx = Math.cos(p.ang) * 0.1, sz = -Math.sin(p.ang) * 0.1;
+      let prev = null;
+      for (let i = 0; i <= n; i++) {
+        const t = (i / n) * p.len, x = p.x + Math.sin(p.ang) * t, z = p.z + Math.cos(p.ang) * t;
+        const g = w.ground(x, z), top = g + p.h * (0.55 + 0.45 * Math.sin((Math.PI * t) / p.len));
+        const cur = { x, z, g: g - 0.3, top };
+        if (prev) {
+          const o = [(x + prev.x) / 2 + sx * 3, (top + prev.g) / 2, (z + prev.z) / 2 + sz * 3];
+          for (const sd of [-1, 1]) {
+            const a = [prev.x + sd * sx, prev.g, prev.z + sd * sz], b = [x + sd * sx, cur.g, z + sd * sz];
+            const c = [x + sd * sx, top, z + sd * sz], d = [prev.x + sd * sx, prev.top, prev.z + sd * sz];
+            this.quad(a, b, c, d, sd === fs ? FACE : BACK, [(x + prev.x) / 2 - sd * sx * 3, o[1], (z + prev.z) / 2 - sd * sz * 3]);
+          }
+          this.beam(prev.x, prev.top + 0.05, prev.z, x, top + 0.05, z, 0.14, 0.06, STRIPE);
+        }
+        if (i % 2 === 0) this.beam(x - fs * sx * 16, g - 0.2, z - fs * sz * 16, x - fs * sx * 1.2, top * 0.6 + g * 0.4, z - fs * sz * 1.2, 0.05, 0.05, [0.25, 0.26, 0.3]);
+        prev = cur;
+      }
+    }
+
+    // the judges' tower beside the last jump
+    judges(p) {
+      const w = this.w, x = p.x, z = p.z, gy = w.ground(x, z);
+      const FRAME = [0.22, 0.24, 0.3], ACC = w.map.boxCol || [0.25, 0.55, 1.0];
+      for (const a of [-1, 1]) for (const b of [-1, 1]) this.box(x + a * 2.2, gy + 2.2, z + b * 2.6, 0.12, 2.6, 0.12, 0, FRAME);
+      this.box(x, gy + 4.7, z, 2.6, 0.12, 3.0, 0, FRAME);
+      this.box(x, gy + 6.0, z, 2.5, 1.2, 2.9, 0, [0.9, 0.91, 0.94]);
+      this.box(x - 2.52, gy + 6.25, z, 0.03, 0.7, 2.6, 0, [0.14, 0.24, 0.38], 0.25);
+      this.box(x, gy + 7.3, z, 2.8, 0.12, 3.2, 0, FRAME);
+      this.box(x - 2.55, gy + 5.05, z, 0.03, 0.22, 2.9, 0, ACC, 0.3);
+      this.beam(x + 2.4, gy + 4.6, z + 2.9, x + 2.4, gy - 0.2, z + 7.5, 0.5, 0.05, FRAME);
+    }
+
     // a lumpy boulder sitting in the snow
     rock(r) {
       const s = r.s, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
@@ -1995,7 +2581,7 @@
 
     kicker(f) {
       const w = this.w;
-      const span = f.w + 2.5;
+      const span = f.w + (f.ew || 2.5);
       const nu = Math.ceil(f.len / 0.7), nv = Math.ceil((span * 2) / 0.55);
       const grid = [];
       const sn = w.L.snow;
@@ -2026,8 +2612,32 @@
           put(a); put(d); put(c);
         }
       }
-      if (f.size === 'P') return;
+      if (f.size === 'P' || f.size === 'RK' || f.size === 'GK') return;
       const blue = w.map.neon ? [1.0, 0.3, 0.85] : w.mapId === 'sunset' ? [1.0, 0.5, 0.2] : w.cave && w.inCave(f.z0) ? [0.6, 0.4, 1.0] : [0.25, 0.55, 1.0];
+      if (f.ring) {
+        // the bowl's coping: a steel edge along the top of the walls
+        const rg = f.ring;
+        let prev = null;
+        for (let i = 0; i <= 72; i++) {
+          const a = (i / 72) * TAU, ex = Math.sin(a), ez = -Math.cos(a);
+          const z = rg.zc + ez * rg.rz, x = w.center(z) + f.off + ex * rg.rx;
+          const h = w.kickerH(f, x, z);
+          const pt = h > 0.25 ? [x, w.ground(x, z) + h + 0.05, z] : null;
+          if (pt && prev) this.beam(prev[0], prev[1], prev[2], pt[0], pt[1], pt[2], 0.07, 0.07, [0.62, 0.66, 0.74]);
+          prev = pt;
+        }
+        return;
+      }
+      if (f.size === 'D') {
+        // decks: a dye line along the drop edge so you can read where the table ends
+        const ei = Math.min(nu, Math.round(((f.Lu + f.Lt) / f.len) * nu));
+        const j0 = Math.round(((span - f.w) / (span * 2)) * nv), j1 = nv - j0;
+        for (let j = j0; j < j1; j++) {
+          const a = grid[ei][j], b = grid[ei][j + 1];
+          this.line(a[0], a[1] + 0.05, a[2], b[0], b[1] + 0.05, b[2], blue);
+        }
+        return;
+      }
       const lipI = Math.round((f.Lu / f.len) * nu);
       const j0 = Math.round(((span - f.w) / (span * 2)) * nv), j1 = nv - j0;
       for (let j = j0; j < j1; j++) {
@@ -2050,29 +2660,42 @@
       const neon = !!w.map.neon;
       const NEON = [[1.0, 0.25, 0.75], [0.2, 0.9, 1.0], [0.65, 0.35, 1.0], [0.35, 1.0, 0.55]];
       const nc = NEON[Math.abs(Math.round(f.az * 0.37)) % NEON.length];
-      // the top line, segment by segment, so long and arched rails follow their shape
-      const N = Math.max(1, Math.ceil(f.len / 2.5));
+      // the top line, segment by segment, so long, arched and kinked rails follow their shape
+      const ts = [];
+      const N0 = Math.max(1, Math.ceil(f.len / 2.5));
+      for (let i = 0; i <= N0; i++) ts.push((f.len * i) / N0);
+      if (f.pts) for (const q of f.pts) ts.push(q[0]);
+      ts.sort((a, b) => a - b);
       const P = [];
-      for (let i = 0; i <= N; i++) {
-        const k = i / N;
-        const x = f.ax + f.dx * f.len * k, z = f.az + f.dz * f.len * k;
-        const gy = w.ground(x, z);
-        const top = Math.max(lerp(f.g0, f.g1, k) + f.h + (f.arch ? f.arch * Math.sin(Math.PI * k) : 0), gy + 0.25);
-        P.push({ x, z, top, gy });
+      for (const t of ts) {
+        if (P.length && t - P[P.length - 1].t < 0.05) continue;
+        const x = f.ax + f.dx * t, z = f.az + f.dz * t;
+        const gy = w.Hk(x, z);
+        const top = Math.max(w.railY(f, t), gy + 0.25);
+        P.push({ x, z, top, gy, t });
       }
+      const N = P.length - 1;
+      const oly = w.map.oly;
       if (isBox) {
-        const hw = 0.3;
+        const hw = f.style === 'pad' ? f.w * 0.95 : f.w > 0.45 ? f.w * 0.82 : 0.3;
         const sx = f.dz * hw, sz = -f.dx * hw;
-        const side = neon ? nc : cave ? [0.4, 0.9, 1.0] : w.mapId === 'sunset' || w.mapId === 'triple' ? [1.0, 0.45, 0.25] : [1.0, 0.72, 0.12];
+        const side = neon ? nc : cave ? [0.4, 0.9, 1.0] : f.style === 'mail' ? [0.16, 0.18, 0.22] : f.style === 'clean' ? [0.9, 0.91, 0.94] : f.style === 'pad' ? [0.95, 0.95, 0.97] : oly ? w.map.boxCol || [1.0, 0.72, 0.12] : w.mapId === 'sunset' || w.mapId === 'triple' ? [1.0, 0.45, 0.25] : [1.0, 0.72, 0.12];
         const em = neon ? 0.75 : cave ? 0.5 : 0;
-        const topCol = neon ? [0.85, 0.85, 0.95] : [0.7, 0.76, 0.86];
+        const topCol = neon ? [0.85, 0.85, 0.95] : f.style === 'mail' ? [0.55, 0.58, 0.64] : f.style === 'pad' ? [0.3, 0.32, 0.38] : [0.7, 0.76, 0.86];
         for (let i = 0; i < N; i++) {
           const a = P[i], b = P[i + 1];
-          const o = [(a.x + b.x) / 2, (a.top + a.gy) / 2 - 0.2, (a.z + b.z) / 2];
+          // tall boxes stand on legs instead of being solid down to the snow
+          const slab = Math.max(a.top - a.gy, b.top - b.gy) > 1.15;
+          const ab = slab ? a.top - 0.42 : a.gy - 0.4, bb = slab ? b.top - 0.42 : b.gy - 0.4;
+          const o = [(a.x + b.x) / 2, (a.top + ab) / 2, (a.z + b.z) / 2];
           const v = [
-            [a.x - sx, a.gy - 0.4, a.z - sz], [a.x + sx, a.gy - 0.4, a.z + sz], [a.x + sx, a.top, a.z + sz], [a.x - sx, a.top, a.z - sz],
-            [b.x - sx, b.gy - 0.4, b.z - sz], [b.x + sx, b.gy - 0.4, b.z + sz], [b.x + sx, b.top, b.z + sz], [b.x - sx, b.top, b.z - sz],
+            [a.x - sx, ab, a.z - sz], [a.x + sx, ab, a.z + sz], [a.x + sx, a.top, a.z + sz], [a.x - sx, a.top, a.z - sz],
+            [b.x - sx, bb, b.z - sz], [b.x + sx, bb, b.z + sz], [b.x + sx, b.top, b.z + sz], [b.x - sx, b.top, b.z - sz],
           ];
+          if (slab) {
+            this.quad(v[0], v[1], v[5], v[4], side, o, em);
+            for (const q of [a, b]) if (q.top - q.gy > 1.15) this.box(q.x, (q.top - 0.42 + q.gy - 0.2) / 2, q.z, 0.07, (q.top - 0.42 - q.gy + 0.2) / 2, 0.07, f.ang, [0.2, 0.22, 0.26]);
+          }
           this.quad(v[3], v[2], v[6], v[7], topCol, o, neon ? 0.3 : 0);
           this.quad(v[4], v[0], v[3], v[7], side, o, em);
           this.quad(v[1], v[5], v[6], v[2], side, o, em);
@@ -2081,20 +2704,27 @@
         }
         const x0 = P[0].x, z0 = P[0].z, t0 = P[0].top, g0 = P[0].gy - 0.4;
         const rx = x0 - f.dx * f.ramp, rz = z0 - f.dz * f.ramp;
-        const gr = w.ground(rx, rz) - 0.05;
+        const gr = w.Hk(rx, rz) - 0.05;
+        if (f.ramp < 0.1) return;
         const r = [[rx - sx, gr, rz - sz], [rx + sx, gr, rz + sz], [x0 + sx, t0, z0 + sz], [x0 - sx, t0, z0 - sz]];
         this.quad(r[0], r[1], r[2], r[3], [0.75, 0.8, 0.9], [(rx + x0) / 2, gr - 1, (rz + z0) / 2]);
         this.tri(r[0][0], r[0][1], r[0][2], r[3][0], r[3][1], r[3][2], x0 - sx, g0, z0 - sz, side, undefined, undefined, undefined, em);
         this.tri(r[1][0], r[1][1], r[1][2], r[2][0], r[2][1], r[2][2], x0 + sx, g0, z0 + sz, side, undefined, undefined, undefined, em);
       } else {
-        const railCol = neon ? nc : [0.78, 0.83, 0.92];
+        const railCol = neon ? nc : oly ? w.map.railCol || [0.78, 0.83, 0.92] : [0.78, 0.83, 0.92];
+        const rr = f.pts ? 0.075 : 0.06;
         for (let i = 0; i < N; i++) {
           const a = P[i], b = P[i + 1];
-          this.beam(a.x, a.top, a.z, b.x, b.top, b.z, 0.06, 0.06, railCol, neon ? 0.9 : 0);
+          this.beam(a.x, a.top, a.z, b.x, b.top, b.z, rr, rr, railCol, neon ? 0.9 : 0);
         }
+        // posts at the ends, at every kink and every few metres
+        const at = new Set([0, N]);
         const posts = Math.max(2, Math.round(f.len / 4.5));
-        for (let i = 0; i <= posts; i++) {
-          const p = P[Math.round((i / posts) * N)];
+        for (let i = 0; i <= posts; i++) at.add(Math.round((i / posts) * N));
+        if (f.pts) for (const q of f.pts) at.add(P.findIndex((p) => Math.abs(p.t - q[0]) < 0.06));
+        for (const i of at) {
+          const p = P[i];
+          if (!p) continue;
           this.box(p.x, (p.top + p.gy - 0.2) / 2, p.z, 0.05, (p.top - p.gy + 0.2) / 2, 0.05, f.ang, [0.2, 0.22, 0.26]);
         }
         this.box(P[0].x, (P[0].gy + P[0].top) / 2 - 0.1, P[0].z, 0.18, (P[0].top - P[0].gy) / 2 + 0.1, 0.06, f.ang, neon ? nc : cave ? [0.5, 0.4, 1.0] : [0.9, 0.2, 0.15], neon || cave ? 0.6 : 0);
@@ -2145,7 +2775,7 @@
     // tall race banners for the sunny map
     banner(b) {
       const gy = this.w.ground(b.x, b.z);
-      const cols = [[1, 0.25, 0.3], [1, 0.75, 0.1], [0.15, 0.55, 1], [0.15, 0.8, 0.45], [0.7, 0.35, 1]];
+      const cols = this.w.map.bannerCols || [[1, 0.25, 0.3], [1, 0.75, 0.1], [0.15, 0.55, 1], [0.15, 0.8, 0.45], [0.7, 0.35, 1]];
       const col = cols[b.i % cols.length];
       this.box(b.x, gy + 2.2, b.z, 0.04, 2.3, 0.04, 0, [0.85, 0.85, 0.9]);
       // teardrop-ish flag made of stacked panels

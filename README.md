@@ -1,8 +1,8 @@
 # Shred Slope 🏂
 
-A 3D snowboarding game that runs in the browser. Pick one of sixteen mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row or Olympic-style slopestyle, big air, halfpipe and snowboard cross courses, hit kickers and rails, land spins and flips, and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Pick one of twenty mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, or the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
-- **Sixteen mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
+- **Twenty mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
 - **Star challenges:** 3 stars to earn on every mountain (48 in total), saved in the browser together with your best score per mountain.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
@@ -31,6 +31,12 @@ A 3D snowboarding game that runs in the browser. Pick one of sixteen mountains, 
 | **Superpipe Final** | Night | A floodlit competition halfpipe. Ride wall to wall and fly out of the coping; steer toward the wall you're heading for to pump higher. |
 | **Snowboard Cross** | Sunny day | Race three rivals (NOVA, KAI and JUNO) through banked turns, rollers, step-ups and a final jump. First to the line wins. |
 | **Slopestyle Qualifier** | Golden hour | The second competition course: kinked rail, long box, down-rail, then three jump lines. |
+| **Sochi 2014 Slopestyle** | Sunny day | The first Olympic slopestyle: it opens with a jump onto a rail, three jib sections, then jumps of 18, 18 and 22 m, each with a smaller jump beside it, and the giant nesting doll by jump 2. |
+| **PyeongChang 2018 Slopestyle** | Cold and windy | Butter pad to down rail, trapezoid rail, rainbow to flat-down with a wallride; a high bar with three take-offs; a skate bowl with a curved rail; three butter boxes; skewed jumps; a jump with quarterpipe side hits; the cheese-wedge kicker. |
+| **Beijing 2022 Slopestyle** | Cold and clear | Rails stepped down from left to right behind a Great Wall replica: rainbow to down, tank, flat rail, down-flat-down, transfer mailbox; a watch tower with a rail on its roof; gap to flat rail, roller, cannon; the twisted sisters skew jumps, the matrix (roller to knuckle, transfer jumps, quarterpipes) and a 5 m kicker over a 21 m table. |
+| **Livigno 2026 Slopestyle** | Snowy day | Big, clean, simple modules: long box, down and kinked rails, rainbow box, gap to down rail, then jumps of 22 to 25 m with a side option each. The exact 2026 rail layout wasn't published in detail, so the rails follow the "clean features" brief. |
+
+Courses built like the ones at the Games carry an **OLYMPIC STYLE** badge in the mountain picker and on the title card. On the Olympic courses rails come in real shapes (down, flat-down, down-flat-down, rainbow, cannon, mailbox, butter pad, high bar), many start on snow decks, and an ollie with a rail just ahead is sized to land you on it.
 
 Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing*, *Grind for 12 seconds* or *Land all three giants*. The mountain picker shows five mountains per page; switch pages with the arrows next to BACK (or `←` `→`).
 
@@ -112,7 +118,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
-- The mountain changes every round and goes through all sixteen, then around again. The three servers start on different mountains, and the server list shows which one is up.
+- The mountain changes every round and goes through all twenty, then around again. The three servers start on different mountains, and the server list shows which one is up.
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
 
@@ -125,7 +131,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
-| `public/js/world.js` | The sixteen mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
+| `public/js/world.js` | The twenty mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
 | `public/js/rider.js` | The 3D snowboarder and its poses |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |

@@ -505,6 +505,14 @@
   const POP = 0.8;
   const AIR_PUSH = 7; // m/s² sideways push while you steer in the air
   const AIR_DRIFT = 3.5; // m/s: the most sideways speed you can add in one air // how hard a jump pops
+  // ollie onto a rail: with one just ahead, the pop is sized to put you on its start instead of sailing over it
+  function railPop(base, vy) {
+    const sh = Math.sin(P.heading), ch = Math.cos(P.heading), sp = Math.max(4, P.speed);
+    const r = world.railAhead(P.x, P.z, P.heading, sh, ch, 1.2 + sp * 0.75);
+    if (!r) return vy;
+    const t = Math.max(0.12, r.d / sp);
+    return clamp((r.top + 0.3 - P.y + 0.5 * G * t * t) / t, Math.max(1.2, base + 1.0), vy + 1.2);
+  }
   function pop() {
     const c = POP + (P.crouchT > 0.12 ? 0.4 : 0);
     P.crouchT = 0;
@@ -513,9 +521,9 @@
       const vx = sh * P.speed + ch * P.slip, vz = ch * P.speed - sh * P.slip;
       takeoff(vx, vz);
       P.coyote = 0;
-      P.vy += 3.2 + 3.9 * c;
+      P.vy = railPop(P.vy, P.vy + 3.2 + 3.9 * c);
     } else {
-      P.vy += 2.6 + 3.0 * c; // late pop off a lip
+      P.vy = railPop(P.vy, P.vy + 2.6 + 3.0 * c); // late pop off a lip
       P.coyote = 0;
     }
     P.compV -= 2.5;
@@ -558,7 +566,7 @@
   function endGrind() {
     const f = P.grindRef;
     if (f && P.grind > 0.25) {
-      let name = f.type === 'box' ? 'BOX 50-50' : 'RAIL 50-50';
+      let name = f.label ? f.label + ' 50-50' : f.type === 'box' ? 'BOX 50-50' : 'RAIL 50-50';
       let pts = 150 + P.grind * 450;
       const perfect = P.grind > 0.45 && P.balErr / P.grind < 0.22;
       if (perfect) pts *= 1.3;
@@ -632,7 +640,7 @@
     if (grinding) {
       // straight rails slope with the snow; arched ones go up, then down
       const f = P.grindRef, tA = (P.x - f.ax) * f.dx + (P.z - f.az) * f.dz;
-      along = -((f.g1 - f.g0) / f.len + (f.arch ? ((f.arch * Math.PI) / f.len) * Math.cos((Math.PI * clamp(tA, 0, f.len)) / f.len) : 0));
+      along = -w.railDY(f, clamp(tA, 0, f.len));
     }
     const sinA = along / Math.sqrt(1 + along * along);
     const skid = Math.abs(s) * clamp((P.speed - 12) / 22, 0, 1);
@@ -694,7 +702,9 @@
       return;
     }
     const yb = P.y + P.vy * dt - 0.5 * G * dt * dt;
-    if (nh < yb - 0.04 && P.speed > 4) {
+    // locked into a grind, you follow the rail over its kinks instead of flying off them
+    const stuck = grinding && nSurf === 2 && nRef === P.grindRef;
+    if (nh < yb - 0.04 && P.speed > 4 && !stuck) {
       takeoff(vx, vz);
       P.x = nx; P.z = nz; P.y = yb;
       P.vy -= (P.giant ? GIANT_G : G) * dt;
@@ -978,6 +988,10 @@
     P.yawOff = lerp(P.yawOff, 0, Math.min(1, dt * 3));
     P.crouch = lerp(P.crouch, grabbing() ? 0.55 : 0.28, Math.min(1, dt * 8));
 
+    if (P.vy < 0 && !P.pipeAir) {
+      const rc = world.railCatch(P.x, P.z, P.y, -P.vy * dt);
+      if (rc) { P.x = rc.x; P.z = rc.z; land(world.H(P.x, P.z)); return; }
+    }
     const h = world.H(P.x, P.z);
     if (P.y <= h) land(h);
   }
@@ -1357,27 +1371,29 @@
       const z0 = f.kind === 'kicker' ? f.z0 : f.az - f.ramp;
       if (z0 < P.z - 2) continue;
       if (z0 > P.z + 70) break;
-      if (f.kind === 'rail' && f.type === 'rail') continue;
+      if (f.kind === 'rail' && (f.type === 'rail' || f.ramp < 0.1)) continue;
+      if (f.aiSkip || f.size === 'D') continue;
       feat = f;
       break;
     }
     if (feat) target = feat.kind === 'kicker' ? world.center(feat.z0) + feat.off : feat.ax;
     for (let dz = 3; dz < 26; dz += 1.5) {
-      const h = world.hit(P.x + Math.sin(P.heading) * dz, P.y, P.z + dz, 1.4);
-      if (h) { target = h.x + (P.x > h.x ? 3.5 : -3.5); break; }
+      const hx = P.x + Math.sin(P.heading) * dz;
+      const h = world.hit(hx, P.y, P.z + dz, 1.4) || world.avoidHit(hx, P.z + dz, 1.0);
+      if (h) { target = h.x + (P.x > h.x ? 1 : -1) * (h.r + 2.6); break; }
     }
     const want = Math.atan2(target - P.x, 22);
     ai.steer = clamp((want - P.heading) * 4, -1, 1);
     ai.tuck = !feat && P.speed < 30;
     ai.boost = !feat && run.boost > 0.6 && P.speed < 42;
-    if (P.surf === 1 && world.surfRef && world.surfRef.kind === 'kicker') {
+    if (P.surf === 1 && world.surfRef && world.surfRef.kind === 'kicker' && !world.surfRef.aiSkip) {
       const f = world.surfRef, u = P.z - f.z0;
       if (!ai.popped && u > f.Lu - 1.4) {
         ai.popped = true;
         const r = Math.random();
         const dir = Math.random() < 0.5 ? -1 : 1;
         if (f.size === 'G') ai.plan = r < 0.4 ? { spin: 9 * Math.PI, dir, grab: true } : r < 0.7 ? { flip: true, spin: 5 * Math.PI, dir } : { spin: 7 * Math.PI, dir, grab: true };
-        else if (f.size === 'S') ai.plan = { grab: true };
+        else if (f.size === 'S' || f.size === 'D' || f.size === 'GK' || f.size === 'RK') ai.plan = { grab: true };
         else if (f.size === 'M') ai.plan = r < 0.6 ? { spin: TAU, dir, grab: r < 0.3 } : { grab: true, spin: Math.PI, dir };
         else ai.plan = r < 0.5 ? { flip: true } : { spin: 3 * Math.PI, dir, grab: true };
         ai.steer = ai.plan.spin ? ai.plan.dir : 0;
@@ -1410,7 +1426,9 @@
   const cam = { x: 0, y: 30, z: -40, tx: 0, ty: 0, tz: 0, head: 0, fov: 1.1, roll: 0, bump: 0, bumpV: 0, snap: true };
   const eyeV = [0, 0, 0], tgtV = [0, 0, 0];
 
+  let camLock = null; // debug: hold the camera still for screenshots
   function follow(dt, t, opts) {
+    if (camLock) { Object.assign(cam, camLock); return; }
     opts = opts || {};
     const pipeCam = t === P && (P.pipeMode || P.pipeAir) ? 1 : 0;
     cam.pipe = lerp(cam.pipe || 0, pipeCam, Math.min(1, dt * 2));
@@ -2029,6 +2047,48 @@
         ${[70, 150, 230].map((x) => `<path d="M${x - 26} 132 L${x} 114 L${x + 14} 114 L${x + 36} 132Z" fill="#fff4ec"/><path d="M${x} 114 L${x + 14} 114" stroke="#ffd23f" stroke-width="3"/>`).join('')}
         <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${4 + (i % 20) * 4}" y="${136 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ff4060', '#2f7dff', '#ffc21a', '#2fbf71', '#fff'][i % 5]}"/>`).join('')}</g>
         <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${216 + (i % 20) * 4}" y="${136 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ffc21a', '#fff', '#ff4060', '#2f7dff', '#2fbf71'][i % 5]}"/>`).join('')}</g>`;
+    } else if (m.id === 'oly14') {
+      // sunny Caucasus course: patchwork banners, rails up top, three kickers and the nesting doll
+      const quilt = ['#ff2d87', '#2f7dff', '#ffc21a', '#2fbf71', '#9b4dff', '#ff7a1a'];
+      body = `<defs>${grad(gid, [[0, '#1b5fd0'], [0.55, '#78b6f2'], [1, '#eef6ff']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <g fill="#fff" opacity="0.9"><ellipse cx="236" cy="26" rx="30" ry="8"/><ellipse cx="60" cy="40" rx="22" ry="6"/></g>
+        ${peaks('#6d86b8', '#ffffff', 80, 151, 7)}
+        <path d="M0 ${H} L0 86 L300 96 L300 ${H}Z" fill="#ffffff"/>
+        <g>${Array.from({ length: 30 }, (_, i) => `<rect x="${i * 10}" y="${88 + i * 0.33}" width="10" height="4" fill="${quilt[i % 6]}"/>`).join('')}</g>
+        <path d="M40 104 L76 112 M48 104 L48 113 M70 108 L70 115" stroke="#5f6b80" stroke-width="2.5"/>
+        ${[[120, 1], [190, 1.15], [254, 1.3]].map(([x, k]) => `<path d="M${x - 24 * k} ${134} L${x} ${116 - 6 * k} L${x + 14 * k} ${116 - 6 * k} L${x + 34 * k} 134Z" fill="#e6eefb"/><path d="M${x} ${116 - 6 * k} L${x + 14 * k} ${116 - 6 * k}" stroke="#ff2d87" stroke-width="3"/>`).join('')}
+        <g transform="translate(160 108)"><ellipse cx="0" cy="0" rx="13" ry="17" fill="#d81e18"/><circle cx="0" cy="-20" r="10" fill="#d81e18"/><ellipse cx="0" cy="-19" rx="6.5" ry="6" fill="#ffd8bd"/><path d="M-7 -24 Q0 -30 7 -24" stroke="#3a1a10" stroke-width="3" fill="none"/><ellipse cx="0" cy="3" rx="8" ry="10" fill="#ffc21a"/><circle cx="0" cy="3" r="4" fill="#2f7dff"/></g>`;
+    } else if (m.id === 'oly18') {
+      // cold blue day: a skate bowl, a wallride and skewed kickers between forested hills
+      body = `<defs>${grad(gid, [[0, '#0b3fae'], [0.55, '#5c9cf0'], [1, '#eef5ff']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <path d="M0 78 Q40 58 90 70 Q140 50 190 66 Q240 52 300 70 L300 96 L0 96Z" fill="#3d4f62"/><path d="M0 78 Q40 58 90 70 Q140 50 190 66 Q240 52 300 70" stroke="#dfe8f5" stroke-width="3" fill="none"/>
+        <path d="M0 ${H} L0 92 L300 100 L300 ${H}Z" fill="#ffffff"/>
+        <ellipse cx="90" cy="118" rx="44" ry="13" fill="#c9d8f2"/><ellipse cx="90" cy="121" rx="34" ry="8" fill="#eef3fc"/><path d="M46 118 A44 13 0 0 1 134 118" stroke="#8a93a6" stroke-width="2.5" fill="none"/>
+        <path d="M168 96 L168 120 L216 116 L216 92Z" fill="#f4f7fd" stroke="#10204a" stroke-width="1.5"/><path d="M168 96 L216 92" stroke="#2f7dff" stroke-width="3"/>
+        ${[[244, -10], [274, 10]].map(([x, sk]) => `<path d="M${x - 22} 140 L${x - 2} ${120 + sk * 0.3} L${x + 10} ${118 - sk * 0.3} L${x + 26} 140Z" fill="#e6eefb"/><path d="M${x - 2} ${120 + sk * 0.3} L${x + 10} ${118 - sk * 0.3}" stroke="#2f7dff" stroke-width="3"/>`).join('')}
+        ${pine(18, 100, 0.8, '#244a3a', '#fff')}${pine(150, 100, 0.7, '#244a3a', '#fff')}`;
+    } else if (m.id === 'oly22') {
+      // dry brown hills under a deep blue sky, the Great Wall and its watch tower beside the course
+      let wall = '';
+      for (let i = 0; i < 24; i++) wall += `<rect x="${12 + i * 7}" y="${70 + i * 1.5}" width="4" height="4" fill="#8f7f6c"/>`;
+      body = `<defs>${grad(gid, [[0, '#0a2f9e'], [0.55, '#4f8de8'], [1, '#dfeafa']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <path d="M0 74 Q50 48 110 64 Q170 44 230 60 Q270 52 300 62 L300 100 L0 100Z" fill="#8a7462"/><path d="M60 56 L74 52 L84 58 M170 46 L184 44 L196 50" stroke="#eee" stroke-width="3" fill="none"/>
+        <path d="M0 ${H} L0 86 L300 98 L300 ${H}Z" fill="#f7f9fd"/>
+        <path d="M10 84 L180 112 L180 118 L10 90Z" fill="#a39079"/>${wall}
+        <rect x="150" y="90" width="22" height="26" fill="#a39079"/><g fill="#8f7f6c">${[0, 1, 2, 3].map((k) => `<rect x="${150 + k * 6}" y="86" width="4" height="4"/>`).join('')}</g><path d="M157 116 L157 106 Q161 100 165 106 L165 116Z" fill="#3a2a22"/>
+        <path d="M150 89 Q161 82 172 89" stroke="#c9ced8" stroke-width="2.5" fill="none"/>
+        ${[[216, 1], [262, 1.2]].map(([x, k]) => `<path d="M${x - 22 * k} 140 L${x} ${120 - 5 * k} L${x + 14 * k} ${120 - 5 * k} L${x + 32 * k} 140Z" fill="#e6eefb"/><path d="M${x} ${120 - 5 * k} L${x + 14 * k} ${120 - 5 * k}" stroke="#6b5cff" stroke-width="3"/>`).join('')}`;
+    } else if (m.id === 'oly26') {
+      // snowy Alps, clean white modules and big kickers in falling snow
+      let snow = '';
+      for (let i = 0; i < 50; i++) snow += `<circle cx="${(r() * W).toFixed(0)}" cy="${(r() * H).toFixed(0)}" r="${(0.6 + r() * 0.9).toFixed(1)}" fill="#fff" opacity="0.85"/>`;
+      body = `<defs>${grad(gid, [[0, '#6f7b8f'], [0.55, '#a9b6c8'], [1, '#f2f5f9'] ])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        ${peaks('#8a96aa', '#f4f6fa', 84, 171, 6)}
+        <path d="M0 ${H} L0 92 L300 100 L300 ${H}Z" fill="#ffffff"/>
+        <path d="M30 108 L110 102 L110 108 L30 114Z" fill="#e9edf3" stroke="#15c2b0" stroke-width="1.5"/>
+        <path d="M128 100 L150 106 L170 106 L192 114" stroke="#5f6b80" stroke-width="3" fill="none"/>
+        ${[[86, 1], [180, 1.25], [262, 1.3]].map(([x, k]) => `<path d="M${x - 26 * k} 144 L${x} ${124 - 4 * k} L${x + 16 * k} ${124 - 4 * k} L${x + 36 * k} 144Z" fill="#eef2f8"/><path d="M${x} ${124 - 4 * k} L${x + 16 * k} ${124 - 4 * k}" stroke="#15c2b0" stroke-width="3"/>`).join('')}
+        ${pine(14, 104, 0.9, '#3b5446', '#fff')}${pine(290, 108, 0.85, '#3b5446', '#fff')}${snow}`;
     } else if (m.id === 'bigair') {
       // a giant kicker with a rider spinning high above the landing hill
       let arc = '';
@@ -2086,7 +2146,7 @@
       b.className = 'mapCard';
       b.dataset.id = id;
       b.style.setProperty('--acc', m.accent);
-      b.innerHTML = `<div class="art">${mapArt(m)}<span class="play">RIDE &#9654;</span></div>
+      b.innerHTML = `<div class="art">${mapArt(m)}${m.oly ? '<span class="olyTag">OLYMPIC STYLE</span>' : ''}<span class="play">RIDE &#9654;</span></div>
         <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}<span>${esc(m.name)}</span></div>
         <div class="mc-tags">${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}</div>
         <div class="mc-sub">${esc(m.sub)}</div>
@@ -2128,7 +2188,7 @@
   function showIntro(dur) {
     const m = world.map;
     ui.mapIntro.style.setProperty('--acc', m.accent);
-    ui.miTime.innerHTML = `<span class="on-dark">${pisteSign(m.diff)}</span>${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}`;
+    ui.miTime.innerHTML = `<span class="on-dark">${pisteSign(m.diff)}</span>${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}${m.oly ? '<span class="olyTag">OLYMPIC STYLE</span>' : ''}`;
     ui.miName.textContent = m.name.toUpperCase();
     ui.miGoals.innerHTML = mode === 'sp' ? m.goals.map((g) => `<span>${esc(g.t)}</span>`).join('') : '<span>' + esc(m.sub) + '</span>';
     ui.mapIntro.classList.remove('out');
@@ -2945,6 +3005,7 @@
   // test hook: open the game with ?debug to drive it from the browser console
   if (/[?&]debug\b/.test(location.search)) {
     window.ShredSlopeDebug = {
+      lockCam(o) { camLock = o; },
       keys, P, run, cam, ai, engine,
       crash(reason) { bail(reason); },
       get world() { return world; },
