@@ -43,7 +43,7 @@
     // knit beanie in the jacket's accent colour
     p.beanieCol = shade(p.trim[0] + p.trim[1] + p.trim[2] > 1.5 ? p.trim : p.jacket, 0.95);
     p.yoke = [p.jacket[0] * 0.68 + p.trim[0] * 0.32, p.jacket[1] * 0.68 + p.trim[1] * 0.32, p.jacket[2] * 0.68 + p.trim[2] * 0.32];
-    p.lips = [p.skin[0] * 0.78, p.skin[1] * 0.5, p.skin[2] * 0.48];
+    p.lips = [p.skin[0] * 0.84, p.skin[1] * 0.64, p.skin[2] * 0.62];
     p.pantsPatch = shade(p.pants, p.pants[0] > 0.6 ? 0.82 : 1.45);
     p.helmetDark = shade(p.helmet, p.helmet[0] > 0.6 ? 0.7 : 1.6);
     p.glove = p.trim[0] + p.trim[1] + p.trim[2] > 1.2 ? [0.16, 0.17, 0.2] : shade(p.trim, 1.25);
@@ -680,6 +680,7 @@
     M4.translate(L, head[0], head[1], head[2]);
     M4.rotY(L, twist + spinV * 0.55);
     M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
+    M4.scale(L, 0.93, 0.93, 0.93); // a touch smaller: closer to real proportions
     M4.mul(HF, M, L);
     engine.drawLit(meshes.face, HF, pal.skin, 0, null, 2);
     engine.drawLit(meshes.gaiter, HF, pal.trim, 0, SH_PANTS);

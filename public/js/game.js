@@ -338,6 +338,11 @@
     world = new SS.World(seed, mapId);
     engine.setSky(world.map.sky);
     setGrade(world.map);
+    const cv = world.map.curve;
+    engine.course = world.pipeArr || world.towerArr ? null : {
+      a1: cv[0], p1: cv[1], a2: cv[2], p2: cv[3], ph1: world.p1, ph2: world.p2,
+      c0: cv[0] * Math.sin(world.p1) + cv[2] * Math.sin(world.p2), half: C.HALF,
+    };
     document.body.classList.toggle('day', world.map.sky.stars < 0.5);
     ui.hud.style.setProperty('--acc', world.map.accent);
     world.featSorted = world.features.slice().sort((a, b) => (a.kind === 'kicker' ? a.z0 : a.az) - (b.kind === 'kicker' ? b.z0 : b.az));
@@ -390,7 +395,8 @@
     for (let i = 0; i < n; i++) {
       const a = Math.random() * TAU;
       emit(x, y + 0.1, z, vx * 0.5 + Math.cos(a) * power * rand(0.3, 1), rand(1, 3) * power * 0.5, vz * 0.5 + Math.sin(a) * power * rand(0.3, 1),
-        rand(0.6, 1.3), rand(0.16, 0.4), 0.92, 0.95, 1.0, 0.8, false);
+        rand(0.6, 1.3), rand(0.05, 0.16), 0.92, 0.95, 1.0, 0.8, false);
+      if (i % 4 === 0) emit(x, y + 0.2, z, vx * 0.3 + Math.cos(a) * power * 0.3, rand(0.4, 1.2), vz * 0.3 + Math.sin(a) * power * 0.3, rand(1.2, 2), rand(0.5, 1.0), 0.9, 0.93, 0.98, 0.12, false);
     }
   }
   function sparkle(x, y, z, n, r, g, b, power) {
@@ -1274,7 +1280,7 @@
     const steer = P.steerS;
     const carve = Math.abs(steer);
     const grinding = P.surf === 2;
-    const n = Math.round(((P.speed * 0.5 + carve * 7) * 0.35 + P.slide * 9) * dt * 60 * q.particles + Math.random());
+    const n = Math.round(((P.speed * 0.5 + carve * 7) * 0.75 + P.slide * 16) * dt * 60 * q.particles + Math.random());
     const sh = Math.sin(P.heading), ch = Math.cos(P.heading);
     for (let i = 0; i < n; i++) {
       if (grinding && P.grindRef && P.grindRef.type === 'rail') {
@@ -1285,14 +1291,16 @@
         // powerslide: a wall of snow thrown forward and out
         emit(P.x + sh * 0.4, P.y + 0.1, P.z + ch * 0.4,
           sh * P.speed * 0.9 - ch * rand(1, 4), rand(1.5, 4.5), ch * P.speed * 0.9 + sh * rand(1, 4),
-          rand(0.5, 1.1), rand(0.2, 0.45), 0.93, 0.96, 1.0, 0.8, false);
+          rand(0.5, 1.1), rand(0.06, 0.2), 0.93, 0.96, 1.0, 0.7, false);
         continue;
       }
       const side = steer ? -Math.sign(steer) : (Math.random() < 0.5 ? -1 : 1);
       const back = rand(0.2, 0.8);
       emit(P.x - sh * back + ch * side * 0.25, P.y + 0.06, P.z - ch * back - sh * side * 0.25,
         sh * P.speed * 0.55 + ch * side * rand(1, 2 + carve * 4), rand(0.6, 1.6 + carve * 2.2), ch * P.speed * 0.55 - sh * side * rand(1, 2 + carve * 4),
-        rand(0.35, 0.8), rand(0.14, 0.3), 0.9, 0.94, 1.0, 0.75, false);
+        rand(0.35, 0.8), rand(0.04, 0.13), 0.9, 0.94, 1.0, 0.7, false);
+      // fine powder hanging in the air behind the spray
+      if (Math.random() < 0.12 + carve * 0.15) emit(P.x - sh * back * 1.5, P.y + 0.2, P.z - ch * back * 1.5, sh * P.speed * 0.3 + rand(-0.6, 0.6), rand(0.3, 1.0), ch * P.speed * 0.3 + rand(-0.6, 0.6), rand(0.8, 1.4), rand(0.35, 0.7), 0.9, 0.93, 0.98, 0.1, false);
     }
     // boost flames off the tail of the board
     if (P.boosting) {
@@ -2731,6 +2739,7 @@
       engine.cold = [0.9, 0.9, 1.06];
       engine.haze = [col[0] * 0.42, col[1] * 0.3, col[2] * 0.2];
       engine.mist = [30, 150, 0.65];
+      engine.glare = [m.light.sun[0] * 0.55, m.light.sun[1] * 0.45, m.light.sun[2] * 0.35];
     } else if (day) {
       Object.assign(G, { bloom: 0.26, thr: 0.86, sat: 1.12, con: 1.06, lift: [0.0, 0.008, 0.03], gain: [1.03, 1.0, 0.97], vig: 0.28 });
       G.shafts = [col[0] * 0.55, col[1] * 0.55, col[2] * 0.5];
@@ -2738,6 +2747,7 @@
       engine.cold = [0.88, 0.94, 1.07];
       engine.haze = [col[0] * 0.22, col[1] * 0.2, col[2] * 0.16];
       engine.mist = [40, 170, 0.55];
+      engine.glare = [m.light.sun[0] * 0.4, m.light.sun[1] * 0.4, m.light.sun[2] * 0.38];
     } else {
       // night: lights bloom, moonlight shadows are soft and blue
       Object.assign(G, { bloom: 0.6, thr: 0.78, sat: 1.06, con: 1.08, lift: [0.0, 0.012, 0.04], gain: [0.98, 1.0, 1.05], vig: 0.42 });
@@ -2746,6 +2756,7 @@
       engine.cold = [0.92, 0.96, 1.05];
       engine.haze = [col[0] * 0.06, col[1] * 0.07, col[2] * 0.1];
       engine.mist = [40, 200, 0.45];
+      engine.glare = [m.light.sun[0] * 0.25, m.light.sun[1] * 0.25, m.light.sun[2] * 0.3];
     }
   }
 
@@ -2803,6 +2814,7 @@
       gl.depthMask(false);
       if (world.map.sky.stars > 0.5) engine.drawPoints(null, backdrop.starCount, { mesh: backdrop.stars, offset: eyeV, additive: true, max: 48 });
       engine.beginBaked(700, 2300);
+      engine.groom(false);
       M4.identity(MV);
       M4.translate(MV, eyeV[0], eyeV[1] - 70, eyeV[2]);
       engine.drawBaked(world.mountains(engine), MV);
@@ -2890,6 +2902,7 @@
         rays = clamp(1.6 - Math.max(Math.abs(sunUV[0] - 0.5), Math.abs(sunUV[1] - 0.5)) * 1.6, 0, 1) * (1 - envK * 2);
       }
     }
+    engine.motion = phase === 'riding' && !paused && P.bailT <= 0 ? clamp((P.speed - 27) / 16, 0, 1) * 0.6 : 0;
     engine.endFrame(rays > 0 ? sunUV : null, rays);
   }
 

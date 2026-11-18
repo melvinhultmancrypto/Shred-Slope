@@ -182,6 +182,7 @@ float vnoise(vec2 p) {
 varying vec3 vCol; varying float vFog; varying vec3 vW; varying vec4 vSh;
 uniform vec3 uFogCol; uniform float uAlpha; uniform float uBright; uniform float uDetail; uniform vec3 uEye;
 uniform vec3 uShadowDark; uniform vec3 uSunDirF; uniform vec3 uHaze; uniform vec3 uCold; uniform vec3 uMist;
+uniform vec4 uCurve; uniform vec4 uCurveP; uniform vec3 uGlare;
 void main() {
   vec3 c = vCol * uBright;
   // riders' shadows, tinted by the sky
@@ -193,6 +194,34 @@ void main() {
     float snow = smoothstep(0.3, 0.55, lum) * step(mx - mn, mx * 0.42);
     // snow in shade goes cold and blue, like the real thing
     c *= mix(vec3(1.0), uCold, snow * (1.0 - smoothstep(0.42, 0.85, lum)));
+    float dCam = length(vW - uEye);
+    // foliage: clumps of needles instead of flat facets
+    float fol = step(mx * 0.9, vCol.g) * step(vCol.r * 1.12, vCol.g) * (1.0 - snow) * step(lum, 0.5);
+    if (fol > 0.0) {
+      float nn = vnoise(vW.xz * 5.0 + vW.y * 3.1) * 0.6 + vnoise(vW.xz * 13.0 - vW.y * 7.0) * 0.4;
+      c *= mix(1.0, 0.68 + 0.6 * nn, fol * (1.0 - smoothstep(60.0, 160.0, dCam)));
+    }
+    // rock: grain and strata
+    float rk = step(mx - mn, 0.07) * smoothstep(0.06, 0.12, lum) * (1.0 - smoothstep(0.32, 0.42, lum)) * (1.0 - snow);
+    if (rk > 0.0) {
+      float st = vnoise(vec2(vW.x * 0.35 + vW.z * 0.2, vW.y * 2.4)) * 0.6 + vnoise(vW.xz * 1.9 + vW.y * 1.3) * 0.4;
+      c *= mix(1.0, 0.72 + 0.5 * st, rk * (1.0 - smoothstep(80.0, 220.0, dCam)));
+    }
+    // the groomed piste: corduroy ridges down the fall line, and the edges between groomer passes
+    if (uCurve.x > -0.5 && snow > 0.5) {
+      float cx = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
+      float off = vW.x - cx;
+      float onPiste = 1.0 - smoothstep(uCurveP.w - 1.5, uCurveP.w - 0.3, abs(off));
+      if (onPiste > 0.0) {
+        float ridge = cos(off * 27.0);
+        float pass = step(0.5, fract(off / 4.6 + 0.25));
+        float near = 1.0 - smoothstep(5.0, 24.0, dCam);
+        c *= 1.0 + onPiste * (ridge * (0.01 + 0.035 * abs(uSunDirF.x)) * near + (pass - 0.5) * 0.022 * (1.0 - smoothstep(60.0, 180.0, dCam)));
+      }
+    }
+    // sun glare off the snow when you look toward it
+    vec3 rv = normalize(vec3(vW.x - uEye.x, uEye.y - vW.y, vW.z - uEye.z));
+    c += uGlare * snow * pow(max(dot(rv, uSunDirF), 0.0), 14.0) * (1.0 - sh);
     if (snow > 0.0) {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
@@ -400,7 +429,7 @@ void main() {
 varying vec2 vUv;
 uniform sampler2D uTex; uniform sampler2D uBloom; uniform sampler2D uShafts;
 uniform vec2 uPx; uniform float uBloomK; uniform vec3 uShaftCol; uniform float uSat; uniform float uCon;
-uniform vec3 uLift; uniform vec3 uGain; uniform float uVig; uniform float uTime;
+uniform vec3 uLift; uniform vec3 uGain; uniform float uVig; uniform float uTime; uniform float uBlur;
 vec3 fxaa(vec2 uv) {
   vec3 nw = texture2D(uTex, uv + vec2(-1.0, -1.0) * uPx).rgb;
   vec3 ne = texture2D(uTex, uv + vec2(1.0, -1.0) * uPx).rgb;
@@ -424,6 +453,17 @@ vec3 fxaa(vec2 uv) {
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
   vec3 c = fxaa(vUv);
+  vec2 dc = vUv - 0.5;
+  float edge = dot(dc, dc) * 4.0;
+  // speed blur streaking out from the middle of the screen (the rider in the centre stays sharp)
+  if (uBlur > 0.01) {
+    vec3 acc = c;
+    for (int i = 1; i <= 5; i++) acc += texture2D(uTex, vUv - dc * (float(i) * 0.006 * uBlur)).rgb;
+    c = mix(c, acc / 6.0, clamp((edge - 0.15) * 1.4, 0.0, 1.0));
+  }
+  // a little colour fringing toward the corners, like a real lens
+  c.r = mix(c.r, texture2D(uTex, vUv - dc * 0.0025).r, clamp(edge - 0.3, 0.0, 1.0) * 0.7);
+  c.b = mix(c.b, texture2D(uTex, vUv + dc * 0.0025).b, clamp(edge - 0.3, 0.0, 1.0) * 0.7);
   c += texture2D(uBloom, vUv).rgb * uBloomK;
   c += texture2D(uShafts, vUv).rgb * uShaftCol;
   // soft shoulder so bloom and glare roll off instead of clipping
@@ -622,6 +662,9 @@ void main() {
       this.grade = { bloom: 0.3, thr: 0.86, shafts: [0, 0, 0], sat: 1.1, con: 1.06, lift: [0, 0.01, 0.03], gain: [1.02, 1, 0.97], vig: 0.35 };
       this.haze = [0, 0, 0];
       this.mist = [40, 160, 0];
+      this.course = null;
+      this.glare = [0, 0, 0];
+      this.motion = 0;
       this.cold = [1, 1, 1];
       this.dynBuf = gl.createBuffer();
       this.time = 0;
@@ -760,8 +803,19 @@ void main() {
       gl.uniform3fv(u.uCold, this.cold);
       gl.uniform3fv(u.uSunDirF, this.light.moonDir);
       gl.uniform3fv(u.uMist, this.mist);
+      const cv = this.course;
+      if (cv) { gl.uniform4f(u.uCurve, cv.a1, cv.p1, cv.a2, cv.p2); gl.uniform4f(u.uCurveP, cv.ph1, cv.ph2, cv.c0, cv.half); }
+      else gl.uniform4f(u.uCurve, -1, 1, 0, 1);
+      gl.uniform3fv(u.uGlare, this.glare);
       this.attribs([0, 1]);
       return u;
+    }
+
+    // turn the piste grooming on or off for what's drawn next (off for far mountains etc.)
+    groom(on) {
+      const u = this.baked.u, gl = this.gl, cv = this.course;
+      if (on && cv) gl.uniform4f(u.uCurve, cv.a1, cv.p1, cv.a2, cv.p2);
+      else gl.uniform4f(u.uCurve, -1, 1, 0, 1);
     }
 
     // shadow map + haze uniforms shared by the world and the riders
@@ -923,6 +977,7 @@ void main() {
         gl.uniform1f(u.uSat, G.sat); gl.uniform1f(u.uCon, G.con);
         gl.uniform3fv(u.uLift, G.lift); gl.uniform3fv(u.uGain, G.gain);
         gl.uniform1f(u.uVig, G.vig); gl.uniform1f(u.uTime, (t * 61.7) % 97);
+        gl.uniform1f(u.uBlur, this.motion);
       });
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
