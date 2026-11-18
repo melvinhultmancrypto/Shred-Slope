@@ -28,8 +28,13 @@
     { name: 'Acid', css: '#8bd346', jacket: '#84cf3a', trim: '#1d3010', pants: '#26272c', board: '#a46bff', stripe: '#ffffff', helmet: '#1c1d22', lens: '#6f9cff', boot: '#2b2a2e' },
   ];
   const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+  const SKINS = ['#f0c4a0', '#8d5a3b', '#e3a982', '#c98e66', '#5c3a26', '#f5cfb3', '#b07a52', '#f2c9a8', '#6e4630', '#deaa85'];
+  const HAIRS = ['#2b1d14', '#1a1a1a', '#d8b06a', '#6b3a1f', '#111111', '#a0522d', '#2b1d14', '#e0c27a', '#1a1a1a', '#4a2c1a'];
+  PALETTE.forEach((p, i) => { p.skin = SKINS[i % SKINS.length]; p.hair = HAIRS[i % HAIRS.length]; });
   for (const p of PALETTE) {
-    for (const k of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot']) p[k] = hex(p[k]);
+    for (const k of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'skin', 'hair']) p[k] = hex(p[k]);
+    p.yoke = [p.jacket[0] * 0.68 + p.trim[0] * 0.32, p.jacket[1] * 0.68 + p.trim[1] * 0.32, p.jacket[2] * 0.68 + p.trim[2] * 0.32];
+    p.lips = [p.skin[0] * 0.78, p.skin[1] * 0.5, p.skin[2] * 0.48];
     p.pantsPatch = shade(p.pants, p.pants[0] > 0.6 ? 0.82 : 1.45);
     p.helmetDark = shade(p.helmet, p.helmet[0] > 0.6 ? 0.7 : 1.6);
     p.glove = p.trim[0] + p.trim[1] + p.trim[2] > 1.2 ? [0.16, 0.17, 0.2] : shade(p.trim, 1.25);
@@ -64,7 +69,8 @@
   const sgnPow = (v, e) => Math.sign(v) * Math.pow(Math.abs(v), e);
 
   // a smooth shape lofted through rings stacked along y; each ring is a superellipse {y, rx, rz, ox, oz}
-  function loft(rings, segs, opts) {
+  function loft(rings, segs0, opts) {
+    const segs = Math.round(segs0 * 1.4); // smoother silhouettes
     const o = opts || {};
     const e = 2 / (o.p || 2);
     const a0 = o.a0 === undefined ? 0 : o.a0, a1 = o.a1 === undefined ? TAU : o.a1;
@@ -123,7 +129,7 @@
     }
     return r;
   }
-  const sphere = (n, s, rx, ry, rz, cx, cy, cz) => loft(sphereRings(n, rx, ry, rz, cx, cy, cz), s);
+  const sphere = (n, s, rx, ry, rz, cx, cy, cz) => loft(sphereRings(Math.round(n * 1.3), rx, ry, rz, cx, cy, cz), s);
 
   // swap axes of a finished mesh (so lofts along y can lie along x or z)
   function remap(d, f) {
@@ -208,8 +214,8 @@
       }
     }
     // backpack: rounded box with a lid
-    const pack = loft([tr(0.22, 0.12, 0.05, 0.198), tr(0.28, 0.13, 0.06, 0.203), tr(0.7, 0.13, 0.064, 0.206), tr(0.79, 0.118, 0.055, 0.202)], 18, { p: 4, capBottom: true, capTop: true });
-    const packLid = loft([tr(0.66, 0.133, 0.067, 0.207), tr(0.82, 0.122, 0.06, 0.203)], 18, { p: 4, capTop: true });
+    const pack = loft([tr(0.24, 0.1, 0.044, 0.196), tr(0.3, 0.115, 0.056, 0.201), tr(0.66, 0.118, 0.06, 0.204), tr(0.76, 0.104, 0.05, 0.2)], 18, { p: 3, capBottom: true, capTop: true });
+    const packLid = loft([tr(0.62, 0.121, 0.063, 0.205), tr(0.78, 0.108, 0.055, 0.2)], 18, { p: 3, capTop: true });
 
     // ---- head, in head space: +x is where the rider looks ----
     const helmet = sphere(12, 20, 0.145, 0.1375, 0.1325, -0.006, 0.018, 0);
@@ -217,7 +223,12 @@
     const vents = [];
     for (const z of [-0.042, 0, 0.042]) vents.push(...sphere(5, 10, 0.05, 0.006, 0.011, -0.004, 0.152 - Math.abs(z) * 0.35, z));
     const ears = [...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, 0.126), ...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, -0.126)];
-    const gaiter = sphere(8, 14, 0.108, 0.078, 0.104, 0.022, -0.09, 0);
+    // face below the goggles: cheeks, nose, lips and chin; a neck gaiter pulled down; hair out the back
+    const face = sphere(12, 18, 0.098, 0.082, 0.088, 0.03, -0.075, 0);
+    const nose = sphere(8, 10, 0.019, 0.019, 0.0125, 0.125, -0.066, 0);
+    const lips = sphere(6, 10, 0.008, 0.0068, 0.026, 0.118, -0.104, 0);
+    const gaiter = [...sphere(10, 16, 0.098, 0.055, 0.098, -0.004, -0.17, 0), ...loft([{ y: -0.2, rx: 0.088, rz: 0.088, ox: -0.006 }, { y: -0.14, rx: 0.094, rz: 0.094, ox: -0.004 }], 16)];
+    const hair = [...sphere(8, 12, 0.055, 0.07, 0.105, -0.108, -0.07, 0), ...sphere(6, 10, 0.034, 0.075, 0.034, -0.148, -0.13, 0)];
     // goggles wrap around the front of the helmet
     const R = 0.142;
     const goggleArc = (r, h0, h1, aMax, inset) => {
@@ -337,13 +348,13 @@
     quad(logoStripe, pk(-0.14, 0.62, 0.006), pk(-0.07, 0.62, 0.006), pk(-0.07, 0.64, 0.006), pk(-0.14, 0.64, 0.006), [0, 0, -1]);
     // backpack: two compression straps, a grab loop and a shovel handle poking out of the top
     const packStraps = [
-      ...loft([tr(0.4, 0.134, 0.067, 0.206), tr(0.43, 0.134, 0.067, 0.206)], 18, { p: 4 }),
-      ...loft([tr(0.56, 0.134, 0.068, 0.207), tr(0.59, 0.134, 0.068, 0.207)], 18, { p: 4 }),
-      ...remap(loft([{ y: -0.012, rx: 0.03, rz: 0.06 }, { y: 0.012, rx: 0.03, rz: 0.06 }], 10, { a0: 0, a1: Math.PI }), (x, y, z) => [x, 0.82 + z, 0.2 + y]),
+      ...loft([tr(0.4, 0.121, 0.063, 0.205), tr(0.43, 0.121, 0.063, 0.205)], 18, { p: 3 }),
+      ...loft([tr(0.54, 0.122, 0.063, 0.206), tr(0.57, 0.122, 0.063, 0.206)], 18, { p: 3 }),
+      ...remap(loft([{ y: -0.012, rx: 0.03, rz: 0.06 }, { y: 0.012, rx: 0.03, rz: 0.06 }], 10, { a0: 0, a1: Math.PI }), (x, y, z) => [x, 0.79 + z, 0.2 + y]),
     ];
     const shovel = [
-      ...loft([{ y: 0.78, rx: 0.011, rz: 0.011, ox: 0.06, oz: 0.215 }, { y: 0.98, rx: 0.011, rz: 0.011, ox: 0.062, oz: 0.22 }], 8, { capTop: true }),
-      ...remap(loft([{ y: -0.04, rx: 0.012, rz: 0.012 }, { y: 0.04, rx: 0.012, rz: 0.012 }], 8, { capTop: true, capBottom: true }), (x, y, z) => [0.062 + y, 0.99 + z * 0.4, 0.22 + x]),
+      ...loft([{ y: 0.74, rx: 0.011, rz: 0.011, ox: 0.055, oz: 0.212 }, { y: 0.93, rx: 0.011, rz: 0.011, ox: 0.057, oz: 0.216 }], 8, { capTop: true }),
+      ...remap(loft([{ y: -0.04, rx: 0.012, rz: 0.012 }, { y: 0.04, rx: 0.012, rz: 0.012 }], 8, { capTop: true, capBottom: true }), (x, y, z) => [0.057 + y, 0.94 + z * 0.4, 0.216 + x]),
     ];
     // boot: a tongue up the front with laces across it (boot space, toe +x)
     const tongue = loft([{ y: 0.12, rx: 0.02, rz: 0.034, ox: 0.07 }, { y: 0.2, rx: 0.022, rz: 0.036, ox: 0.052 }, { y: 0.3, rx: 0.022, rz: 0.036, ox: 0.046 }], 10, { p: 4, capTop: true });
@@ -371,7 +382,7 @@
       sleeveUp: mk(sleeveUp), sleeveLo: mk(sleeveLo), thigh: mk(thigh), shin: mk(shin),
       body: mk(body), yoke: mk(yoke), hem: mk(hem), hood: mk(hood), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
       pack: mk(pack), packLid: mk(packLid),
-      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), frame: mk(frame), lens: mk(lens), strap: mk(strap),
+      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), hair: mk(hair), frame: mk(frame), lens: mk(lens), strap: mk(strap),
       mitt: mk(mitt), cuff: mk(cuff),
       boot: mk(boot), sole: mk(sole), plate: mk(plate), highback: mk(highback), arch: mk([...arch, ...archIn]),
       top: mk(top), side: mk(side), edge: mk(edge), base: mk(base), gfx: mk(gfx), baseGfx: mk(baseGfx),
@@ -622,7 +633,7 @@
     const across = tw([0, 0, 1], twist);
     seg(M, waist, neck, 1, 1, across, TF);
     engine.drawLit(meshes.body, TF, pal.jacket, 0, SH_JACKET);
-    engine.drawLit(meshes.yoke, TF, pal.trim, 0, SH_JACKET);
+    engine.drawLit(meshes.yoke, TF, pal.yoke, 0, SH_JACKET);
     engine.drawLit(meshes.hem, TF, pal.trim, 0, SH_JACKET);
     engine.drawLit(meshes.collar, TF, pal.jacket, 0, SH_JACKET);
     engine.drawLit(meshes.hood, TF, pal.jacket, 0, SH_JACKET);
@@ -648,7 +659,13 @@
     M4.rotY(L, twist + spinV * 0.55);
     M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
     M4.mul(HF, M, L);
+    engine.drawLit(meshes.face, HF, pal.skin, 0, null, 2);
     engine.drawLit(meshes.gaiter, HF, pal.trim, 0, SH_PANTS);
+    if (!far) {
+      engine.drawLit(meshes.nose, HF, pal.skin, 0, null, 2);
+      engine.drawLit(meshes.lips, HF, pal.lips, 0, null, 2);
+      engine.drawLit(meshes.hair, HF, pal.hair, 0, [0.15, 18]);
+    }
     engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
     engine.drawLit(meshes.strap, HF, pal.jacket, 0, SH_JACKET);
     engine.drawLit(meshes.frame, HF, DARK, 0, SH_HELMET);

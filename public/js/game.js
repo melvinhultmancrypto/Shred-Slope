@@ -72,9 +72,9 @@
   const settings = Object.assign({ quality: coarse ? 'medium' : 'high', music: 'on', sfx: 'on', camera: 'close', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
   if (!SS.MAPS[settings.map]) settings.map = 'bluebird';
   const Q = {
-    low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: true },
-    medium: { detail: 0.6, dpr: 1.25, draw: 400, fog: 380, particles: 0.8, trails: true },
-    high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, particles: 1, trails: true },
+    low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: true, shadows: 0, post: false, rays: false },
+    medium: { detail: 0.6, dpr: 1.25, draw: 400, fog: 380, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
+    high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
   };
   let q = Q[settings.quality] || Q.high;
 
@@ -337,6 +337,7 @@
     if (world) world.dispose(engine);
     world = new SS.World(seed, mapId);
     engine.setSky(world.map.sky);
+    setGrade(world.map);
     document.body.classList.toggle('day', world.map.sky.stars < 0.5);
     ui.hud.style.setProperty('--acc', world.map.accent);
     world.featSorted = world.features.slice().sort((a, b) => (a.kind === 'kicker' ? a.z0 : a.az) - (b.kind === 'kicker' ? b.z0 : b.az));
@@ -2716,6 +2717,35 @@
   const riderList = [];
   const tokenGlow = new Float32Array(120 * 8);
   // light, fog and sky for the current spot on the mountain (the cave darkens everything)
+  // colour grade, bloom, sun rays and shadow tint for each kind of light
+  function setGrade(m) {
+    const day = m.sky.stars < 0.5;
+    const low = m.light.sunDir[1] < 0.35;
+    const col = m.sky.col;
+    const G = engine.grade;
+    if (day && low) {
+      // golden hour / sunset: warm highlights, violet shadows, long glowing rays
+      Object.assign(G, { bloom: 0.36, thr: 0.8, sat: 1.12, con: 1.07, lift: [0.03, 0.005, 0.045], gain: [1.05, 0.99, 0.93], vig: 0.34 });
+      G.shafts = [col[0] * 0.9, col[1] * 0.75, col[2] * 0.6];
+      engine.shadowDark = [0.5, 0.48, 0.7];
+      engine.cold = [0.9, 0.9, 1.06];
+      engine.haze = [col[0] * 0.42, col[1] * 0.3, col[2] * 0.2];
+    } else if (day) {
+      Object.assign(G, { bloom: 0.26, thr: 0.86, sat: 1.12, con: 1.06, lift: [0.0, 0.008, 0.03], gain: [1.03, 1.0, 0.97], vig: 0.28 });
+      G.shafts = [col[0] * 0.55, col[1] * 0.55, col[2] * 0.5];
+      engine.shadowDark = [0.48, 0.56, 0.78];
+      engine.cold = [0.88, 0.94, 1.07];
+      engine.haze = [col[0] * 0.22, col[1] * 0.2, col[2] * 0.16];
+    } else {
+      // night: lights bloom, moonlight shadows are soft and blue
+      Object.assign(G, { bloom: 0.6, thr: 0.78, sat: 1.06, con: 1.08, lift: [0.0, 0.012, 0.04], gain: [0.98, 1.0, 1.05], vig: 0.42 });
+      G.shafts = [col[0] * 0.18, col[1] * 0.2, col[2] * 0.26];
+      engine.shadowDark = [0.66, 0.7, 0.86];
+      engine.cold = [0.92, 0.96, 1.05];
+      engine.haze = [col[0] * 0.06, col[1] * 0.07, col[2] * 0.1];
+    }
+  }
+
   function applyEnv() {
     const e = world.env(cam.z);
     envK = e.k;
@@ -2727,9 +2757,36 @@
     engine.fog = [lerp(mf.fogNear || 60, 14, e.k), lerp(Math.min(q.fog, mf.fogFar || q.fog), 250, e.k)];
   }
 
+  function myState() {
+    return {
+      x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip, lean: P.lean,
+      crouch: P.crouch, comp: P.comp, grab: grabbing() && !P.grounded, air: !P.grounded, tuck: tuckInput() && P.grounded,
+      slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time, wallRoll: P.wallRoll,
+      bailAge: P.bailAge, bailUp: P.bailUp, bailK: P.bailT > 0 ? clamp(Math.abs(P.tumbleV) / 6 + Math.abs(P.rollV) / 6, 0, 1) : 0,
+      spinV: P.grounded ? 0 : P.spinVel / SPIN_RATE, flipV: P.grounded ? 0 : P.flipVel / FLIP_RATE, grabType: P.grabType, grabK: P.grounded ? 0 : P.grabAmt, airT: P.grounded ? 0 : P.airT,
+    };
+  }
+  const SC = [0, 0, 0];
+  const sunUV = [0, 0];
   function render(g) {
-    if (!world) { engine.clear(engine.fogCol); return; }
+    if (!world) { engine.beginFrame(false); engine.clear(engine.fogCol); return; }
     applyEnv();
+    // sun shadows: riders near you are drawn from the sun into a shadow map
+    engine.shadowOn = false;
+    const shadowList = [];
+    const showMe0 = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
+    if (q.shadows && envK < 0.6 && showMe0 && P.x !== undefined) {
+      SC[0] = P.x; SC[1] = P.y + 0.8; SC[2] = P.z;
+      engine.beginShadow(SC, world.L.sunDir, 10, q.shadows);
+      shadowList.push(myState());
+      SS.drawRider(engine, world, shadowList[0], 0);
+      const near = [];
+      if (rivals.length) { const o = []; rivalStates(o); for (const r of o) if (Math.abs(r.st.z - P.z) < 12 && Math.abs(r.st.x - P.x) < 12) near.push(r); }
+      for (const r of remotes.values()) if (r.st && racers.has(r.id) && Math.abs(r.st.z - P.z) < 12 && Math.abs(r.st.x - P.x) < 12) near.push({ st: r.st, color: r.color });
+      for (const r of near) { SS.drawRider(engine, world, r.st, r.color); shadowList.push(r.st); }
+      engine.endShadow();
+    }
+    engine.beginFrame(q.post);
     engine.clear(engine.fogCol);
     const sx = shake ? (Math.random() - 0.5) * shake * 0.25 : 0;
     const sy = shake ? (Math.random() - 0.5) * shake * 0.2 : 0;
@@ -2761,17 +2818,7 @@
     riderList.length = 0;
     const showMe = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
     if (showMe && P.x !== undefined) {
-      riderList.push({
-        st: {
-          x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip, lean: P.lean,
-          crouch: P.crouch, comp: P.comp, grab: grabbing() && !P.grounded, air: !P.grounded, tuck: tuckInput() && P.grounded,
-          slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time, wallRoll: P.wallRoll,
-          bailAge: P.bailAge, bailUp: P.bailUp, bailK: P.bailT > 0 ? clamp(Math.abs(P.tumbleV) / 6 + Math.abs(P.rollV) / 6, 0, 1) : 0,
-          spinV: P.grounded ? 0 : P.spinVel / SPIN_RATE, flipV: P.grounded ? 0 : P.flipVel / FLIP_RATE, grabType: P.grabType, grabK: P.grounded ? 0 : P.grabAmt, airT: P.grounded ? 0 : P.airT,
-        },
-        color: mode === 'mp' ? myColor : settings.outfit | 0,
-        alpha: 1,
-      });
+      riderList.push({ st: shadowList[0] || myState(), color: mode === 'mp' ? myColor : settings.outfit | 0, alpha: 1 });
     }
     for (const r of remotes.values()) {
       if (r.st && racers.has(r.id) && Math.hypot(r.st.x - eyeV[0], r.st.y + 1 - eyeV[1], r.st.z - eyeV[2]) > 3.2) riderList.push({ st: r.st, color: r.color, alpha: 1 });
@@ -2785,6 +2832,7 @@
     const sunny = world.map.shadows && envK < 0.5;
     for (const r of riderList) {
       if (Math.abs(r.st.z - cam.z) > 260) continue;
+      if (engine.shadowOn && r.alpha >= 1 && (shadowList.includes(r.st) || (Math.abs(r.st.z - P.z) < 9 && Math.abs(r.st.x - P.x) < 9))) continue;
       const h = r.st.y - world.Hk(r.st.x, r.st.z);
       if (sunny) sunShadow(r.st, h, r.alpha);
       else SS.drawShadow(engine, world, r.st.x, r.st.z, r.st.heading, h, r.alpha);
@@ -2826,6 +2874,20 @@
     if (motes) engine.drawPoints(flakes, FLAKES >> 1, { soft: 1, max: 5, additive: true });
     else if (sf > 0) engine.drawPoints(flakes, Math.round(FLAKES * Math.min(1, sf)), { soft: 1, max: sf > 1 ? 8 : 6 });
     else engine.drawPoints(flakes, 150, { soft: 1, max: 4, additive: true });
+
+    // sun rays when the sun (or moon) is on or near the screen
+    let rays = 0;
+    if (q.rays && envK < 0.5) {
+      const d = engine.sky.dir, m = engine.vp;
+      const x = eyeV[0] + d[0] * 1000, y = eyeV[1] + d[1] * 1000, z = eyeV[2] + d[2] * 1000;
+      const cw = m[3] * x + m[7] * y + m[11] * z + m[15];
+      if (cw > 0) {
+        sunUV[0] = ((m[0] * x + m[4] * y + m[8] * z + m[12]) / cw) * 0.5 + 0.5;
+        sunUV[1] = ((m[1] * x + m[5] * y + m[9] * z + m[13]) / cw) * 0.5 + 0.5;
+        rays = clamp(1.6 - Math.max(Math.abs(sunUV[0] - 0.5), Math.abs(sunUV[1] - 0.5)) * 1.6, 0, 1) * (1 - envK * 2);
+      }
+    }
+    engine.endFrame(rays > 0 ? sunUV : null, rays);
   }
 
   // adaptive resolution for slower computers
@@ -2867,7 +2929,7 @@
   // test hook: open the game with ?debug to drive it from the browser console
   if (/[?&]debug\b/.test(location.search)) {
     window.ShredSlopeDebug = {
-      keys, P, run, cam, ai,
+      keys, P, run, cam, ai, engine,
       crash(reason) { bail(reason); },
       get world() { return world; },
       get spec() { const t = spectateTarget(); return t && t.st && { id: t.id, x: t.st.x, y: t.st.y, z: t.st.z, heading: t.st.heading, speed: t.st.speed }; },

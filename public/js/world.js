@@ -1185,7 +1185,37 @@
       return s;
     }
 
-    light(nx, ny, nz, x, y, z, out, shadow) {
+    // soft shadow the mountain (and the kickers on it) throws on itself: march toward the sun
+    terrainShadow(x, y, z) {
+      const sd = this.L.sunDir;
+      const hl = Math.hypot(sd[0], sd[2]);
+      if (hl < 0.05) return 1;
+      const ux = sd[0] / hl, uz = sd[2] / hl, tanE = sd[1] / hl;
+      let t = 1.0, s = 1;
+      for (let i = 0; i < 19; i++) {
+        const px = x + ux * t, pz = z + uz * t;
+        const gh = i < 9 ? this.Hk(px, pz) : this.ground(px, pz);
+        const d = y + 0.12 + t * tanE - gh;
+        if (d < 0) return 0;
+        s = Math.min(s, d / (t * 0.07));
+        t *= 1.24;
+      }
+      return clamp(s, 0, 1);
+    }
+
+    // how enclosed a spot is compared to the slope it sits on: hollows and the foot of banks go darker
+    groundAO(x, y, z, gx, gz) {
+      let occ = 0;
+      for (const [r, a0] of [[2.5, 0.4], [7, 1.2]]) {
+        for (let i = 0; i < 4; i++) {
+          const a = a0 + i * Math.PI * 0.5, dx = Math.cos(a) * r, dz = Math.sin(a) * r;
+          occ += Math.max(0, (this.Hk(x + dx, z + dz) - (y + gx * dx + gz * dz)) / r);
+        }
+      }
+      return 1 - Math.min(0.42, occ * 0.16);
+    }
+
+    light(nx, ny, nz, x, y, z, out, shadow, ao) {
       const L = this.L;
       const k = this.cave ? this.caveK(z) : 0;
       const h = ny * 0.5 + 0.5;
@@ -1193,9 +1223,10 @@
       const m = Math.max(0, nx * sd[0] + ny * sd[1] + nz * sd[2]) * (shadow === undefined ? 1 : shadow);
       const sky = k ? mix3(L.sky, L.caveSky, k) : L.sky, gnd = k ? mix3(L.ground, L.caveGround, k) : L.ground;
       const sun = 1 - k;
-      let r = lerp(gnd[0], sky[0], h) + L.sun[0] * m * sun;
-      let g = lerp(gnd[1], sky[1], h) + L.sun[1] * m * sun;
-      let b = lerp(gnd[2], sky[2], h) + L.sun[2] * m * sun;
+      const am = ao === undefined ? 1 : ao;
+      let r = lerp(gnd[0], sky[0], h) * am + L.sun[0] * m * sun;
+      let g = lerp(gnd[1], sky[1], h) * am + L.sun[1] * m * sun;
+      let b = lerp(gnd[2], sky[2], h) * am + L.sun[2] * m * sun;
       const b0 = ((z - C.Z0) / 50) | 0;
       for (let q = b0 - 1; q <= b0 + 1; q++) {
         const list = this.lampBuckets[q];
@@ -1387,8 +1418,8 @@
         // a city at night instead of mountains: towers with lit floors, and two old cooling towers
         const WIN = [1.0, 0.82, 0.5], WIN2 = [0.7, 0.85, 1.0], WALL = [0.07, 0.08, 0.12];
         for (let i = 0; i < 130; i++) {
-          const a = (i / 130) * TAU + r() * 0.03, dist = 760 + r() * 420;
-          const wdt = 22 + r() * 46, h = 30 + Math.pow(r(), 1.6) * 230, dep = 20 + r() * 30;
+          const a = (i / 130) * TAU + r() * 0.03, dist = 980 + r() * 420;
+          const wdt = 16 + r() * 34, h = 20 + Math.pow(r(), 1.8) * 150, dep = 20 + r() * 30;
           const cx = Math.cos(a) * dist, cz = Math.sin(a) * dist, tx = -Math.sin(a), tz = Math.cos(a);
           const fx = -Math.cos(a), fz = -Math.sin(a); // toward the stadium
           const y0 = -200;
@@ -1410,7 +1441,7 @@
           // a red light on the tallest ones
           if (h > 170) B.quad([cx - tx * 2, h + 1, cz - tz * 2], [cx + tx * 2, h + 1, cz + tz * 2], [cx + tx * 2, h + 4, cz + tz * 2], [cx - tx * 2, h + 4, cz - tz * 2], [1.4, 0.15, 0.1], back, 1);
         }
-        for (const [a, d] of [[1.9, 820], [2.25, 900]]) {
+        for (const [a, d] of [[1.9, 1050], [2.25, 1120]]) {
           const cx = Math.cos(a) * d, cz = Math.sin(a) * d;
           B.cyl(cx, -200, cz, 60, 38, 260, 18, [0.16, 0.16, 0.2]);
           B.cyl(cx, 60, cz, 38, 44, 70, 18, [0.18, 0.18, 0.22]);
@@ -1621,7 +1652,8 @@
           let nx = -gx, ny = 1, nz = -gz;
           const l = Math.hypot(nx, ny, nz);
           nx /= l; ny /= l; nz /= l;
-          w.light(nx, ny, nz, x, y, z, L3, M.shadows ? w.treeShadow(x, z) : 1);
+          const sun = M.shadows && !(w.cave && ck > 0.3) ? w.treeShadow(x, z) * w.terrainShadow(x, y, z) : 1;
+          w.light(nx, ny, nz, x, y, z, L3, sun, w.groundAO(x, y, z, gx, gz));
           const ao = Math.abs(off);
           let ar, ag, ab;
           if (ao < C.HALF) { ar = LT.snow[0]; ag = LT.snow[1]; ab = LT.snow[2]; }
@@ -1908,17 +1940,40 @@
         const rb = Math.max(0.35, shape.rb - i * shape.taper * (shape.rb / 1.8)) * s;
         const y0 = y + (base + i * shape.step) * s;
         const hh = (shape.hh - i * 0.18) * s;
-        if (t.near) {
-          const band = 0.38 * Math.min(1.4, sn);
-          this.cyl(t.x, y0 - 0.05 * s, t.z, rb, rb * 0.8, band * s, sides, snow);
-          this.cyl(t.x, y0 + (band - 0.05) * s, t.z, rb * 0.8, 0, hh - (band - 0.05) * s, sides, green);
-        } else {
-          this.cyl(t.x, y0, t.z, rb, 0, hh, sides, green);
-        }
+        this.bough(t.x, y0, t.z, rb, hh, t.near ? sides + 2 : sides, green, snow, sn, h1 * 7 + i * 1.7, t.near);
       }
-      if (t.near) {
-        const top = y + (base + (tiers - 1) * shape.step) * s + (shape.hh - (tiers - 1) * 0.18) * s;
-        this.cyl(t.x, top - 0.7 * s, t.z, 0.32 * s, 0, 0.7 * s, sides, snow);
+    }
+
+    // one tier of a conifer: branch tips poking out and drooping, snow lying on the upper boughs,
+    // a dark underside, and a lighter green toward the tips
+    bough(x, y0, z, rb, hh, sides, green, snow, sn, seed, near) {
+      const n = sides * 2;
+      const tip = [], mid = [];
+      for (let k = 0; k < n; k++) {
+        const out = k % 2 === 0;
+        const a = (k / n) * TAU + seed + (hash(seed + k, 3.1) - 0.5) * 0.25;
+        const r = rb * (out ? 0.95 + hash(seed, k) * 0.15 : 0.62);
+        const dy = out ? -0.22 * rb : -0.05 * rb; // tips droop
+        tip.push([x + Math.cos(a) * r, y0 + dy, z + Math.sin(a) * r]);
+        const rm = r * 0.5;
+        mid.push([x + Math.cos(a) * rm, y0 + hh * 0.42 + dy * 0.3, z + Math.sin(a) * rm]);
+      }
+      const apex = [x, y0 + hh, z];
+      const o = [x, y0 + hh * 0.3, z];
+      const tipCol = [green[0] * 1.25 + 0.01, green[1] * 1.22 + 0.02, green[2] * 1.1];
+      const deep = [green[0] * 0.7, green[1] * 0.72, green[2] * 0.78];
+      const snowy = Math.min(1, sn);
+      for (let k = 0; k < n; k++) {
+        const k2 = (k + 1) % n;
+        const out = k % 2 === 0;
+        // lower bough: green, lighter on the tips; snow caught on some of the tips
+        const lowCol = near && out && snowy > 0.5 && hash(seed * 3 + k, 9.1) < 0.45 ? snow : out ? tipCol : green;
+        this.quad(tip[k], tip[k2], mid[k2], mid[k], lowCol, o);
+        // upper bough: snow lies on it (the recesses stay green)
+        const upCol = snowy > 0.25 && (out || hash(seed + k, 5.3) < snowy * 0.5) ? snow : green;
+        this.tri(mid[k][0], mid[k][1], mid[k][2], mid[k2][0], mid[k2][1], mid[k2][2], apex[0], apex[1], apex[2], upCol, o[0], o[1], o[2]);
+        // underside, in its own shade
+        if (near) this.tri(tip[k][0], tip[k][1], tip[k][2], tip[k2][0], tip[k2][1], tip[k2][2], x, y0 + hh * 0.12, z, deep, x, y0 + hh, z);
       }
     }
 
