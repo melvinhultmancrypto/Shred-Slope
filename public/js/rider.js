@@ -28,11 +28,20 @@
     { name: 'Acid', css: '#8bd346', jacket: '#84cf3a', trim: '#1d3010', pants: '#26272c', board: '#a46bff', stripe: '#ffffff', helmet: '#1c1d22', lens: '#6f9cff', boot: '#2b2a2e' },
   ];
   const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
+  // style per outfit: 1 plaid flannel, 2 camo, 3 colour-block; some ride in a beanie
+  const STYLES = [
+    { pat: 1, patCol: '#10261a', beanie: true }, { pat: 3, patCol: '#2a3142' }, { pat: 0 }, { pat: 2, patCol: '#ffc7da' },
+    { pat: 3, patCol: '#2b2d33', beanie: true }, { pat: 1, patCol: '#1a0f30' }, { pat: 0, beanie: true }, { pat: 1, patCol: '#141414', beanie: true },
+    { pat: 2, patCol: '#a9b4c9' }, { pat: 3, patCol: '#1d3010' },
+  ];
   const SKINS = ['#f0c4a0', '#8d5a3b', '#e3a982', '#c98e66', '#5c3a26', '#f5cfb3', '#b07a52', '#f2c9a8', '#6e4630', '#deaa85'];
   const HAIRS = ['#2b1d14', '#1a1a1a', '#d8b06a', '#6b3a1f', '#111111', '#a0522d', '#2b1d14', '#e0c27a', '#1a1a1a', '#4a2c1a'];
-  PALETTE.forEach((p, i) => { p.skin = SKINS[i % SKINS.length]; p.hair = HAIRS[i % HAIRS.length]; });
+  PALETTE.forEach((p, i) => { p.skin = SKINS[i % SKINS.length]; p.hair = HAIRS[i % HAIRS.length]; Object.assign(p, STYLES[i % STYLES.length]); });
   for (const p of PALETTE) {
     for (const k of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'skin', 'hair']) p[k] = hex(p[k]);
+    p.patCol = p.patCol ? hex(p.patCol) : p.trim;
+    // knit beanie in the jacket's accent colour
+    p.beanieCol = shade(p.trim[0] + p.trim[1] + p.trim[2] > 1.5 ? p.trim : p.jacket, 0.95);
     p.yoke = [p.jacket[0] * 0.68 + p.trim[0] * 0.32, p.jacket[1] * 0.68 + p.trim[1] * 0.32, p.jacket[2] * 0.68 + p.trim[2] * 0.32];
     p.lips = [p.skin[0] * 0.78, p.skin[1] * 0.5, p.skin[2] * 0.48];
     p.pantsPatch = shade(p.pants, p.pants[0] > 0.6 ? 0.82 : 1.45);
@@ -158,11 +167,11 @@
     const band = loft([{ y: -0.5, rx: 0.5, rz: 0.5 }, { y: 0.5, rx: 0.5, rz: 0.5 }], 22);
 
     // ---- clothing: limbs with real radii (metres), length 1 along y ----
-    const sleeveUp = loft([{ y: 0, rx: 0.072, rz: 0.072 }, { y: 0.3, rx: 0.077, rz: 0.076 }, { y: 0.75, rx: 0.07, rz: 0.069 }, { y: 1, rx: 0.064, rz: 0.064 }], 14);
-    const sleeveLo = loft([{ y: 0, rx: 0.064, rz: 0.064 }, { y: 0.45, rx: 0.066, rz: 0.064 }, { y: 1, rx: 0.06, rz: 0.058 }], 14);
-    const thigh = loft([{ y: 0, rx: 0.088, rz: 0.088 }, { y: 0.35, rx: 0.1, rz: 0.098 }, { y: 0.8, rx: 0.106, rz: 0.104 }, { y: 1, rx: 0.1, rz: 0.1 }], 16);
-    // shin of baggy pants, flaring over the boot
-    const shin = loft([{ y: 0, rx: 0.118, rz: 0.104 }, { y: 0.06, rx: 0.114, rz: 0.1 }, { y: 0.2, rx: 0.102, rz: 0.094 }, { y: 0.55, rx: 0.09, rz: 0.086 }, { y: 1, rx: 0.087, rz: 0.085 }], 20, { capBottom: true });
+    // baggy fit: roomy sleeves, wide pants that stack over the boots
+    const sleeveUp = loft([{ y: 0, rx: 0.079, rz: 0.079 }, { y: 0.3, rx: 0.086, rz: 0.084 }, { y: 0.75, rx: 0.079, rz: 0.077 }, { y: 1, rx: 0.071, rz: 0.07 }], 14);
+    const sleeveLo = loft([{ y: 0, rx: 0.071, rz: 0.07 }, { y: 0.45, rx: 0.074, rz: 0.071 }, { y: 0.85, rx: 0.068, rz: 0.066 }, { y: 1, rx: 0.07, rz: 0.068 }], 14);
+    const thigh = loft([{ y: 0, rx: 0.098, rz: 0.098 }, { y: 0.35, rx: 0.112, rz: 0.109 }, { y: 0.8, rx: 0.118, rz: 0.115 }, { y: 1, rx: 0.11, rz: 0.11 }], 16);
+    const shin = loft([{ y: 0, rx: 0.136, rz: 0.12 }, { y: 0.07, rx: 0.13, rz: 0.115 }, { y: 0.22, rx: 0.114, rz: 0.104 }, { y: 0.55, rx: 0.1, rz: 0.096 }, { y: 1, rx: 0.097, rz: 0.095 }], 20, { capBottom: true });
 
     // ---- jacket, in torso space: x across the shoulders, y up the spine (0..1), z toward the back ----
     const TP = 2.6;
@@ -228,6 +237,10 @@
     const nose = sphere(8, 10, 0.019, 0.019, 0.0125, 0.125, -0.066, 0);
     const lips = sphere(6, 10, 0.008, 0.0068, 0.026, 0.118, -0.104, 0);
     const gaiter = [...sphere(10, 16, 0.098, 0.055, 0.098, -0.004, -0.17, 0), ...loft([{ y: -0.2, rx: 0.088, rz: 0.088, ox: -0.006 }, { y: -0.14, rx: 0.094, rz: 0.094, ox: -0.004 }], 16)];
+    // knit beanie: a slouchy cap, a folded cuff and a pom-pom
+    const beanie = sphere(12, 20, 0.143, 0.15, 0.135, -0.014, 0.03, 0);
+    const beanieCuff = loft([{ y: -0.035, rx: 0.15, rz: 0.142, ox: -0.004 }, { y: 0.02, rx: 0.152, rz: 0.144, ox: -0.006 }, { y: 0.03, rx: 0.147, rz: 0.139, ox: -0.006 }], 20);
+    const pom = sphere(8, 12, 0.045, 0.042, 0.045, -0.035, 0.185, 0);
     const hair = [...sphere(8, 12, 0.055, 0.07, 0.105, -0.108, -0.07, 0), ...sphere(6, 10, 0.034, 0.075, 0.034, -0.148, -0.13, 0)];
     // goggles wrap around the front of the helmet
     const R = 0.142;
@@ -325,12 +338,12 @@
 
     // ---- extra detail ----
     // cargo pocket with a flap on the outside of the thigh (thigh space: knee 0 -> hip 1, outside is +x)
-    const thighPocket = loft([{ y: 0.3, rx: 0.026, rz: 0.048, ox: 0.098 }, { y: 0.33, rx: 0.03, rz: 0.052, ox: 0.1 }, { y: 0.58, rx: 0.031, rz: 0.054, ox: 0.102 }, { y: 0.6, rx: 0.028, rz: 0.05, ox: 0.1 }], 14, { p: 4, capBottom: true, capTop: true });
-    const thighFlap = loft([{ y: 0.56, rx: 0.034, rz: 0.057, ox: 0.103 }, { y: 0.64, rx: 0.03, rz: 0.055, ox: 0.104 }], 14, { p: 4, capBottom: true, capTop: true });
+    const thighPocket = loft([{ y: 0.3, rx: 0.026, rz: 0.05, ox: 0.11 }, { y: 0.33, rx: 0.03, rz: 0.055, ox: 0.112 }, { y: 0.58, rx: 0.031, rz: 0.057, ox: 0.114 }, { y: 0.6, rx: 0.028, rz: 0.053, ox: 0.112 }], 14, { p: 4, capBottom: true, capTop: true });
+    const thighFlap = loft([{ y: 0.56, rx: 0.034, rz: 0.06, ox: 0.115 }, { y: 0.64, rx: 0.03, rz: 0.058, ox: 0.116 }], 14, { p: 4, capBottom: true, capTop: true });
     // stripes: around the hem of the pants, the upper arm, and a reflective one at the wrist
-    const shinBand = loft([{ y: 0.12, rx: 0.111, rz: 0.1 }, { y: 0.17, rx: 0.108, rz: 0.098 }], 20);
-    const armBand = loft([{ y: 0.36, rx: 0.079, rz: 0.078 }, { y: 0.48, rx: 0.078, rz: 0.077 }], 14);
-    const wristBand = loft([{ y: 0.76, rx: 0.064, rz: 0.062 }, { y: 0.83, rx: 0.063, rz: 0.061 }], 14);
+    const shinBand = loft([{ y: 0.12, rx: 0.125, rz: 0.112 }, { y: 0.17, rx: 0.12, rz: 0.108 }], 20);
+    const armBand = loft([{ y: 0.36, rx: 0.088, rz: 0.086 }, { y: 0.48, rx: 0.087, rz: 0.085 }], 14);
+    const wristBand = loft([{ y: 0.76, rx: 0.071, rz: 0.069 }, { y: 0.83, rx: 0.07, rz: 0.068 }], 14);
     // jacket side panels, hood drawcords with toggles, a chest patch (torso space)
     const sidePanels = [];
     for (const c of [0, Math.PI]) {
@@ -382,7 +395,7 @@
       sleeveUp: mk(sleeveUp), sleeveLo: mk(sleeveLo), thigh: mk(thigh), shin: mk(shin),
       body: mk(body), yoke: mk(yoke), hem: mk(hem), hood: mk(hood), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
       pack: mk(pack), packLid: mk(packLid),
-      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), hair: mk(hair), frame: mk(frame), lens: mk(lens), strap: mk(strap),
+      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), hair: mk(hair), beanie: mk(beanie), beanieCuff: mk(beanieCuff), pom: mk(pom), frame: mk(frame), lens: mk(lens), strap: mk(strap),
       mitt: mk(mitt), cuff: mk(cuff),
       boot: mk(boot), sole: mk(sole), plate: mk(plate), highback: mk(highback), arch: mk([...arch, ...archIn]),
       top: mk(top), side: mk(side), edge: mk(edge), base: mk(base), gfx: mk(gfx), baseGfx: mk(baseGfx),
@@ -572,7 +585,9 @@
       M4.identity(L); M4.translate(L, 0, 0.022, 0);
       const BF = M4.mul(W, FF, L);
       engine.drawLit(meshes.sole, BF, SOLE);
+      engine.cloth(0, null, 0, 0.35, 0);
       engine.drawLit(meshes.boot, BF, pal.boot, 0, SH_BOOT);
+      engine.cloth(0);
       if (!far) {
         engine.drawLit(meshes.tongue, BF, pal.trim, 0, SH_BOOT);
         engine.drawLit(meshes.laces, BF, LACE, 0, SH_PANTS);
@@ -593,15 +608,18 @@
       const hp = add(hip, [0, -0.02, hz]);
       const knee = ik(ank, hp, LEG_S, LEG_T, [1, 0.1, hz * 2.4]);
       knees.push(knee);
+      engine.cloth(0, null, 1.1, 0.55, 1);
       limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
+      engine.cloth(0, null, 0.9, 0.06, 1);
       limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
+      engine.cloth(0);
       if (!far) {
         const out = hz > 0 ? SIDE : SIDE_B;
         limb(engine, M, meshes.thighPocket, knee, hp, pal.pants, SH_PANTS, out);
         limb(engine, M, meshes.thighFlap, knee, hp, pal.pantsPatch, SH_PANTS, out);
         limb(engine, M, meshes.shinBand, ank, knee, pal.pantsPatch, SH_PANTS);
       }
-      ball(engine, M, knee, 0.094, pal.pants, SH_PANTS);
+      ball(engine, M, knee, 0.104, pal.pants, SH_PANTS);
       if (!far) {
         // reinforced knee patch on the front of the knee
         const dir = nrm(sub(knee, ank));
@@ -632,11 +650,15 @@
     const neck = add(sh, tw([0.012, 0.11, 0], twist));
     const across = tw([0, 0, 1], twist);
     seg(M, waist, neck, 1, 1, across, TF);
+    engine.cloth(pal.pat, pal.patCol, 0.55, 0, 0);
     engine.drawLit(meshes.body, TF, pal.jacket, 0, SH_JACKET);
-    engine.drawLit(meshes.yoke, TF, pal.yoke, 0, SH_JACKET);
+    engine.drawLit(meshes.yoke, TF, pal.pat ? pal.jacket : pal.yoke, 0, SH_JACKET);
+    engine.cloth(0);
     engine.drawLit(meshes.hem, TF, pal.trim, 0, SH_JACKET);
     engine.drawLit(meshes.collar, TF, pal.jacket, 0, SH_JACKET);
+    engine.cloth(0, null, 0.8, 0, 0);
     engine.drawLit(meshes.hood, TF, pal.jacket, 0, SH_JACKET);
+    engine.cloth(0);
     engine.drawLit(meshes.pack, TF, PACK, 0, SH_JACKET);
     if (!far) {
       engine.drawLit(meshes.packLid, TF, pal.trim, 0, SH_JACKET);
@@ -666,15 +688,24 @@
       engine.drawLit(meshes.lips, HF, pal.lips, 0, null, 2);
       engine.drawLit(meshes.hair, HF, pal.hair, 0, [0.15, 18]);
     }
-    engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
+    if (pal.beanie) {
+      engine.cloth(0, null, 1, 0, 2);
+      engine.drawLit(meshes.beanie, HF, pal.beanieCol, 0, SH_PANTS);
+      engine.drawLit(meshes.beanieCuff, HF, pal.beanieCol, 0, SH_PANTS);
+      engine.cloth(0, null, 0.6, 0, 2);
+      engine.drawLit(meshes.pom, HF, PATCH, 0, SH_PANTS);
+      engine.cloth(0);
+    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
     engine.drawLit(meshes.strap, HF, pal.jacket, 0, SH_JACKET);
     engine.drawLit(meshes.frame, HF, DARK, 0, SH_HELMET);
-    engine.drawLit(meshes.lens, HF, pal.lens, 0.3, SH_LENS);
+    engine.drawLit(meshes.lens, HF, pal.lens, 0, SH_LENS, 3);
     if (!far) {
-      engine.drawLit(meshes.peak, HF, pal.helmet, 0, SH_HELMET);
-      engine.drawLit(meshes.helmetStripe, HF, pal.jacket, 0, SH_HELMET);
-      engine.drawLit(meshes.vents, HF, DARK, 0, SH_HELMET);
-      engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
+      if (!pal.beanie) {
+        engine.drawLit(meshes.peak, HF, pal.helmet, 0, SH_HELMET);
+        engine.drawLit(meshes.helmetStripe, HF, pal.jacket, 0, SH_HELMET);
+        engine.drawLit(meshes.vents, HF, DARK, 0, SH_HELMET);
+        engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
+      }
     }
 
     // ---- arms: hands go to targets, elbows find themselves ----
@@ -730,20 +761,23 @@
         break;
       }
       default:
-        hf = add(sf, tw([0.22, -0.34 + sway - carve * 0.18, 0.36], twist));
-        hb = add(sb, tw([0.15, -0.42 - sway + carve * 0.15, -0.28], twist));
+        // relaxed: hands low and loose, front hand just ahead of the knee
+        hf = add(sf, tw([0.2, -0.4 + sway - carve * 0.18, 0.3], twist));
+        hb = add(sb, tw([0.1, -0.47 - sway + carve * 0.15, -0.2], twist));
     }
     for (const [s0, h1, side] of [[sf, hf, 1], [sb, hb, -1]]) {
       const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
       const elbow = ik(s0, hand, ARM_U, ARM_F, tw([-0.55, -0.6, side * 0.75], twist));
-      ball(engine, M, s0, 0.088, pal.jacket, SH_JACKET);
+      engine.cloth(pal.pat, pal.patCol, 0.9, 0, 1);
+      ball(engine, M, s0, 0.096, pal.jacket, SH_JACKET);
       limb(engine, M, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);
       if (!far) limb(engine, M, meshes.armBand, s0, elbow, pal.trim, SH_JACKET);
-      ball(engine, M, elbow, 0.07, pal.jacket, SH_JACKET);
+      ball(engine, M, elbow, 0.077, pal.jacket, SH_JACKET);
       // forearm stops short of the hand; the cuff and mitt cover the wrist
       const dir = nrm(sub(hand, elbow));
       const wrist = add(hand, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
       limb(engine, M, meshes.sleeveLo, elbow, wrist, pal.jacket, SH_JACKET);
+      engine.cloth(0);
       if (!far) limb(engine, M, meshes.wristBand, elbow, wrist, REFLECT, SH_STEEL);
       const tip = add(hand, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
       const palmSide = nrm(cross(dir, [0, 1, 0]));
@@ -751,7 +785,9 @@
         const c1 = add(wrist, [dir[0] * 0.05, dir[1] * 0.05, dir[2] * 0.05]);
         engine.drawLit(meshes.cuff, seg(M, wrist, c1, 1, 1, palmSide), pal.trim, 0, SH_JACKET);
       }
+      engine.cloth(0, null, 0.3, 0.25, 0);
       engine.drawLit(meshes.mitt, seg(M, add(hand, [-dir[0] * 0.02, -dir[1] * 0.02, -dir[2] * 0.02]), tip, 1, 1, palmSide), pal.glove, 0, SH_BOOT);
+      engine.cloth(0);
     }
     engine.setLitAlpha(1);
   };

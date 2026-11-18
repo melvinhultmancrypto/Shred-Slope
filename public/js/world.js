@@ -1209,7 +1209,7 @@
       for (const [r, a0] of [[2.5, 0.4], [7, 1.2]]) {
         for (let i = 0; i < 4; i++) {
           const a = a0 + i * Math.PI * 0.5, dx = Math.cos(a) * r, dz = Math.sin(a) * r;
-          occ += Math.max(0, (this.Hk(x + dx, z + dz) - (y + gx * dx + gz * dz)) / r);
+          occ += Math.max(0, (this.ground(x + dx, z + dz) - (y + gx * dx + gz * dz)) / r);
         }
       }
       return 1 - Math.min(0.42, occ * 0.16);
@@ -1412,7 +1412,7 @@
           return lerp(v[i0 % n], v[(i0 + 1) % n], e);
         };
       };
-      const rock = P.dark, snow = P.cap;
+      const rock = P.dark, snow = P.cap, P0k = P.k;
       const rockLight = [lerp(rock[0], snow[0], 0.25), lerp(rock[1], snow[1], 0.25), lerp(rock[2], snow[2], 0.25)];
       if (this.map.city) {
         // a city at night instead of mountains: towers with lit floors, and two old cooling towers
@@ -1447,47 +1447,57 @@
           B.cyl(cx, 60, cz, 38, 44, 70, 18, [0.18, 0.18, 0.22]);
         }
       }
-      // two ranges: a high one far away and a lower, nearer one in front of it
-      for (const R of (this.map.city ? [{ dist: 1700, depth: 260, h: 300, N: 240 }] : [{ dist: 1520, depth: 300, h: 360, N: 300 }, { dist: 1080, depth: 240, h: 220, N: 360 }])) {
-        const n1 = noise(7), n2 = noise(19), n3 = noise(47), n4 = noise(130), n5 = noise(90);
+      // layered ranges, far to near; smooth per-vertex shading: snow on gentle faces, rock on steep ones
+      const ranges = this.map.city ? [{ dist: 1750, depth: 260, h: 300, N: 240, rows: 8 }]
+        : [{ dist: 1780, depth: 320, h: 430, N: 260, rows: 9 }, { dist: 1400, depth: 290, h: 330, N: 340, rows: 10 }, { dist: 1060, depth: 250, h: 215, N: 420, rows: 11 }];
+      const sdx = sd[0], sdy = sd[1], sdz = sd[2];
+      for (const R of ranges) {
+        const n1 = noise(7), n2 = noise(19), n3 = noise(47), n4 = noise(130), n5 = noise(90), n6 = noise(260);
         const ridge = (a) => {
           const massif = n1(a) * 0.6 + n2(a) * 0.4;
-          const pk = 1 - Math.abs(n3(a) * 2 - 1); // sharp, ridged peaks
-          return R.h * (0.18 + 0.82 * massif) * (0.5 + 0.5 * pk * pk) + n4(a) * 14;
+          const pk = 1 - Math.abs(n3(a) * 2 - 1);
+          return R.h * (0.18 + 0.82 * massif) * (0.5 + 0.5 * pk * pk) + n4(a) * 16;
         };
-        const ROWS = 7;
-        const grid = [];
+        const ROWS = R.rows, NC = R.N + 1;
+        const pos = [];
         for (let i = 0; i <= R.N; i++) {
           const a = (i / R.N) * TAU;
           const top = ridge(a);
-          const gully = (n5(a) - 0.5) * 2;
-          const col = [];
+          // gullies only on some faces, so the ranges aren't evenly furrowed
+          const gully = (n5(a) - 0.5) * 2 * smooth(clamp((n2(a * 1.7 + 1) - 0.35) * 2.5, 0, 1)), fine = 0;
           for (let j = 0; j <= ROWS; j++) {
-            const u = j / ROWS; // 0 at the ridge, 1 at the foot
-            const y = top * Math.pow(1 - u, 1.25) - u * 240 + gully * u * (1 - u) * 46;
-            const rad = R.dist - u * R.depth + gully * u * (1 - u) * 60;
-            col.push([Math.cos(a) * rad, y, Math.sin(a) * rad]);
+            const u = j / ROWS;
+            const y = top * Math.pow(1 - u, 1.3) - u * 260 + gully * u * (1 - u) * 52 + fine * u * (1 - u) * 14;
+            const rad = R.dist - u * R.depth + gully * u * (1 - u) * 70;
+            pos.push([Math.cos(a) * rad, y, Math.sin(a) * rad, a, u]);
           }
-          grid.push(col);
         }
-        const snowLine = R.h * 0.2;
-        const face = (A, Bp, Cp) => {
-          // which way this facet faces decides snow or rock: steep faces stay bare
-          const ux = Bp[0] - A[0], uy = Bp[1] - A[1], uz = Bp[2] - A[2], vx = Cp[0] - A[0], vy = Cp[1] - A[1], vz = Cp[2] - A[2];
-          let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-          const l = Math.hypot(nx, ny, nz) || 1;
-          ny = Math.abs(ny / l);
-          const my = (A[1] + Bp[1] + Cp[1]) / 3;
-          const mx = (A[0] + Bp[0] + Cp[0]) / 3, mz = (A[2] + Bp[2] + Cp[2]) / 3;
-          const streak = n4(Math.atan2(mz, mx) * 3.1) > 0.62;
-          const c = ny > 0.42 && my > snowLine + (streak ? 60 : 0) ? snow : ny > 0.3 && my > snowLine * 0.5 ? rockLight : rock;
-          B.tri(A[0], A[1], A[2], Bp[0], Bp[1], Bp[2], Cp[0], Cp[1], Cp[2], c, mx * 1.3, my, mz * 1.3);
-        };
+        const P = (i, j) => pos[Math.min(R.N, Math.max(0, i)) * (ROWS + 1) + Math.min(ROWS, Math.max(0, j))];
+        const snowLine = R.h * 0.18;
+        const vcol = [];
+        for (let i = 0; i <= R.N; i++) {
+          for (let j = 0; j <= ROWS; j++) {
+            const p = P(i, j), pa = P(i - 1, j), pb = P(i + 1, j), pu = P(i, j - 1), pd = P(i, j + 1);
+            const t1 = [pb[0] - pa[0], pb[1] - pa[1], pb[2] - pa[2]], t2 = [pd[0] - pu[0], pd[1] - pu[1], pd[2] - pu[2]];
+            let nx = t1[1] * t2[2] - t1[2] * t2[1], ny = t1[2] * t2[0] - t1[0] * t2[2], nz = t1[0] * t2[1] - t1[1] * t2[0];
+            if (nx * -p[0] + nz * -p[2] < 0) { nx = -nx; ny = -ny; nz = -nz; }
+            const l = Math.hypot(nx, ny, nz) || 1;
+            nx /= l; ny /= l; nz /= l;
+            // snow sticks where it's not too steep and high enough; gullies hold streaks of it lower down
+            const streak = smooth(clamp((n5(p[3] * 0.37 + 2) - 0.55) * 4, 0, 1)) * 0.15;
+            const sn = clamp((ny - 0.38 + streak) * 4, 0, 1) * clamp((p[1] - snowLine * (1 - streak * 3)) / 50 + 0.5, 0, 1);
+            const rk = 0.85 + n6(p[3] * 2.3 + p[4]) * 0.3;
+            const alb = [lerp(rock[0] * rk, snow[0], sn), lerp(rock[1] * rk, snow[1], sn), lerp(rock[2] * rk, snow[2], sn)];
+            const k = P0k[0] + Math.max(0, nx * sdx + ny * sdy + nz * sdz) * P0k[1];
+            vcol.push([alb[0] * k, alb[1] * k, alb[2] * k]);
+          }
+        }
+        const C = (i, j) => vcol[i * (ROWS + 1) + j];
+        const put = (i, j) => { const p = P(i, j), c = C(i, j); mtn.v(p[0], p[1], p[2], c[0], c[1], c[2]); };
         for (let i = 0; i < R.N; i++) {
           for (let j = 0; j < ROWS; j++) {
-            const a = grid[i][j], b = grid[i + 1][j], c = grid[i + 1][j + 1], d = grid[i][j + 1];
-            face(a, b, c);
-            face(a, c, d);
+            put(i, j); put(i + 1, j); put(i + 1, j + 1);
+            put(i, j); put(i + 1, j + 1); put(i, j + 1);
           }
         }
       }
@@ -1668,9 +1678,13 @@
           const pipeK = w.pipeArr ? w.sample(w.pipeArr, z) : 0;
           if (pipeK > 0.3 && ao >= SS.PIPE.LIP - 0.02 && ao < SS.PIPE.LIP + 0.52) { ar = 0.22; ag = 0.42; ab = 0.95; } // blue line along the coping
           else if (w.towerArr && w.sample(w.towerArr, z) > 0.5 && Math.abs(ao - M.towerHalf + 0.25) < 0.3) { ar = 0.22; ag = 0.42; ab = 0.95; }
-          else if (steep > rockAt && !(pipeK > 0.02 && ao < C.HALF)) {
-            const kk = Math.min(0.8, (steep - rockAt) * 1.4);
-            const rock = ck > 0.5 ? [0.22, 0.24, 0.32] : [0.3, 0.32, 0.38];
+          else if (steep > rockAt - (ao > C.HALF + 6 && ck < 0.5 ? 0.38 * (0.5 + 0.28 * Math.sin(x * 0.071 + z * 0.033) + 0.22 * Math.sin(z * 0.113 - x * 0.052 + 1.3)) : 0) && !(pipeK > 0.02 && ao < C.HALF)) {
+            const ra = rockAt - (ao > C.HALF + 6 && ck < 0.5 ? 0.38 * (0.5 + 0.28 * Math.sin(x * 0.071 + z * 0.033) + 0.22 * Math.sin(z * 0.113 - x * 0.052 + 1.3)) : 0);
+            // steep walls: dark rock broken up by snow chutes and patches
+            const chute = ck > 0.5 ? 1 : smooth(clamp((0.5 + 0.5 * Math.sin(x * 0.093 + z * 0.047) * Math.sin(z * 0.131 - x * 0.041 + 0.7) - 0.3) * 3, 0, 1));
+            const kk = Math.min(0.9, (steep - ra) * 2.2) * chute;
+            const tone = 0.5 + 0.5 * Math.sin(x * 0.21 + z * 0.17) * Math.sin(z * 0.09 + 2.1);
+            const rock = ck > 0.5 ? [0.22, 0.24, 0.32] : [lerp(0.16, 0.3, tone), lerp(0.16, 0.29, tone), lerp(0.2, 0.33, tone)];
             ar = lerp(ar, rock[0], kk); ag = lerp(ag, rock[1], kk); ab = lerp(ab, rock[2], kk);
           }
           let v = 0.97 + hash(x * 0.37, z * 0.29) * 0.05;
@@ -1909,8 +1923,10 @@
       const s = t.s;
       const y = w.ground(t.x, t.z) - 0.25;
       const h1 = hash(t.x, t.z);
-      const green = [T.green[0] + h1 * 0.03, T.green[1] + h1 * 0.05, T.green[2] + h1 * 0.03];
-      const sn = T.snow;
+      const h2 = hash(t.z * 1.7, t.x * 0.3);
+      // some trees run bluish, some yellowish; some carry a lot of snow, some got blown bare
+      const green = [T.green[0] * (0.9 + h2 * 0.25) + h1 * 0.03, T.green[1] * (0.92 + h1 * 0.18) + h1 * 0.04, T.green[2] * (0.85 + (1 - h2) * 0.35) + h1 * 0.03];
+      const sn = T.snow * (0.45 + hash(t.x * 0.7, t.z * 1.3) * 0.9);
       const snow = [lerp(0.6, 0.82, Math.min(1, sn)), lerp(0.66, 0.87, Math.min(1, sn)), lerp(0.75, 0.96, Math.min(1, sn))];
       const kind = t.kind || 'fir';
       const BARK = [0.2, 0.13, 0.08];
@@ -1927,9 +1943,9 @@
         return;
       }
       // fir: the classic; spruce: tall and narrow; pine: tall bare trunk with a crown up top
-      const shape = kind === 'spruce' ? { trunk: 1.3, tiers: t.near ? 6 : 4, rb: 1.35, step: 0.95, hh: 2.1, taper: 0.2 }
-        : kind === 'pine' ? { trunk: 4.2, tiers: 3, rb: 1.6, step: 0.9, hh: 1.8, taper: 0.38 }
-        : { trunk: 1.5, tiers: t.near ? 4 : 3, rb: 1.8, step: t.near ? 1.15 : 1.5, hh: 2.4, taper: t.near ? 0.36 : 0.48 };
+      const shape = kind === 'spruce' ? { trunk: 1.2, tiers: t.near ? 8 : 4, rb: 1.4, step: t.near ? 0.78 : 1.3, hh: 1.9, taper: t.near ? 0.17 : 0.3 }
+        : kind === 'pine' ? { trunk: 4.2, tiers: t.near ? 4 : 3, rb: 1.6, step: 0.8, hh: 1.8, taper: 0.3 }
+        : { trunk: 1.4, tiers: t.near ? 6 : 3, rb: 1.85, step: t.near ? 0.88 : 1.5, hh: 2.2, taper: t.near ? 0.28 : 0.48 };
       const dark = kind === 'spruce' ? 0.8 : kind === 'pine' ? 1.12 : 1;
       green[0] *= dark; green[1] *= dark; green[2] *= dark;
       this.cyl(t.x, y, t.z, 0.2 * s, 0.14 * s, (shape.trunk + 0.3) * s, 5, BARK);
@@ -1940,7 +1956,7 @@
         const rb = Math.max(0.35, shape.rb - i * shape.taper * (shape.rb / 1.8)) * s;
         const y0 = y + (base + i * shape.step) * s;
         const hh = (shape.hh - i * 0.18) * s;
-        this.bough(t.x, y0, t.z, rb, hh, t.near ? sides + 2 : sides, green, snow, sn, h1 * 7 + i * 1.7, t.near);
+        this.bough(t.x, y0, t.z, rb, hh, sides, green, snow, sn, h1 * 7 + i * 1.7, t.near);
       }
     }
 

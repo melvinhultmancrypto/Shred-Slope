@@ -2730,12 +2730,14 @@
       engine.shadowDark = [0.5, 0.48, 0.7];
       engine.cold = [0.9, 0.9, 1.06];
       engine.haze = [col[0] * 0.42, col[1] * 0.3, col[2] * 0.2];
+      engine.mist = [30, 150, 0.65];
     } else if (day) {
       Object.assign(G, { bloom: 0.26, thr: 0.86, sat: 1.12, con: 1.06, lift: [0.0, 0.008, 0.03], gain: [1.03, 1.0, 0.97], vig: 0.28 });
       G.shafts = [col[0] * 0.55, col[1] * 0.55, col[2] * 0.5];
       engine.shadowDark = [0.48, 0.56, 0.78];
       engine.cold = [0.88, 0.94, 1.07];
       engine.haze = [col[0] * 0.22, col[1] * 0.2, col[2] * 0.16];
+      engine.mist = [40, 170, 0.55];
     } else {
       // night: lights bloom, moonlight shadows are soft and blue
       Object.assign(G, { bloom: 0.6, thr: 0.78, sat: 1.06, con: 1.08, lift: [0.0, 0.012, 0.04], gain: [0.98, 1.0, 1.05], vig: 0.42 });
@@ -2743,6 +2745,7 @@
       engine.shadowDark = [0.66, 0.7, 0.86];
       engine.cold = [0.92, 0.96, 1.05];
       engine.haze = [col[0] * 0.06, col[1] * 0.07, col[2] * 0.1];
+      engine.mist = [40, 200, 0.45];
     }
   }
 

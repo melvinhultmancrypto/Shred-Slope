@@ -181,7 +181,7 @@ float vnoise(vec2 p) {
   const FS_BAKED = HEAD + NOISE + SHADOW + `
 varying vec3 vCol; varying float vFog; varying vec3 vW; varying vec4 vSh;
 uniform vec3 uFogCol; uniform float uAlpha; uniform float uBright; uniform float uDetail; uniform vec3 uEye;
-uniform vec3 uShadowDark; uniform vec3 uSunDirF; uniform vec3 uHaze; uniform vec3 uCold;
+uniform vec3 uShadowDark; uniform vec3 uSunDirF; uniform vec3 uHaze; uniform vec3 uCold; uniform vec3 uMist;
 void main() {
   vec3 c = vCol * uBright;
   // riders' shadows, tinted by the sky
@@ -223,25 +223,31 @@ void main() {
   // aerial perspective: the haze glows warmer toward the sun
   vec3 vd = normalize(vW - uEye);
   vec3 fc = uFogCol + uHaze * pow(max(dot(vd, uSunDirF), 0.0), 5.0);
-  gl_FragColor = vec4(mix(c, fc, vFog), uAlpha);
+  // valley mist: low ground far away sinks into haze, so ridges stand out in layers
+  float dist = length(vW - uEye);
+  float mist = clamp((uEye.y - uMist.x - vW.y) / uMist.y, 0.0, 1.0) * uMist.z * smoothstep(60.0, 300.0, dist);
+  gl_FragColor = vec4(mix(c, fc, max(vFog, mist)), uAlpha);
 }`;
 
   const VS_LIT = `
 attribute vec3 aPos; attribute vec3 aNorm;
 uniform mat4 uVP; uniform mat4 uModel; uniform mat3 uNM; uniform vec3 uCam; uniform vec2 uFog; uniform mat4 uShadowVP;
-varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh;
+varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.0);
   gl_Position = uVP * w;
   vN = uNM * aNorm;
+  vObj = aPos;
+  vTy = normalize((uModel * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
   vRel = w.xyz - uCam;
   // nudge along the normal before looking up the shadow, so curved cloth doesn't shadow itself in stripes
   vSh = uShadowVP * vec4(w.xyz + normalize(vN) * 0.03, 1.0);
   float f = clamp((length(vRel) - uFog.x) / (uFog.y - uFog.x), 0.0, 1.0);
   vFog = f * (2.0 - f);
 }`;
-  const FS_LIT = HEAD + SHADOW + `
-varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh;
+  const FS_LIT = HEAD + NOISE + SHADOW + `
+varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy;
+uniform float uPat; uniform vec3 uPatCol; uniform float uFold; uniform float uDust; uniform float uLimb;
 uniform vec3 uColor; uniform float uEmissive; uniform vec3 uFogCol;
 uniform vec3 uSky; uniform vec3 uGround; uniform vec3 uMoonDir; uniform vec3 uMoonCol;
 uniform vec3 uLP[4]; uniform vec3 uLC[4]; uniform vec3 uRim; uniform float uAlpha; uniform vec2 uSpec; uniform float uMat;
@@ -249,6 +255,49 @@ uniform vec3 uHaze;
 void main() {
   vec3 n = normalize(vN);
   vec3 v = normalize(-vRel);
+  vec3 base = uColor;
+  float ang = atan(vObj.z, vObj.x);
+  if (uFold > 0.0) {
+    if (uLimb > 1.5) {
+      // knit ribs running up a beanie
+      vec3 tg = normalize(cross(vTy, n) + vec3(0.0001));
+      n = normalize(n + tg * sin(ang * 36.0) * 0.3 * uFold);
+    } else {
+      // cloth folds running round the body and limbs, bunched up toward the cuffs and ankles
+      float ph = vObj.y * 24.0 + sin(ang * 2.0 + vObj.y * 7.0) * 1.6 + vnoise(vec2(ang * 2.5, vObj.y * 9.0)) * 2.4;
+      float bunch = uLimb > 0.5 ? mix(1.7, 0.6, clamp(vObj.y, 0.0, 1.0)) : 1.0;
+      n = normalize(n + vTy * cos(ph) * 0.3 * uFold * bunch);
+    }
+  }
+  if (uPat > 0.5) {
+    vec2 q = uLimb > 0.5 ? vec2(ang * 1.27, vObj.y * 3.2) : vec2(vObj.x * 11.0, vObj.y * 7.0);
+    if (uPat < 1.5) {
+      // plaid flannel: two crossing bands and thin dark lines
+      float a = 1.0 - smoothstep(0.2, 0.24, abs(fract(q.x) - 0.5));
+      float b = 1.0 - smoothstep(0.2, 0.24, abs(fract(q.y) - 0.5));
+      float l = (1.0 - smoothstep(0.015, 0.035, abs(fract(q.x + 0.5) - 0.5))) + (1.0 - smoothstep(0.015, 0.035, abs(fract(q.y + 0.5) - 0.5)));
+      base = mix(base, uPatCol, clamp(a * 0.55 + b * 0.55, 0.0, 0.9));
+      base = mix(base, base * 0.5 + vec3(0.03), clamp(l, 0.0, 1.0) * 0.55);
+    } else if (uPat < 2.5) {
+      // camo blotches in three tones
+      float c1 = vnoise(q * 0.9 + 3.0) + vnoise(q * 2.1) * 0.4;
+      float c2 = vnoise(q * 1.3 + 17.0) + vnoise(q * 2.7 + 9.0) * 0.4;
+      base = mix(base, uPatCol, smoothstep(0.76, 0.8, c1));
+      base = mix(base, base * 0.62, smoothstep(0.8, 0.84, c2));
+    } else {
+      // colour-blocked chest and upper arms
+      float yb = vObj.y;
+      float band = uLimb > 0.5 ? smoothstep(0.04, 0.06, abs(yb - 0.42) * -1.0 + 0.16) : smoothstep(0.0, 0.02, 0.13 - abs(yb - 0.5));
+      base = mix(base, uPatCol, band);
+    }
+  }
+  if (uDust > 0.0) {
+    // snow stuck to the lower legs and anything facing up
+    float sp = vnoise(vObj.xz * 70.0 + vObj.y * 37.0) * 0.6 + vnoise(vObj.xz * 23.0 - vObj.y * 11.0) * 0.4;
+    float low = uLimb > 0.5 ? 1.0 - smoothstep(0.0, 0.5, vObj.y) : 0.35;
+    float d = clamp((low * low * 1.1 + smoothstep(0.6, 0.95, n.y) * 0.5) * uDust, 0.0, 1.0) * smoothstep(0.5, 0.6, sp);
+    base = mix(base, vec3(0.9, 0.93, 0.98), d);
+  }
   float ndv = max(dot(n, v), 0.0);
   float fres = pow(1.0 - ndv, 4.0);
   float lit = 1.0 - shadowAt(vSh) * 0.9;
@@ -270,7 +319,7 @@ void main() {
     spec += env * (0.06 + 0.94 * fres) * 0.65;
   } else {
     // soft sheen on cloth at grazing angles
-    spec = (uSky * 0.35 + uMoonCol * 0.4 * lit) * fres * 0.3 * (0.2 + uColor);
+    spec = (uSky * 0.35 + uMoonCol * 0.4 * lit) * fres * 0.3 * (0.2 + base);
   }
   for (int i = 0; i < 4; i++) {
     vec3 L = uLP[i] - vRel;
@@ -280,7 +329,15 @@ void main() {
     light += uLC[i] * max((dot(n, ld) + wrapK) / (1.0 + wrapK), 0.0) * fall;
     if (uSpec.x > 0.0) spec += uLC[i] * pow(max(dot(n, normalize(ld + v)), 0.0), uSpec.y) * fall;
   }
-  vec3 c = uColor * light + uColor * uEmissive + spec * max(uSpec.x, 1.0);
+  vec3 c = base * light + base * uEmissive + spec * max(uSpec.x, 1.0);
+  if (uMat > 2.5) {
+    // mirrored goggle lens: dark at the top, bright at the bottom, sky and snow reflected across it
+    float g = smoothstep(-0.04, 0.035, vObj.y);
+    vec3 tint = mix(base * 1.3 + 0.06, base * 0.3, g);
+    vec3 r = reflect(-v, n);
+    vec3 env = mix(uGround * 1.7, uSky * 1.35, smoothstep(-0.2, 0.3, r.y));
+    c = tint * (0.4 + 0.3 * light) + env * (0.3 + 0.7 * fres) + spec;
+  }
   vec3 fc = uFogCol + uHaze * pow(max(dot(normalize(vRel), uMoonDir), 0.0), 5.0);
   gl_FragColor = vec4(mix(c, fc, vFog), uAlpha);
 }`;
@@ -333,7 +390,8 @@ void main() {
   for (int i = 0; i < 28; i++) {
     uv += d;
     vec2 q = (uv - uSun) * vec2(uAspect, 1.0);
-    acc += texture2D(uTex, uv).rgb * decay * smoothstep(0.75, 0.0, length(q));
+    vec3 sc = texture2D(uTex, uv).rgb;
+    acc += sc * smoothstep(0.55, 0.9, max(max(sc.r, sc.g), sc.b)) * decay * smoothstep(0.32, 0.0, length(q));
     decay *= 0.955;
   }
   gl_FragColor = vec4(acc / 28.0, 1.0);
@@ -563,6 +621,7 @@ void main() {
       this.postOn = false;
       this.grade = { bloom: 0.3, thr: 0.86, shafts: [0, 0, 0], sat: 1.1, con: 1.06, lift: [0, 0.01, 0.03], gain: [1.02, 1, 0.97], vig: 0.35 };
       this.haze = [0, 0, 0];
+      this.mist = [40, 160, 0];
       this.cold = [1, 1, 1];
       this.dynBuf = gl.createBuffer();
       this.time = 0;
@@ -700,6 +759,7 @@ void main() {
       gl.uniform3fv(u.uShadowDark, this.shadowDark);
       gl.uniform3fv(u.uCold, this.cold);
       gl.uniform3fv(u.uSunDirF, this.light.moonDir);
+      gl.uniform3fv(u.uMist, this.mist);
       this.attribs([0, 1]);
       return u;
     }
@@ -957,6 +1017,7 @@ void main() {
       gl.uniform1f(u.uAlpha, 1);
       this.receivers(u);
       this.setLights(lights);
+      this.cloth(0);
       this.attribs([0, 2]);
       return u;
     }
@@ -987,6 +1048,18 @@ void main() {
       gl.uniform1f(this.lit.u.uAlpha, a);
       if (a < 1) gl.enable(gl.BLEND);
       else gl.disable(gl.BLEND);
+    }
+
+    // cloth look for the next drawLit calls: pattern (0 none, 1 plaid, 2 camo, 3 colour-block),
+    // its second colour, fold strength, snow dust, and the kind of part (0 body, 1 limb, 2 knit)
+    cloth(pat, col2, fold, dust, limb) {
+      if (this.shadowPass) return;
+      const gl = this.gl, u = this.lit.u;
+      gl.uniform1f(u.uPat, pat || 0);
+      if (col2) gl.uniform3fv(u.uPatCol, col2);
+      gl.uniform1f(u.uFold, fold || 0);
+      gl.uniform1f(u.uDust, dust || 0);
+      gl.uniform1f(u.uLimb, limb || 0);
     }
 
     // spec: optional [strength, sharpness] for shiny parts
