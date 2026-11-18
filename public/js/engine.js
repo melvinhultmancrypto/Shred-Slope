@@ -207,16 +207,14 @@ void main() {
       float st = vnoise(vec2(vW.x * 0.35 + vW.z * 0.2, vW.y * 2.4)) * 0.6 + vnoise(vW.xz * 1.9 + vW.y * 1.3) * 0.4;
       c *= mix(1.0, 0.72 + 0.5 * st, rk * (1.0 - smoothstep(80.0, 220.0, dCam)));
     }
-    // the groomed piste: corduroy ridges down the fall line, and the edges between groomer passes
+    // the groomed piste: wide bands where the groomer passes meet, following the course's curves
     if (uCurve.x > -0.5 && snow > 0.5) {
       float cx = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
       float off = vW.x - cx;
       float onPiste = 1.0 - smoothstep(uCurveP.w - 1.5, uCurveP.w - 0.3, abs(off));
       if (onPiste > 0.0) {
-        float ridge = cos(off * 27.0);
-        float pass = step(0.5, fract(off / 4.6 + 0.25));
-        float near = 1.0 - smoothstep(5.0, 24.0, dCam);
-        c *= 1.0 + onPiste * (ridge * (0.01 + 0.035 * abs(uSunDirF.x)) * near + (pass - 0.5) * 0.022 * (1.0 - smoothstep(60.0, 180.0, dCam)));
+        float pass = smoothstep(0.46, 0.54, fract(off / 4.6 + 0.25)) - smoothstep(0.96, 1.0, fract(off / 4.6 + 0.25));
+        c *= 1.0 + onPiste * (pass - 0.5) * 0.022 * (1.0 - smoothstep(60.0, 180.0, dCam));
       }
     }
     // sun glare off the snow when you look toward it
@@ -228,13 +226,14 @@ void main() {
       c *= mix(1.0, 0.92 + n * 0.13, snow);
       float d = length(vW - uEye);
       // ripples in the snow: their sunny sides light up, their lee sides fall into shade
-      if (d < 70.0) {
-        vec2 rp = vec2(vW.x * 0.9 + vW.z * 0.25, vW.z * 0.45 - vW.x * 0.2);
-        float r0 = vnoise(rp) * 0.65 + vnoise(rp * 3.1 + 5.0) * 0.35;
-        float rx = vnoise(rp + vec2(0.12, 0.0)) * 0.65 + vnoise((rp + vec2(0.12, 0.0)) * 3.1 + 5.0) * 0.35;
-        float rz = vnoise(rp + vec2(0.0, 0.12)) * 0.65 + vnoise((rp + vec2(0.0, 0.12)) * 3.1 + 5.0) * 0.35;
+      // (soft, round and only up close: long thin ripples turned into streaks at speed)
+      if (d < 45.0) {
+        vec2 rp = vec2(vW.x * 0.6 + vW.z * 0.12, vW.z * 0.55 - vW.x * 0.12);
+        float r0 = vnoise(rp) * 0.8 + vnoise(rp * 2.3 + 5.0) * 0.2;
+        float rx = vnoise(rp + vec2(0.12, 0.0)) * 0.8 + vnoise((rp + vec2(0.12, 0.0)) * 2.3 + 5.0) * 0.2;
+        float rz = vnoise(rp + vec2(0.0, 0.12)) * 0.8 + vnoise((rp + vec2(0.0, 0.12)) * 2.3 + 5.0) * 0.2;
         vec2 gr = vec2(rx - r0, rz - r0) / 0.12;
-        float bump = -dot(gr, normalize(uSunDirF.xz + vec2(0.0001))) * 0.07 * (1.0 - d / 70.0);
+        float bump = -dot(gr, normalize(uSunDirF.xz + vec2(0.0001))) * 0.04 * smoothstep(45.0, 8.0, d);
         c *= 1.0 + bump * snow * (1.0 - sh * 0.8) * uDetail;
       }
       // glitter that flickers as the camera moves, like real snow under lights
@@ -429,7 +428,7 @@ void main() {
 varying vec2 vUv;
 uniform sampler2D uTex; uniform sampler2D uBloom; uniform sampler2D uShafts;
 uniform vec2 uPx; uniform float uBloomK; uniform vec3 uShaftCol; uniform float uSat; uniform float uCon;
-uniform vec3 uLift; uniform vec3 uGain; uniform float uVig; uniform float uTime; uniform float uBlur;
+uniform vec3 uLift; uniform vec3 uGain; uniform float uVig; uniform float uTime;
 vec3 fxaa(vec2 uv) {
   vec3 nw = texture2D(uTex, uv + vec2(-1.0, -1.0) * uPx).rgb;
   vec3 ne = texture2D(uTex, uv + vec2(1.0, -1.0) * uPx).rgb;
@@ -453,17 +452,6 @@ vec3 fxaa(vec2 uv) {
 float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 void main() {
   vec3 c = fxaa(vUv);
-  vec2 dc = vUv - 0.5;
-  float edge = dot(dc, dc) * 4.0;
-  // speed blur streaking out from the middle of the screen (the rider in the centre stays sharp)
-  if (uBlur > 0.01) {
-    vec3 acc = c;
-    for (int i = 1; i <= 5; i++) acc += texture2D(uTex, vUv - dc * (float(i) * 0.006 * uBlur)).rgb;
-    c = mix(c, acc / 6.0, clamp((edge - 0.15) * 1.4, 0.0, 1.0));
-  }
-  // a little colour fringing toward the corners, like a real lens
-  c.r = mix(c.r, texture2D(uTex, vUv - dc * 0.0025).r, clamp(edge - 0.3, 0.0, 1.0) * 0.7);
-  c.b = mix(c.b, texture2D(uTex, vUv + dc * 0.0025).b, clamp(edge - 0.3, 0.0, 1.0) * 0.7);
   c += texture2D(uBloom, vUv).rgb * uBloomK;
   c += texture2D(uShafts, vUv).rgb * uShaftCol;
   // soft shoulder so bloom and glare roll off instead of clipping
@@ -664,7 +652,6 @@ void main() {
       this.mist = [40, 160, 0];
       this.course = null;
       this.glare = [0, 0, 0];
-      this.motion = 0;
       this.cold = [1, 1, 1];
       this.dynBuf = gl.createBuffer();
       this.time = 0;
@@ -977,7 +964,6 @@ void main() {
         gl.uniform1f(u.uSat, G.sat); gl.uniform1f(u.uCon, G.con);
         gl.uniform3fv(u.uLift, G.lift); gl.uniform3fv(u.uGain, G.gain);
         gl.uniform1f(u.uVig, G.vig); gl.uniform1f(u.uTime, (t * 61.7) % 97);
-        gl.uniform1f(u.uBlur, this.motion);
       });
       gl.enable(gl.DEPTH_TEST);
       gl.depthMask(true);
