@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Shred Slope</title>
-  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Twelve mountains: sunny days, sunsets, floodlit nights, an ice cave, giant big-air kickers, rail parks, cliff drops and an Olympic-style slopestyle course. Ride solo or race up to 10 friends.">
+  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Sixteen mountains: sunny days, sunsets, floodlit nights, an ice cave, giant big-air kickers, rail parks, cliff drops and Olympic-style slopestyle, big air, halfpipe and snowboard cross. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
@@ -20,6 +20,7 @@
   <!-- In-game HUD -->
   <div id="hud" class="hidden">
     <div id="zone" class="brush"></div>
+    <div id="racePos" class="brush hidden"></div>
     <div id="mpbar" class="hidden"><span id="mpServer"></span><span id="mpTimer"></span></div>
     <div id="scoreBox">
       <div class="lbl brush">SCORE</div>
@@ -60,7 +61,7 @@
   <section id="title" class="overlay">
     <div class="title-wrap">
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
-      <p class="tag">Twelve mountains, from rail parks to giant kickers and cliff drops.</p>
+      <p class="tag">Sixteen mountains, from rail parks to a halfpipe and a big air final.</p>
       <div class="pass">
         <div class="pass-head"><span class="brush">Season pass</span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></div>
         <div class="pass-body">
@@ -80,7 +81,7 @@
       </div>
       <div class="controls">
         <div class="howto-h brush">How to ride</div>
-        <div><kbd>A</kbd><kbd>D</kbd> carve, or spin in the air</div>
+        <div><kbd>A</kbd><kbd>D</kbd> carve &middot; air: tap to steer, hold to spin</div>
         <div><kbd>Space</kbd> jump</div>
         <div><kbd>W</kbd> speed up &middot; air: front flip</div>
         <div><kbd>S</kbd> powerslide &middot; air: back flip</div>

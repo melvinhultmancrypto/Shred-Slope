@@ -58,6 +58,40 @@
 
   // ------------------------------------------------------------------ the maps
   const Z = (name, type, len, opt) => ({ name, type, len, opt });
+  // competition halfpipe: flat bottom, round transitions up to near-vertical, a short vert section, then the deck
+  const PIPE = { W0: 6.2, R: 5.6, TM: 1.48, VERT: 0.75 };
+  PIPE.XT = PIPE.W0 + PIPE.R * Math.sin(PIPE.TM); // where the vert starts
+  PIPE.YT = PIPE.R * (1 - Math.cos(PIPE.TM));
+  PIPE.LIP = PIPE.XT + PIPE.VERT * Math.cos(PIPE.TM); // the coping
+  PIPE.H = PIPE.YT + PIPE.VERT * Math.sin(PIPE.TM); // wall height
+  PIPE.SL = PIPE.W0 + PIPE.R * PIPE.TM + PIPE.VERT; // arc length from the middle to the lip
+  // point on the wall at arc length s from the middle: lateral offset, height, wall angle
+  PIPE.at = (s) => {
+    const a = Math.abs(s), sg = s < 0 ? -1 : 1;
+    if (a <= PIPE.W0) return { o: s, y: 0, ang: 0 };
+    if (a <= PIPE.W0 + PIPE.R * PIPE.TM) {
+      const th = (a - PIPE.W0) / PIPE.R;
+      return { o: sg * (PIPE.W0 + PIPE.R * Math.sin(th)), y: PIPE.R * (1 - Math.cos(th)), ang: th };
+    }
+    const v = Math.min(PIPE.VERT, a - PIPE.W0 - PIPE.R * PIPE.TM);
+    return { o: sg * (PIPE.XT + v * Math.cos(PIPE.TM)), y: PIPE.YT + v * Math.sin(PIPE.TM), ang: PIPE.TM };
+  };
+  // height of the pipe at lateral offset o (the same shape, as a heightfield)
+  PIPE.y = (o) => {
+    const a = Math.abs(o);
+    if (a <= PIPE.W0) return 0;
+    if (a <= PIPE.XT) { const sn = (a - PIPE.W0) / PIPE.R; return PIPE.R * (1 - Math.sqrt(Math.max(0, 1 - sn * sn))); }
+    if (a <= PIPE.LIP) return PIPE.YT + ((a - PIPE.XT) / (PIPE.LIP - PIPE.XT)) * (PIPE.H - PIPE.YT);
+    return PIPE.H;
+  };
+  // arc length for a lateral offset (inverse of PIPE.at)
+  PIPE.arc = (o) => {
+    const a = Math.abs(o), sg = o < 0 ? -1 : 1;
+    if (a <= PIPE.W0) return o;
+    if (a <= PIPE.XT) return sg * (PIPE.W0 + PIPE.R * Math.asin(Math.min(1, (a - PIPE.W0) / PIPE.R)));
+    return sg * (PIPE.W0 + PIPE.R * PIPE.TM + Math.min(PIPE.VERT, (a - PIPE.XT) / Math.cos(PIPE.TM)));
+  };
+  SS.PIPE = PIPE;
   const MAPS = {
     night: {
       id: 'night', name: 'Floodlit Night', time: 'NIGHT', diff: 'MEDIUM',
@@ -241,9 +275,71 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 18000, t: 'Score 18,000' }, { k: 'grind', v: 8, t: 'Grind for 8 seconds in total' }],
       card: 'linear-gradient(180deg,#0a0420 0%,#3b0f5c 55%,#ff4fd8 100%)', accent: '#ff4fd8',
     },
+    slopequal: {
+      id: 'slopequal', name: 'Slopestyle Qualifier', time: 'GOLDEN HOUR', diff: 'HARD',
+      sub: 'The other competition course: a kinked rail, a long box and a down-rail, then three jump lines with the biggest kicker in the middle.',
+      half: 24, curve: [8, 300, 4, 140], slope: 0.23, alt: 2860, length: 1900,
+      zones: [Z('RAIL SECTION 1', 'railStation', 170, { n: 3 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 4 }), Z('RAIL SECTION 3', 'railStation', 170, { n: 5 }),
+        Z('JUMP 1', 'jumpStation', 300, { n: 3 }), Z('JUMP 2', 'jumpStation', 300, { n: 4 }), Z('JUMP 3', 'jumpStation', 300, { n: 5 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.3, 0.27, 0.42], ground: [0.14, 0.1, 0.14], sunDir: norm3([0.75, 0.22, 0.62]), sun: [1.15, 0.68, 0.4], fog: [0.75, 0.48, 0.45], rim: [0.45, 0.28, 0.3], snow: [0.95, 0.94, 0.97], powder: [0.9, 0.88, 0.95] },
+      sky: { zen: [0.16, 0.16, 0.38], hor: [1.0, 0.56, 0.36], dir: norm3([0.75, 0.16, 0.62]), col: [1.0, 0.6, 0.3], disk: 0.9992, glow: [5, 0.55, 60, 0.7], aurora: 0, cloudDark: [0.35, 0.22, 0.35], cloudLit: [1.0, 0.62, 0.45], clouds: 0.75, stars: 0.25 },
+      lamps: null, banners: true,
+      trees: { near: 0.6, far: 0.75, snow: 0.8, green: [0.08, 0.16, 0.11] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.25, 0.16, 0.26], cap: [1.0, 0.72, 0.6], k: [0.4, 0.6] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'grind', v: 4, t: 'Grind for 4 seconds in total' }],
+      card: 'linear-gradient(180deg,#2a2a66 0%,#c8577a 45%,#ff9a52 75%,#ffd27a 100%)', accent: '#ffd23f',
+    },
+    bigairfinal: {
+      id: 'bigairfinal', name: 'Big Air Final', time: 'NIGHT', diff: 'HARD',
+      sub: 'The city big air: drop in from a scaffold tower 40 metres up, one giant jump, and land in a stadium full of fans.',
+      half: 14, curve: [0, 300, 0, 140], slope: 0.25, alt: 120, length: 520,
+      firstType: 'tower', firstLen: 110, towerHalf: 7.5, open: true,
+      zones: [Z('THE BIG AIR', 'giant', 300)],
+      first: 'START TOWER', stands: [[290, 560]], comp: true, city: true,
+      light: { sky: [0.3, 0.32, 0.46], ground: [0.12, 0.12, 0.17], sunDir: norm3([0.35, 0.8, -0.45]), sun: [0.24, 0.27, 0.38], fog: [0.06, 0.07, 0.13], rim: [0.3, 0.32, 0.5], snow: [0.95, 0.97, 1.0], powder: [0.88, 0.9, 1.0] },
+      sky: { zen: [0.01, 0.015, 0.05], hor: [0.12, 0.1, 0.2], dir: norm3([-0.4, 0.4, 0.8]), col: [0.85, 0.85, 0.95], disk: 0.9996, glow: [14, 0.2, 300, 0.3], aurora: 0, cloudDark: [0.05, 0.05, 0.1], cloudLit: [0.25, 0.22, 0.32], clouds: 0.5, stars: 0.6 },
+      lamps: { every: 24, i: 2.4, col: [1, 0.96, 0.88] },
+      trees: { near: 0, far: 0, snow: 1, green: [0.07, 0.17, 0.12] },
+      snowfall: 0.35, nets: true, shadows: false,
+      mtn: { dark: [0.05, 0.06, 0.1], cap: [0.18, 0.2, 0.28], k: [0.3, 0.4] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'air', v: 4.5, t: 'Stay in the air for 4.5 seconds' }, { k: 'score', v: 9000, t: 'Score 9,000' }],
+      card: 'linear-gradient(180deg,#05070f 0%,#1a1838 55%,#46305a 100%)', accent: '#ffd23f',
+    },
+    superpipe: {
+      id: 'superpipe', name: 'Superpipe Final', time: 'NIGHT', diff: 'HARD',
+      sub: 'A floodlit competition halfpipe. Ride wall to wall, boost out of the lip and spin. Steer into the wall you are heading for to pump higher.',
+      half: 16, curve: [0, 300, 0, 140], slope: 0.3, alt: 2400, length: 760, fine: true,
+      zones: [Z('THE SUPERPIPE', 'pipe', 470)],
+      first: 'DROP-IN DECK', stands: [[640, 900]], comp: true,
+      light: { sky: [0.3, 0.34, 0.5], ground: [0.1, 0.11, 0.17], sunDir: norm3([0.35, 0.8, -0.45]), sun: [0.24, 0.27, 0.38], fog: [0.08, 0.11, 0.22], rim: [0.22, 0.3, 0.5], snow: [0.95, 0.97, 1.0], powder: [0.86, 0.9, 1.0] },
+      sky: { zen: [0.01, 0.02, 0.06], hor: [0.09, 0.13, 0.26], dir: norm3([-0.4, 0.4, 0.8]), col: [0.75, 0.8, 0.95], disk: 0.99955, glow: [14, 0.2, 300, 0.35], aurora: 0.35, cloudDark: [0.05, 0.07, 0.14], cloudLit: [0.2, 0.24, 0.36], clouds: 0.6, stars: 1 },
+      lamps: { every: 26, i: 2.3, col: [1, 0.95, 0.85] },
+      trees: { near: 0.7, far: 0.8, snow: 1, green: [0.07, 0.17, 0.12] },
+      snowfall: 0.4, nets: false, shadows: false,
+      mtn: { dark: [0.07, 0.09, 0.16], cap: [0.32, 0.36, 0.5], k: [0.25, 0.55] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 25000, t: 'Score 25,000' }, { k: 'perfects', v: 10, t: 'Land 10 perfect landings' }],
+      card: 'linear-gradient(180deg,#040a1c 0%,#123064 60%,#2a4f8a 100%)', accent: '#4fa8ff',
+    },
+    sbx: {
+      id: 'sbx', name: 'Snowboard Cross', time: 'SUNNY DAY', diff: 'MEDIUM',
+      sub: 'Race three rivals down a cross course: start gate, rollers, banked turns, step-ups and a big final jump. First to the line wins.',
+      half: 9, curve: [20, 64, 6, 30], slope: 0.2, alt: 2650, length: 1500, berms: true, racers: true, vmax: 23.5,
+      zones: [Z('START RAMP', 'sbxStart', 110), Z('ROLLERS', 'rollers', 200), Z('BANKED TURNS', 'berms', 230), Z('STEP-UPS', 'sbxJumps', 240), Z('WHOOPS', 'whoops', 180), Z('THE BERMS', 'berms', 220), Z('FINAL JUMP', 'sbxFinal', 200)],
+      first: 'START GATE', stands: [[1380, 1560]], comp: true,
+      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([0.3, 0.6, 0.74]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
+      sky: { zen: [0.12, 0.36, 0.8], hor: [0.7, 0.82, 0.96], dir: norm3([0.3, 0.6, 0.74]), col: [1.0, 0.96, 0.85], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.74, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.6, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.7, far: 0.85, snow: 0.6, green: [0.08, 0.2, 0.14] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'win', t: 'Win the race' }, { k: 'time', v: 70, t: 'Finish under 1:10' }],
+      card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ff4060',
+    },
   };
   SS.MAPS = MAPS;
-  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon'];
+  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal'];
   SS.GIANT = GIANT;
 
   const CRYSTAL_COLS = [[0.35, 0.95, 1.0], [0.65, 0.45, 1.0], [0.3, 1.0, 0.75], [1.0, 0.45, 0.85]];
@@ -255,6 +351,7 @@
       this.seed = seed >>> 0;
       C.HALF = this.map.half;
       C.LENGTH = this.map.length || 2600;
+      C.FINE = !!this.map.fine;
       C.ZMAX = C.LENGTH + C.RUNOUT + 90;
       this.L = this.map.light;
       this.cave = this.map.cave || null;
@@ -305,8 +402,9 @@
           [mids[i], mids[j]] = [mids[j], mids[i]];
         }
       }
-      this.zones = [{ name: this.map.first, type: 'summit', z0: C.Z0, z1: 220 }];
-      let z = 220;
+      const fl = this.map.firstLen || 220;
+      this.zones = [{ name: this.map.first, type: this.map.firstType || 'summit', z0: C.Z0, z1: fl }];
+      let z = fl;
       for (const m of mids) {
         const len = m.len || 380;
         this.zones.push({ name: m.name, type: m.type, z0: z, z1: z + len, opt: m.opt || {} });
@@ -334,11 +432,15 @@
           s = k < knuckle ? GIANT.inSlope : k < knuckle + GIANT.land ? GIANT.landSlope : GIANT.runSlope;
         }
         else if (t === 'rails') s -= 0.03;
+        else if (t === 'tower') s = z < 14 ? 0.04 : 0.55;
+        else if (t === 'sbxStart') s = z < 12 ? 0.05 : 0.36;
+        else if (t === 'pipe') s = this.map.slope;
+        else if (t === 'sbxFinal') s += 0.04;
         else if (t === 'slalom') s -= 0.04;
         if (z < 30) s = lerp(0.1, s, clamp((z + 30) / 60, 0, 1));
         if (z > C.LENGTH + 10) s = lerp(s, 0.025, clamp((z - C.LENGTH - 10) / 70, 0, 1));
         slope[i] = s;
-        amp[i] = t === 'rollers' ? 1.7 : t === 'summit' ? 0.35 : t === 'finish' ? 0.1 : t === 'giant' ? 0.05 : 0.18;
+        amp[i] = t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
         if (z < 20) amp[i] = 0;
       }
       const blur = (src, w) => {
@@ -376,6 +478,42 @@
           this.bArr[i] -= c.D * smooth(Math.min(1, (z - c.z) / 2.2)) + c.e * Math.min(28, Math.max(0, z - c.z - 2.2));
         }
       }
+      // the big air tower: the deck stands on scaffolding above the arena floor
+      this.towerArr = null;
+      const tw = this.zones.find((zn) => zn.type === 'tower');
+      if (tw) {
+        this.towerArr = new Float32Array(n);
+        const zEnd = tw.z1;
+        for (let i = 0; i < n; i++) {
+          const z = C.Z0 + i;
+          this.towerArr[i] = z >= zEnd ? 0 : (this.base(z) - this.base(zEnd)) - 0.12 * (zEnd - z) + 2;
+        }
+        this.towerArr = blur(this.towerArr, 4);
+        for (let i = 0; i < n; i++) this.towerArr[i] = Math.max(0, this.towerArr[i]);
+      }
+      // halfpipe: how much of the pipe there is at each metre (it grows in and fades out)
+      this.pipeArr = null;
+      const pz = this.zones.find((zn) => zn.type === 'pipe');
+      if (pz) {
+        this.pipeZone = pz;
+        this.pipeArr = new Float32Array(n);
+        for (let i = 0; i < n; i++) {
+          const z = C.Z0 + i;
+          this.pipeArr[i] = smooth(clamp((z - pz.z0) / 26, 0, 1)) * smooth(clamp((pz.z1 - z) / 26, 0, 1));
+        }
+      }
+      // banked turns: the outside of every bend is built up (cross courses)
+      this.bermArr = null;
+      if (this.map.berms) {
+        this.bermArr = new Float32Array(n);
+        for (let i = 1; i < n - 1; i++) {
+          const zn = this.zoneAt(C.Z0 + i);
+          const k = zn.type === 'berms' ? 1 : zn.type === 'summit' || zn.type === 'finish' || zn.type === 'sbxStart' ? 0.2 : 0.55;
+          const curv = this.cArr[i + 1] - 2 * this.cArr[i] + this.cArr[i - 1];
+          this.bermArr[i] = clamp(curv * 38, -0.8, 0.8) * k;
+        }
+        this.bermArr = blur(this.bermArr, 6);
+      }
       // how cave-like each metre is (steeper walls inside)
       this.kArr = new Float32Array(n);
       for (let i = 0; i < n; i++) this.kArr[i] = this.caveK(C.Z0 + i);
@@ -399,17 +537,50 @@
       const off = x - c;
       const e = Math.abs(off) - C.HALF;
       let y = this.sample(this.bArr, z);
-      y += 0.3 * Math.sin(z * 0.045 + off * 0.11 + this.pr) + 0.2 * Math.sin(z * 0.11 - off * 0.07);
+      const pk = this.pipeArr ? this.sample(this.pipeArr, z) : 0;
+      // the halfpipe: round walls across the piste, deck beyond the coping (the banks start from the deck)
+      if (pk > 0.001) y += pk * PIPE.y(off);
+      if (!this.towerArr) y += (1 - pk) * (0.3 * Math.sin(z * 0.045 + off * 0.11 + this.pr) + 0.2 * Math.sin(z * 0.11 - off * 0.07));
+      if (this.bermArr) {
+        const bk = this.sample(this.bermArr, z);
+        const a = Math.abs(off);
+        y -= bk * off * (a < C.HALF + 3 ? 1 : Math.max(0, 1 - (a - C.HALF - 3) / 6));
+      }
+      if (this.towerArr) {
+        const td = this.sample(this.towerArr, z);
+        const et = Math.abs(off) - this.map.towerHalf;
+        if (td > 0.01 && et > 0) y -= td * smooth(Math.min(1, et / 0.9));
+      }
       const ra = this.sample(this.ampArr, z);
       if (ra > 0.01) {
         const fade = e < 0 ? 1 : Math.max(0, 1 - e / 6);
         y += ra * Math.sin((z * TAU) / 26 + this.pr) * fade;
       }
-      if (e > 0) {
+      if (e > 0 && this.map.open) {
+        // a stadium: low banks, then a flat arena around the course
+        const eb = Math.min(e, 30);
+        y += 0.012 * eb * eb + 0.6 * Math.sin(x * 0.05 + z * 0.03);
+      } else if (e > 0) {
         const ck = this.cave ? this.sample(this.kArr, z) : 0;
-        const ee = e < 38 ? e : 38;
-        y += lerp(0.05, 0.13, ck) * ee * ee + (e > 38 ? (e - 38) * 0.9 : 0);
-        y += Math.min(1, e / 15) * (1 - ck * 0.7) * (4 * Math.sin(x * 0.045 + z * 0.02) + 2.5 * Math.sin(z * 0.07 + x * 0.03));
+        // the bank doesn't start in a straight line: the piste edge wanders out and back
+        const sd = off > 0 ? 1.7 : -0.9;
+        const wob = (1 - ck) * Math.max(0, 2 + 2.4 * Math.sin(z * 0.021 + sd + this.pr) + 1.3 * Math.sin(z * 0.067 - sd));
+        const eb = Math.max(0, e - wob);
+        const ee = eb < 38 ? eb : 38;
+        const wall = 0.9 + 0.4 * Math.sin(z * 0.0115 + sd * 2.3 + this.pr) * (1 - ck);
+        // how steep the bank climbs changes along the run and differs left and right: narrow gullies, open bowls
+        const steep = 0.05 * (0.62 + 0.4 * Math.sin(z * 0.0083 + sd * 2.9 + this.pr) + 0.12 * Math.sin(z * 0.029 - sd));
+        y += lerp(steep, 0.13, ck) * ee * ee + (eb > 38 ? (eb - 38) * wall * lerp(steep / 0.05, 1, ck) : 0);
+        const k1 = Math.min(1, eb / 15) * (1 - ck * 0.7);
+        y += k1 * (4 * Math.sin(x * 0.045 + z * 0.02) + 2.5 * Math.sin(z * 0.07 + x * 0.03));
+        // ridges and gullies running down the banks, and big shoulders further out
+        y += Math.min(1, eb / 22) * (1 - ck) * 2.6 * Math.sin(x * 0.12 + z * 0.045) * Math.sin(z * 0.031 - x * 0.017 + sd);
+        if (eb > 24) y += Math.min(1, (eb - 24) / 30) * (1 - ck) * (9 * Math.sin(z * 0.0135 + x * 0.019 + sd) + 4 * Math.sin(z * 0.041 - x * 0.011));
+        // the rim of the valley rises into peaks and drops into saddles, so it never runs dead straight
+        if (eb > 50) {
+          const rimK = Math.min(1, (eb - 50) / 45) * (1 - ck);
+          y += rimK * (34 * Math.sin(z * 0.0071 + sd * 1.9 + this.pr) + 20 * Math.sin(z * 0.0187 - sd) + 9 * Math.sin(z * 0.052 + x * 0.013) - 22);
+        }
       }
       return y;
     }
@@ -627,14 +798,17 @@
               [['rail', 16, 0], ['box', 18, 0], ['rail', 15, 1.1]],
               [['box', 26, 0.7], ['rail', 22, 0], ['box', 16, 0]],
               [['rail', 30, 0], ['box', 20, 1.0], ['rail', 18, 1.3]],
-            ][n % 3];
+              [['box', 22, 0], ['rail', 26, -0.55], ['box', 14, 1.2]],
+              [['rail', 20, 1.5], ['box', 32, 0], ['rail', 24, -0.45]],
+              [['box', 18, 0.9], ['rail', 40, 0], ['box', 24, -0.4]],
+            ][n % 6];
             [-10, 0, 10].forEach((off, i) => rail(z0 + 40 + (i === 1 ? 0 : 4), off, L3[i][0], L3[i][1], L3[i][2]));
             break;
           }
           case 'jumpStation': {
             // three kickers side by side: smaller on the outside, the biggest in the middle
             const n = (zn.opt && zn.opt.n) || 0;
-            const sizes = [['M', 'L', 'M'], ['L', 'XL', 'L'], ['L', 'XXL', 'XL']][n % 3];
+            const sizes = [['M', 'L', 'M'], ['L', 'XL', 'L'], ['L', 'XXL', 'XL'], ['L', 'L', 'XL'], ['M', 'XXL', 'L'], ['XL', 'XXL', 'XL']][n % 6];
             [-15, 0, 15].forEach((off, i) => kicker(z0 + 50, off, sizes[i]));
             break;
           }
@@ -660,6 +834,13 @@
             }
             break;
           }
+          case 'sbxJumps':
+            // step-ups and table-tops right in the racing line
+            [[24, 'M'], [80, 'L'], [140, 'M'], [196, 'L']].forEach(([at, sz]) => { if (at + 40 < L) kicker(z0 + at, 0, sz); });
+            break;
+          case 'sbxFinal':
+            kicker(z0 + 70, 0, 'XL');
+            break;
           case 'cliffs':
             break;
           case 'mega':
@@ -689,19 +870,31 @@
         for (let b = ((za - C.Z0) / 10) | 0; b <= ((zb - C.Z0) / 10) | 0; b++) (this.fb[b] = this.fb[b] || []).push(f);
       }
 
-      // forest on both banks (none inside the cave)
+      // forest on both banks (none inside the cave): trees grow in groves, big ones in the middle,
+      // saplings around the edge, with open glades between; a few lone trees and dead snags
       const T = M.trees;
-      for (let z = C.Z0; z < C.ZMAX; z += R(2.6, 4) / (T.dense ? 1.35 : 1)) {
-        if (this.cave && z > this.cave[0] - 15 && z < this.cave[1] + 15) continue;
-        const c = this.center(z);
-        for (const side of [-1, 1]) {
-          if (r() < T.near) {
-            const e = 2.6 + Math.pow(r(), 1.3) * 28;
-            this.trees.push({ x: c + side * (HALF + e), z: z + R(-1, 1), s: R(0.8, 1.5), near: true, solid: e < 26 });
-          }
-          if (r() < T.far) {
-            const e = 30 + r() * 62;
-            this.trees.push({ x: c + side * (HALF + e), z: z + R(-1.5, 1.5), s: R(0.9, 1.7), near: false, solid: false });
+      const dens = T.dense ? 1.4 : 1;
+      const inCave = (z) => this.cave && z > this.cave[0] - 15 && z < this.cave[1] + 15;
+      const plant = (side, e, z, s) => {
+        if (e < 2.4 || z < C.Z0 || z > C.ZMAX || inCave(z)) return;
+        const h = r();
+        const kind = h < 0.05 ? 'snag' : h < 0.3 ? 'spruce' : h < 0.42 ? 'pine' : 'fir';
+        this.trees.push({ x: this.center(z) + side * (HALF + e), z, s, near: e < 36, solid: e < 26, kind });
+      };
+      for (const side of [-1, 1]) {
+        for (const [e0, e1, gap, amt] of [[2.5, 32, [9, 24], T.near], [26, 95, [12, 30], T.far]]) {
+          let z = C.Z0 + R(0, 12);
+          while (z < C.ZMAX) {
+            const ge = lerp(e0, e1, Math.pow(r(), 1.15)), rad = R(5, 14);
+            const n = Math.round(R(5, 13) * amt * dens);
+            for (let i = 0; i < n; i++) {
+              const a = R(0, TAU), d = Math.sqrt(r()) * rad;
+              const mid = 1 - d / rad;
+              plant(side, ge + Math.cos(a) * d * 0.85, z + Math.sin(a) * d, R(0.65, 0.95) + mid * R(0.25, 0.75));
+            }
+            // a lone tree or two out in the open
+            if (r() < 0.6 * amt) plant(side, R(e0, e1), z + R(4, 10), R(0.8, 1.4));
+            z += R(gap[0], gap[1]) / dens;
           }
         }
       }
@@ -801,8 +994,9 @@
       }
       // grandstands full of fans along the finish
       this.stands = [];
-      if (M.stands) {
-        for (let z = C.LENGTH - 150; z < C.LENGTH + 30; z += 30) {
+      const standRanges = Array.isArray(M.stands) ? M.stands : M.stands ? [[C.LENGTH - 150, C.LENGTH + 30]] : [];
+      for (const [za, zb] of standRanges) {
+        for (let z = za; z < zb; z += 30) {
           for (const sd of [-1, 1]) {
             const x = this.center(z) + sd * (HALF + 7);
             this.stands.push({ x, z, side: sd, gy: this.ground(x, z) });
@@ -821,6 +1015,15 @@
             this.rocks.push({ x, z, s: sz, yaw: R(0, TAU), gy });
             if (e > 0.5) this.colliders.push({ x, z, r: sz * 0.8, top: gy + sz * 1.1 });
           }
+        }
+      }
+      // competition dressing: a start house with gates, and scaffolding under the big air tower
+      this.startGate = M.comp ? { z: M.firstType === 'tower' ? 4 : M.id === 'sbx' ? 8 : 2, gates: M.racers ? 4 : 1, half: M.towerHalf || Math.min(HALF, 9) } : null;
+      this.scaffold = [];
+      if (this.towerArr) {
+        for (let z = C.Z0 + 4; z < this.zones[0].z1 + 4; z += 6) {
+          const td = this.sample(this.towerArr, z);
+          if (td > 1.2) for (const sd of [-1, 1]) this.scaffold.push({ z, side: sd, h: td });
         }
       }
       this.huts = [
@@ -880,6 +1083,15 @@
       for (const c of this.cliffs || []) {
         const x = this.center(c.z) + R(-4, 4), y0 = this.ground(x, c.z - 1);
         for (const [dz, dy] of [[5, 0.4], [10, -0.6], [15, -2.4]]) add(x, y0 + dy, c.z + dz);
+      }
+      // pipe: tokens above the coping, alternating walls
+      if (this.pipeZone) {
+        let sd = 1;
+        for (let z = this.pipeZone.z0 + 40; z < this.pipeZone.z1 - 30; z += 22) {
+          const x = this.center(z) + sd * (SS.PIPE.LIP - 0.6);
+          for (const dy of [1.6, 3.0]) add(x, this.ground(x, z) + dy, z);
+          sd = -sd;
+        }
       }
       for (const zn of this.zones) {
         if (!['summit', 'rollers', 'trees', 'finish', 'pillars', 'pillows', 'cliffs'].includes(zn.type)) continue;
@@ -1048,6 +1260,8 @@
       for (const h of this.huts) add(h.z, { k: 'hut', o: h });
       for (const st of this.stands) add(st.z, { k: 'stand', o: st });
       for (const c of this.cliffs || []) add(c.z, { k: 'cliff', o: c });
+      for (const sc of this.scaffold || []) add(sc.z, { k: 'scaffold', o: sc });
+      if (this.startGate) add(this.startGate.z, { k: 'startGate', o: this.startGate });
       for (const rk of this.rocks || []) add(rk.z, { k: 'rock', o: rk });
       if (this.cave) {
         add(this.cave[0], { k: 'mouth', o: { z: this.cave[0], dir: -1 } });
@@ -1084,6 +1298,8 @@
           case 'stand': B.stand(o); ch.maxZ = Math.max(ch.maxZ, o.z + 14); ch.minZ = Math.min(ch.minZ, o.z - 14); break;
           case 'mouth': B.mouth(o); break;
           case 'cliff': B.cliff(o); break;
+          case 'scaffold': B.scaffold(o); break;
+          case 'startGate': B.startGate(o); break;
           case 'rock': B.rock(o); break;
           case 'finish': B.arch(C.LENGTH, true); B.finishFlags(); break;
           case 'start': B.arch(-3, false); break;
@@ -1151,27 +1367,98 @@
     mountains(engine) {
       if (this.mtnMesh) return this.mtnMesh;
       const P = this.map.mtn, sd = this.map.sky.dir;
-      const mtn = new SS.FBuf(1 << 14);
+      const mtn = new SS.FBuf(1 << 17);
       const lightFn = { light: (nx, ny, nz, x, y, z, out) => { const k = P.k[0] + Math.max(0, nx * sd[0] + ny * sd[1] + nz * sd[2]) * P.k[1]; out[0] = k; out[1] = k; out[2] = k; return out; } };
       const B = new Builder(lightFn, mtn, new SS.FBuf(8));
-      const r = mulberry32(99);
-      const peaks = 70;
-      for (let i = 0; i < peaks; i++) {
-        const a = (i / peaks) * TAU + r() * 0.05;
-        const dist = 1050 + r() * 250;
-        const h = 140 + r() * 260;
-        const wdt = 120 + r() * 150;
-        const cx = Math.cos(a) * dist, cz = Math.sin(a) * dist;
-        const tx = -Math.sin(a), tz = Math.cos(a);
-        const apex = [cx + tx * (r() - 0.5) * 60, h, cz + tz * (r() - 0.5) * 60];
-        const l = [cx - tx * wdt, -240, cz - tz * wdt], rr = [cx + tx * wdt, -240, cz + tz * wdt];
-        const back = [cx * 1.08, -140, cz * 1.08];
-        B.tri(l[0], l[1], l[2], rr[0], rr[1], rr[2], apex[0], apex[1], apex[2], P.dark, back[0], back[1], back[2]);
-        const k = 0.3;
-        const sl = [lerp(apex[0], l[0], k), lerp(apex[1], l[1], k), lerp(apex[2], l[2], k)];
-        const sr = [lerp(apex[0], rr[0], k), lerp(apex[1], rr[1], k), lerp(apex[2], rr[2], k)];
-        const tw = [-cx * 0.01, 0, -cz * 0.01];
-        B.tri(sl[0] + tw[0], sl[1], sl[2] + tw[2], sr[0] + tw[0], sr[1], sr[2] + tw[2], apex[0] + tw[0], apex[1] + 0.5, apex[2] + tw[2], P.cap, back[0], back[1], back[2]);
+      let seed = 99;
+      for (const ch of this.map.id) seed = (seed * 31 + ch.charCodeAt(0)) | 0;
+      const r = mulberry32(seed);
+      // smooth noise that wraps around the horizon
+      const noise = (n) => {
+        const v = Array.from({ length: n }, () => r());
+        return (a) => {
+          const t = ((((a / TAU) % 1) + 1) % 1) * n, i0 = Math.floor(t), f = t - i0, e = f * f * (3 - 2 * f);
+          return lerp(v[i0 % n], v[(i0 + 1) % n], e);
+        };
+      };
+      const rock = P.dark, snow = P.cap;
+      const rockLight = [lerp(rock[0], snow[0], 0.25), lerp(rock[1], snow[1], 0.25), lerp(rock[2], snow[2], 0.25)];
+      if (this.map.city) {
+        // a city at night instead of mountains: towers with lit floors, and two old cooling towers
+        const WIN = [1.0, 0.82, 0.5], WIN2 = [0.7, 0.85, 1.0], WALL = [0.07, 0.08, 0.12];
+        for (let i = 0; i < 130; i++) {
+          const a = (i / 130) * TAU + r() * 0.03, dist = 760 + r() * 420;
+          const wdt = 22 + r() * 46, h = 30 + Math.pow(r(), 1.6) * 230, dep = 20 + r() * 30;
+          const cx = Math.cos(a) * dist, cz = Math.sin(a) * dist, tx = -Math.sin(a), tz = Math.cos(a);
+          const fx = -Math.cos(a), fz = -Math.sin(a); // toward the stadium
+          const y0 = -200;
+          const P0 = [cx - tx * wdt, cz - tz * wdt], P1 = [cx + tx * wdt, cz + tz * wdt];
+          const back = [cx * 1.1, 0, cz * 1.1];
+          B.quad([P0[0], y0, P0[1]], [P1[0], y0, P1[1]], [P1[0], h, P1[1]], [P0[0], h, P0[1]], WALL, back);
+          // side walls and roof so it reads as a block
+          for (const Pp of [P0, P1]) B.quad([Pp[0], y0, Pp[1]], [Pp[0] - fx * dep, y0, Pp[1] - fz * dep], [Pp[0] - fx * dep, h, Pp[1] - fz * dep], [Pp[0], h, Pp[1]], WALL, [cx * 1.1, h / 2, cz * 1.1]);
+          B.quad([P0[0], h, P0[1]], [P1[0], h, P1[1]], [P1[0] - fx * dep, h, P1[1] - fz * dep], [P0[0] - fx * dep, h, P0[1] - fz * dep], WALL, [cx, h - 10, cz]);
+          // lit floors: a few bands of windows on the side facing us
+          const col = r() < 0.3 ? WIN2 : WIN;
+          for (let y = 6 + r() * 6; y < h - 4; y += 7 + r() * 5) {
+            if (r() < 0.35) continue;
+            const u0 = r() * 0.4, u1 = 0.6 + r() * 0.4;
+            const A = [lerp(P0[0], P1[0], u0) + fx, lerp(P0[1], P1[1], u0) + fz], Bq = [lerp(P0[0], P1[0], u1) + fx, lerp(P0[1], P1[1], u1) + fz];
+            const k = 0.45 + r() * 0.55;
+            B.quad([A[0], y, A[1]], [Bq[0], y, Bq[1]], [Bq[0], y + 2.2, Bq[1]], [A[0], y + 2.2, A[1]], [col[0] * k, col[1] * k, col[2] * k], back, 1);
+          }
+          // a red light on the tallest ones
+          if (h > 170) B.quad([cx - tx * 2, h + 1, cz - tz * 2], [cx + tx * 2, h + 1, cz + tz * 2], [cx + tx * 2, h + 4, cz + tz * 2], [cx - tx * 2, h + 4, cz - tz * 2], [1.4, 0.15, 0.1], back, 1);
+        }
+        for (const [a, d] of [[1.9, 820], [2.25, 900]]) {
+          const cx = Math.cos(a) * d, cz = Math.sin(a) * d;
+          B.cyl(cx, -200, cz, 60, 38, 260, 18, [0.16, 0.16, 0.2]);
+          B.cyl(cx, 60, cz, 38, 44, 70, 18, [0.18, 0.18, 0.22]);
+        }
+      }
+      // two ranges: a high one far away and a lower, nearer one in front of it
+      for (const R of (this.map.city ? [{ dist: 1700, depth: 260, h: 300, N: 240 }] : [{ dist: 1520, depth: 300, h: 360, N: 300 }, { dist: 1080, depth: 240, h: 220, N: 360 }])) {
+        const n1 = noise(7), n2 = noise(19), n3 = noise(47), n4 = noise(130), n5 = noise(90);
+        const ridge = (a) => {
+          const massif = n1(a) * 0.6 + n2(a) * 0.4;
+          const pk = 1 - Math.abs(n3(a) * 2 - 1); // sharp, ridged peaks
+          return R.h * (0.18 + 0.82 * massif) * (0.5 + 0.5 * pk * pk) + n4(a) * 14;
+        };
+        const ROWS = 7;
+        const grid = [];
+        for (let i = 0; i <= R.N; i++) {
+          const a = (i / R.N) * TAU;
+          const top = ridge(a);
+          const gully = (n5(a) - 0.5) * 2;
+          const col = [];
+          for (let j = 0; j <= ROWS; j++) {
+            const u = j / ROWS; // 0 at the ridge, 1 at the foot
+            const y = top * Math.pow(1 - u, 1.25) - u * 240 + gully * u * (1 - u) * 46;
+            const rad = R.dist - u * R.depth + gully * u * (1 - u) * 60;
+            col.push([Math.cos(a) * rad, y, Math.sin(a) * rad]);
+          }
+          grid.push(col);
+        }
+        const snowLine = R.h * 0.2;
+        const face = (A, Bp, Cp) => {
+          // which way this facet faces decides snow or rock: steep faces stay bare
+          const ux = Bp[0] - A[0], uy = Bp[1] - A[1], uz = Bp[2] - A[2], vx = Cp[0] - A[0], vy = Cp[1] - A[1], vz = Cp[2] - A[2];
+          let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
+          const l = Math.hypot(nx, ny, nz) || 1;
+          ny = Math.abs(ny / l);
+          const my = (A[1] + Bp[1] + Cp[1]) / 3;
+          const mx = (A[0] + Bp[0] + Cp[0]) / 3, mz = (A[2] + Bp[2] + Cp[2]) / 3;
+          const streak = n4(Math.atan2(mz, mx) * 3.1) > 0.62;
+          const c = ny > 0.42 && my > snowLine + (streak ? 60 : 0) ? snow : ny > 0.3 && my > snowLine * 0.5 ? rockLight : rock;
+          B.tri(A[0], A[1], A[2], Bp[0], Bp[1], Bp[2], Cp[0], Cp[1], Cp[2], c, mx * 1.3, my, mz * 1.3);
+        };
+        for (let i = 0; i < R.N; i++) {
+          for (let j = 0; j < ROWS; j++) {
+            const a = grid[i][j], b = grid[i + 1][j], c = grid[i + 1][j + 1], d = grid[i][j + 1];
+            face(a, b, c);
+            face(a, c, d);
+          }
+        }
       }
       this.mtnMesh = engine.mesh(mtn.data(), 6);
       return this.mtnMesh;
@@ -1346,12 +1633,21 @@
           }
           const steep = Math.hypot(gx, gz);
           const rockAt = ck > 0.5 ? 0.6 : 0.95;
-          if (steep > rockAt) {
+          const pipeK = w.pipeArr ? w.sample(w.pipeArr, z) : 0;
+          if (pipeK > 0.3 && ao >= SS.PIPE.LIP - 0.02 && ao < SS.PIPE.LIP + 0.52) { ar = 0.22; ag = 0.42; ab = 0.95; } // blue line along the coping
+          else if (w.towerArr && w.sample(w.towerArr, z) > 0.5 && Math.abs(ao - M.towerHalf + 0.25) < 0.3) { ar = 0.22; ag = 0.42; ab = 0.95; }
+          else if (steep > rockAt && !(pipeK > 0.02 && ao < C.HALF)) {
             const kk = Math.min(0.8, (steep - rockAt) * 1.4);
             const rock = ck > 0.5 ? [0.22, 0.24, 0.32] : [0.3, 0.32, 0.38];
             ar = lerp(ar, rock[0], kk); ag = lerp(ag, rock[1], kk); ab = lerp(ab, rock[2], kk);
           }
-          const v = 0.97 + hash(x * 0.37, z * 0.29) * 0.05;
+          let v = 0.97 + hash(x * 0.37, z * 0.29) * 0.05;
+          if (pipeK > 0.3 && ao < SS.PIPE.LIP - 0.3) {
+            // pipe walls: cooler and darker as they steepen, with cutter lines running down the pipe
+            const tw = clamp(SS.PIPE.y(ao) / SS.PIPE.H, 0, 1) * pipeK;
+            ar *= 1 - 0.3 * tw; ag *= 1 - 0.2 * tw; ab *= 1 - 0.05 * tw;
+            if (ao > SS.PIPE.W0) v *= (j >> 1) & 1 ? 0.95 : 1.02;
+          } else if (pipeK > 0.3 && ao > SS.PIPE.LIP + 0.3 && ao < C.HALF) { ar *= 0.93; ag *= 0.95; }
           const k6 = (i * nc + j) * 6;
           P[k6] = x; P[k6 + 1] = y; P[k6 + 2] = z;
           P[k6 + 3] = ar * L3[0] * v; P[k6 + 4] = ag * L3[1] * v; P[k6 + 5] = ab * L3[2] * v;
@@ -1496,6 +1792,54 @@
       }
     }
 
+    // one bay of the big air tower: steel posts, ledgers and braces from the arena floor up to the deck,
+    // a wrap banner near the top and a railing along the deck edge
+    scaffold(sc) {
+      const w = this.w, s = sc.side, Hh = w.map.towerHalf;
+      const STEEL = [0.5, 0.53, 0.6], WRAP = [0.16, 0.3, 0.75], STRIPE = [0.95, 0.95, 0.98];
+      const za = sc.z, zb = sc.z + 6;
+      const xIn = (z) => w.center(z) + s * (Hh + 0.35), xOut = (z) => w.center(z) + s * (Hh + 3.2);
+      const deck = (z) => w.base(z) - 0.05;
+      const floor = (x, z) => w.ground(x, z);
+      for (const z of [za]) {
+        for (const xf of [xIn, xOut]) {
+          const x = xf(z), y0 = floor(x, z), y1 = deck(z) - 0.2;
+          this.box(x, (y0 + y1) / 2, z, 0.12, (y1 - y0) / 2, 0.12, 0, STEEL);
+        }
+        // ledgers and cross braces every few metres up
+        const top = deck(z) - 0.3;
+        for (let y = floor(xOut(z), z) + 3; y < top; y += 3.2) {
+          this.beam(xIn(z), y, z, xOut(z), y, z, 0.06, 0.06, STEEL);
+          this.beam(xOut(z), y, za, xOut(zb), y + (deck(zb) - deck(za)), zb, 0.06, 0.06, STEEL);
+          this.beam(xOut(z), y, za, xOut(zb), y + 3.2 + (deck(zb) - deck(za)), zb, 0.045, 0.045, STEEL);
+        }
+      }
+      // fabric wrap along the top of the outside face, with a white stripe
+      const y0a = deck(za) - 3.2, y0b = deck(zb) - 3.2;
+      this.quad([xOut(za), y0a, za], [xOut(zb), y0b, zb], [xOut(zb), deck(zb) - 0.2, zb], [xOut(za), deck(za) - 0.2, za], WRAP, [w.center(za), deck(za) - 1.5, za]);
+      this.quad([xOut(za) + s * 0.02, y0a + 1.1, za], [xOut(zb) + s * 0.02, y0b + 1.1, zb], [xOut(zb) + s * 0.02, y0b + 1.5, zb], [xOut(za) + s * 0.02, y0a + 1.5, za], STRIPE, [w.center(za), deck(za) - 1.5, za], 0.35);
+      // the deck itself reaches out over the scaffold, and a railing runs along its edge
+      this.quad([xIn(za) - s * 0.4, deck(za) + 0.02, za], [xOut(za), deck(za) - 0.1, za], [xOut(zb), deck(zb) - 0.1, zb], [xIn(zb) - s * 0.4, deck(zb) + 0.02, zb], [0.42, 0.45, 0.52], [w.center(za), deck(za) + 5, za]);
+      const xr = (z) => w.center(z) + s * (Hh + 0.3);
+      this.box(xr(za), deck(za) + 0.55, za, 0.05, 0.55, 0.05, 0, STEEL);
+      this.beam(xr(za), deck(za) + 1.1, za, xr(zb), deck(zb) + 1.1, zb, 0.05, 0.05, [0.95, 0.42, 0.12]);
+    }
+
+    // start house: a roofed hut across the deck with a gate for each rider
+    startGate(g) {
+      const w = this.w, z = g.z, c = w.center(z), gy = w.ground(c, z), hw = g.half;
+      const FRAME = [0.2, 0.22, 0.28], ROOF = [0.9, 0.24, 0.2], GATE = [0.95, 0.85, 0.2];
+      for (const s of [-1, 1]) this.box(c + s * hw, gy + 2.25, z - 1.5, 0.25, 2.25, 2.2, 0, FRAME);
+      this.box(c, gy + 4.6, z - 2.2, hw + 0.4, 0.18, 1.9, 0, ROOF);
+      this.box(c, gy + 4.25, z - 0.35, hw, 0.32, 0.06, 0, [0.95, 0.95, 0.98], 0.25);
+      const n = g.gates;
+      for (let i = 0; i < n; i++) {
+        const x = c - hw + ((i + 0.5) / n) * hw * 2;
+        this.box(x, gy + 0.45, z + 0.6, Math.min(0.9, hw / n - 0.15), 0.05, 0.05, 0, GATE);
+        if (i > 0) this.box(c - hw + (i / n) * hw * 2, gy + 0.6, z - 0.4, 0.06, 0.6, 1.0, 0, FRAME);
+      }
+    }
+
     // a lumpy boulder sitting in the snow
     rock(r) {
       const s = r.s, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
@@ -1536,13 +1880,34 @@
       const green = [T.green[0] + h1 * 0.03, T.green[1] + h1 * 0.05, T.green[2] + h1 * 0.03];
       const sn = T.snow;
       const snow = [lerp(0.6, 0.82, Math.min(1, sn)), lerp(0.66, 0.87, Math.min(1, sn)), lerp(0.75, 0.96, Math.min(1, sn))];
-      this.cyl(t.x, y, t.z, 0.2 * s, 0.14 * s, 1.5 * s, 5, [0.2, 0.13, 0.08]);
-      const tiers = t.near ? 4 : 3;
+      const kind = t.kind || 'fir';
+      const BARK = [0.2, 0.13, 0.08];
+      if (kind === 'snag') {
+        // a dead tree: grey trunk and a few bare branches, snow on the stubs
+        const grey = [0.33, 0.29, 0.26];
+        this.cyl(t.x, y, t.z, 0.2 * s, 0.07 * s, 7.5 * s, 5, grey);
+        for (let i = 0; i < 4; i++) {
+          const a = h1 * 9 + i * 2.1, by = y + (2.6 + i * 1.2) * s, L2 = (1.6 - i * 0.25) * s;
+          const ex = t.x + Math.cos(a) * L2, ez = t.z + Math.sin(a) * L2;
+          this.beam(t.x, by, t.z, ex, by + 0.9 * s, ez, 0.07 * s, 0.07 * s, grey);
+          this.beam(ex - Math.cos(a) * 0.3, by + 0.82 * s, ez - Math.sin(a) * 0.3, ex, by + 0.92 * s, ez, 0.09 * s, 0.05 * s, snow);
+        }
+        return;
+      }
+      // fir: the classic; spruce: tall and narrow; pine: tall bare trunk with a crown up top
+      const shape = kind === 'spruce' ? { trunk: 1.3, tiers: t.near ? 6 : 4, rb: 1.35, step: 0.95, hh: 2.1, taper: 0.2 }
+        : kind === 'pine' ? { trunk: 4.2, tiers: 3, rb: 1.6, step: 0.9, hh: 1.8, taper: 0.38 }
+        : { trunk: 1.5, tiers: t.near ? 4 : 3, rb: 1.8, step: t.near ? 1.15 : 1.5, hh: 2.4, taper: t.near ? 0.36 : 0.48 };
+      const dark = kind === 'spruce' ? 0.8 : kind === 'pine' ? 1.12 : 1;
+      green[0] *= dark; green[1] *= dark; green[2] *= dark;
+      this.cyl(t.x, y, t.z, 0.2 * s, 0.14 * s, (shape.trunk + 0.3) * s, 5, BARK);
+      const tiers = shape.tiers;
       const sides = t.near ? 7 : 6;
+      const base = shape.trunk - 0.4;
       for (let i = 0; i < tiers; i++) {
-        const rb = (1.8 - i * (t.near ? 0.36 : 0.48)) * s;
-        const y0 = y + (1.1 + i * (t.near ? 1.15 : 1.5)) * s;
-        const hh = (2.4 - i * 0.25) * s;
+        const rb = Math.max(0.35, shape.rb - i * shape.taper * (shape.rb / 1.8)) * s;
+        const y0 = y + (base + i * shape.step) * s;
+        const hh = (shape.hh - i * 0.18) * s;
         if (t.near) {
           const band = 0.38 * Math.min(1.4, sn);
           this.cyl(t.x, y0 - 0.05 * s, t.z, rb, rb * 0.8, band * s, sides, snow);
@@ -1552,7 +1917,7 @@
         }
       }
       if (t.near) {
-        const top = y + (1.1 + (tiers - 1) * 1.15) * s + (2.4 - (tiers - 1) * 0.25) * s;
+        const top = y + (base + (tiers - 1) * shape.step) * s + (shape.hh - (tiers - 1) * 0.18) * s;
         this.cyl(t.x, top - 0.7 * s, t.z, 0.32 * s, 0, 0.7 * s, sides, snow);
       }
     }
@@ -1844,11 +2209,13 @@
   }
   // lateral sample offsets for the terrain (depends on the map's piste width)
   Builder.offs = () => {
-    if (Builder._half === C.HALF) return Builder._offs;
+    if (Builder._half === C.HALF && Builder._fine === C.FINE) return Builder._offs;
     const o = [];
-    for (let v = -(C.HALF + 4); v <= C.HALF + 4 + 0.01; v += 1.75) o.push(+v.toFixed(2));
+    const st = C.FINE ? 0.5 : 1.75;
+    for (let v = -(C.HALF + 4); v <= C.HALF + 4 + 0.01; v += st) o.push(+v.toFixed(2));
     for (const d of [6.5, 9.5, 13.5, 18.5, 25, 33, 43, 56, 72, 92, 118]) { o.push(C.HALF + d); o.unshift(-(C.HALF + d)); }
     Builder._half = C.HALF;
+    Builder._fine = C.FINE;
     Builder._offs = o;
     return o;
   };

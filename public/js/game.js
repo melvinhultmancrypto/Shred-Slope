@@ -65,7 +65,7 @@
     'bestScore', 'servers', 'serverList', 'serverMsg', 'backBtn', 'pauseMenu', 'resumeBtn', 'restartBtn', 'pauseSettingsBtn', 'quitBtn',
     'results', 'resTitle', 'resBody', 'againBtn', 'newBtn', 'resMenuBtn', 'resNote', 'settings', 'settingsDone', 'loading', 'loadingText',
     'nogl', 'touch', 'fx', 'boostBox', 'boostFill', 'balance', 'balMark', 'mapIntro', 'miTime', 'miName', 'miGoals', 'maps', 'mapGrid', 'mapsBack',
-    'starsTotal', 'resMapsBtn', 'avatar', 'mapPrev', 'mapNext', 'mapDots'].forEach((id) => { ui[id] = $(id); });
+    'starsTotal', 'resMapsBtn', 'avatar', 'mapPrev', 'mapNext', 'mapDots', 'racePos'].forEach((id) => { ui[id] = $(id); });
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
@@ -161,6 +161,7 @@
       case 'air': return run.bigAir >= g.v;
       case 'grind': return run.grindT >= g.v;
       case 'giants': return run.giantLands >= g.v;
+      case 'win': return !!final && run.place === 1;
     }
     return false;
   }
@@ -232,7 +233,7 @@
 
   // space jumps straight away
   function jump() {
-    if (mode === 'menu' || phase !== 'riding' || paused || P.bailT > 0 || P.finished) return;
+    if (mode === 'menu' || phase !== 'riding' || paused || P.bailT > 0 || P.finished || P.pipeMode) return;
     if (P.grounded || P.coyote > 0) pop();
   }
 
@@ -354,12 +355,15 @@
       grounded: true, surf: 0, grindRef: null, grind: 0, airT: 0,
       spin: 0, flip: 0, spinVel: 0, flipVel: 0, spinLock: 0, flipLock: 0, grabT: 0,
       stance: 0, lean: 0, crouch: 0.2, comp: 0, compV: 0, charge: 0, chargeT: 0, charging: false, coyote: 0,
-      bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, inv: 0, finished: false, yawOff: 0,
+      bailT: 0, tumble: 0, tumbleRoll: 0, tumbleV: 0, rollV: 0, bailAge: 0, bailUp: 0, bailKind: 'tumble', bailSide: 1, bailHits: 0, inv: 0, finished: false, yawOff: 0,
       steerS: 0, slide: 0, wind: 0, wobble: 0, boosting: false, bal: 0, balV: 0, balPush: 0, balT: 0, balErr: 0, giant: false, ref: null,
       grabs: [], grabType: 0, grabAmt: 0, grabHeld: false, crouchT: 0,
+      pipeMode: false, pipeAir: 0, pipeLandV: 0, ps: 0, pv: 0, wallRoll: 0,
     });
+    if (world.map.racers) P.x = world.center(z) + 2.25; // your gate in the start house
     P.y = world.H(P.x, P.z);
-    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0 });
+    resetRivals(z);
+    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0, place: 0 });
     tokenGot = new Set();
     raceT = 0;
     zoneName = '';
@@ -491,7 +495,9 @@
   }
 
   // ------------------------------------------------------------------ rider physics
-  const POP = 0.8; // how hard a jump pops
+  const POP = 0.8;
+  const AIR_PUSH = 7; // m/s² sideways push while you steer in the air
+  const AIR_DRIFT = 3.5; // m/s: the most sideways speed you can add in one air // how hard a jump pops
   function pop() {
     const c = POP + (P.crouchT > 0.12 ? 0.4 : 0);
     P.crouchT = 0;
@@ -516,6 +522,7 @@
     P.vx = vx;
     P.vz = vz;
     P.airT = 0;
+    P.drift = 0;
     P.spin = 0;
     P.flip = 0;
     P.spinVel = 0;
@@ -634,7 +641,9 @@
       if (!P.boosting && !ai.on && mode !== 'menu') { Sfx.hiss(0.6, 0.3, 1500, 'bandpass'); Sfx.tone(150, 0.5, 'sawtooth', 0.05, 420); }
     }
     P.boosting = boosting;
-    const cap = boosting ? BOOST_MAX : MAX_SPEED;
+    // some courses have a top speed of their own (cross courses are about lines, not straight-lining)
+    const vmax = world.map.vmax || MAX_SPEED;
+    const cap = boosting ? Math.min(BOOST_MAX, vmax + 3) : Math.min(MAX_SPEED, vmax);
     let v = P.speed + acc * dt;
     if (v > cap) v = P.speed > cap ? Math.max(cap, Math.min(v, P.speed) - 7 * dt) : cap;
     // a giant's in-run sets the takeoff speed, so every launch lands on the landing hill
@@ -745,18 +754,181 @@
     return null;
   }
 
+  // ---- snowboard cross rivals: three riders racing the same course
+  const RIVALS = [
+    { name: 'NOVA', color: 3, skill: 0.932, lane: -6.75, grab: 1 },
+    { name: 'KAI', color: 6, skill: 0.915, lane: -2.25, grab: 2 },
+    { name: 'JUNO', color: 9, skill: 0.885, lane: 6.75, grab: 0 },
+  ];
+  const rivals = [];
+  function resetRivals(z) {
+    rivals.length = 0;
+    if (!world.map.racers || mode !== 'sp') return;
+    for (const d of RIVALS) {
+      const x = world.center(z) + d.lane;
+      rivals.push({ ...d, x, z, y: world.H(x, z), vy: 0, speed: 0, off: d.lane, air: false, airT: 0, fin: 0, t: 0, heading: 0, lean: 0, ph: Math.random() * 6, grabK: 0, spin: 0 });
+    }
+  }
+  function updateRivals(dt) {
+    if (!rivals.length) return;
+    const ss = world.surf, sr = world.surfRef;
+    for (const r of rivals) {
+      r.t += dt;
+      const z = r.z;
+      const zn = world.zoneAt(z);
+      // pace: how fast this bit of the course lets a clean rider go
+      const sl = (world.base(z) - world.base(z + 8)) / 8;
+      const vt = r.fin ? 6 : r.skill * clamp(9 + sl * 80, 10, (world.map.vmax || 25) - 0.3);
+      r.speed += (vt - r.speed) * Math.min(1, dt * (r.air ? 0.1 : 0.7));
+      // racing line: spread out across the course, bunch up to the middle for the jumps
+      const jumps = zn.type === 'sbxJumps' || zn.type === 'sbxFinal';
+      const want = clamp(jumps ? r.lane * 0.12 : r.lane * 0.6 + Math.sin(r.t * 0.5 + r.ph) * 1.6, -C.HALF + 2, C.HALF - 2);
+      r.off += clamp(want - r.off, -1.6 * dt, 1.6 * dt);
+      const dir = Math.atan2(world.center(z + 4) - world.center(z - 4), 8);
+      r.heading = lerpAngle(r.heading, dir + clamp((want - r.off) * 0.15, -0.25, 0.25), Math.min(1, dt * 4));
+      const nz = z + r.speed * Math.cos(r.heading - dir) * dt;
+      const nx = world.center(nz) + r.off;
+      const nh = world.H(nx, nz);
+      if (!r.air) {
+        const yb = r.y + r.vy * dt - 0.5 * G * dt * dt;
+        if (nh < yb - 0.04 && r.speed > 6) { r.air = true; r.airT = 0; r.vy += 1.5; }
+        else { r.vy = clamp((nh - r.y) / dt, -40, 40); r.y = nh; }
+      }
+      if (r.air) {
+        r.vy -= G * dt; r.y += r.vy * dt; r.airT += dt;
+        if (r.y <= nh) { r.y = nh; r.air = false; r.vy = 0; r.airT = 0; }
+      }
+      r.grabK = lerp(r.grabK, r.air && r.airT > 0.25 ? 1 : 0, Math.min(1, dt * 8));
+      r.x = nx; r.z = nz;
+      const bank = world.bermArr ? world.sample(world.bermArr, nz) : 0;
+      r.lean = lerp(r.lean, clamp(bank * 1.2 + (want - r.off) * 0.05, -0.6, 0.6), Math.min(1, dt * 5));
+      if (!r.fin && r.z >= C.LENGTH) r.fin = r.t;
+    }
+    world.surf = ss; world.surfRef = sr;
+    // where am I? (rivals who finished before me, or are further down the course)
+    const ahead = rivals.filter((r) => (r.fin && (!P.finished || r.fin < run.finalTime)) || (!r.fin && !P.finished && r.z > P.z)).length;
+    if (!P.finished) run.place = ahead + 1;
+  }
+  if (window.ShredSlopeDebug !== undefined || /[?&]debug/.test(location.search)) window.__rivals = rivals;
+  function rivalStates(out) {
+    for (const r of rivals) {
+      out.push({ st: { x: r.x, y: r.y, z: r.z, heading: r.heading, spin: 0, stance: 0, flip: 0, lean: r.lean, crouch: r.air ? 0.3 : 0.35, comp: 0, grab: r.grabK > 0.5, grabK: r.grabK, grabType: r.grab, air: r.air, airT: r.airT, tuck: !r.air && r.speed > 18, t: time, speed: r.speed, vx: 0, vz: r.speed }, color: r.color, alpha: 1 });
+    }
+  }
+
+  // ---- halfpipe: ride the walls along the pipe's own shape, launch straight up out of the coping
+  const PIPE = SS.PIPE;
+  function inPipe() {
+    if (!world.pipeArr || P.finished) return false;
+    return world.sample(world.pipeArr, P.z) > 0.985 && Math.abs(P.x - world.center(P.z)) < PIPE.LIP + 0.25;
+  }
+  function enterPipe() {
+    const off = clamp(P.x - world.center(P.z), -PIPE.LIP, PIPE.LIP);
+    P.ps = PIPE.arc(off);
+    if (P.pipeAir) {
+      // back in from an air: down the wall you came out of, riding the other way round
+      const board = P.heading + P.stance;
+      P.pv = -P.pipeAir * Math.max(3, P.pipeLandV) * 0.93;
+      const nh = Math.atan2(P.pv, Math.max(4, P.speed));
+      P.stance = Math.abs(wrap(board - nh)) > Math.PI / 2 ? Math.PI : 0;
+      P.pipeAir = 0;
+    } else {
+      P.pv = Math.sin(P.heading) * P.speed;
+      P.speed = Math.max(4, Math.cos(P.heading) * P.speed);
+      if (Math.abs(P.pv) < 3) P.pv = (off >= 0 ? 1 : -1) * 4; // start the swing
+    }
+    P.pipeMode = true;
+  }
+  function leavePipe() {
+    const p = PIPE.at(P.ps);
+    const lat = P.pv * Math.cos(p.ang);
+    P.heading = clamp(Math.atan2(lat, P.speed), -1.2, 1.2);
+    P.speed = Math.hypot(lat, P.speed);
+    P.pipeMode = false;
+  }
+  function pipeStep(dt, steer) {
+    if (!P.pipeMode) enterPipe();
+    const at = PIPE.at(P.ps);
+    const sg = P.ps < 0 ? -1 : 1;
+    // gravity along the wall pulls you back into the middle
+    P.pv -= sg * G * Math.sin(at.ang) * dt;
+    // on the flat: pumping. Steer toward the wall you're heading for to go higher, away to go lower
+    const dir = Math.sign(P.pv) || 1;
+    if (Math.abs(P.ps) < PIPE.W0) {
+      let lipV = 9.2 + (steer * dir > 0.3 ? 3.2 : 0) - (steer * dir < -0.3 ? 2.6 : 0) - (brakeInput() ? 2 : 0);
+      const want = Math.sqrt(lipV * lipV + 2 * G * PIPE.H);
+      const cur = Math.abs(P.pv);
+      P.pv = dir * (cur + clamp(want - cur, -5 * dt, 8 * dt));
+    }
+    // never more swing than a big pump allows (landings low on the wall would otherwise add energy)
+    const yRel = PIPE.at(P.ps).y, eMax = 0.5 * 14.5 * 14.5 + G * PIPE.H;
+    if (0.5 * P.pv * P.pv + G * yRel > eMax) P.pv = (Math.sign(P.pv) || 1) * Math.sqrt(Math.max(0, 2 * (eMax - G * yRel)));
+    P.ps += P.pv * dt;
+    // down the pipe
+    P.speed += (G * world.map.slope * 0.5 - 0.012 * P.speed * P.speed + (tuckInput() ? 1.5 : 0) - (brakeInput() ? 5 : 0)) * dt;
+    P.speed = clamp(P.speed, 4, 22);
+    P.z += P.speed * dt;
+    const c = world.center(P.z);
+    if (Math.abs(P.ps) >= PIPE.SL && P.pv * Math.sign(P.ps) > 0) {
+      // out of the coping: straight up, drifting back over the pipe
+      const s2 = Math.sign(P.ps);
+      P.ps = s2 * PIPE.SL;
+      P.x = c + PIPE.at(P.ps).o - s2 * 0.05;
+      P.y = world.ground(P.x, P.z) + 0.02;
+      const up = Math.abs(P.pv) * Math.sin(PIPE.TM);
+      takeoff(-s2 * 0.15, P.speed);
+      P.vy = up;
+      P.pipeAir = s2;
+      P.pipeMode = false;
+      if (!ai.on) Sfx.pop();
+      burst(P.x, P.y, P.z, 12, 2, 0, P.speed);
+      return;
+    }
+    const p = PIPE.at(P.ps);
+    P.x = c + p.o;
+    const ny = world.ground(P.x, P.z);
+    P.vy = (ny - P.y) / dt;
+    P.y = ny;
+    P.vx = 0; P.vz = P.speed;
+    P.heading = clamp(Math.atan2(P.pv, P.speed), -1.4, 1.4);
+    P.wallRoll = sg * p.ang;
+    P.surf = 0; P.slide = 0; P.slip = 0; P.steerS = 0;
+    P.lean = lerp(P.lean, 0, Math.min(1, dt * 6));
+    P.crouch = lerp(P.crouch, 0.25 + 0.35 * Math.min(1, Math.abs(P.pv) / 16) * (1 - Math.abs(P.ps) / PIPE.SL), Math.min(1, dt * 6));
+    if (P.speed > 2 && Math.random() < 0.4) emit(P.x, P.y + 0.1, P.z, rand(-1, 1), rand(0.5, 1.5), rand(-1, 1), 0.5, 0.25, 0.92, 0.95, 1, 0.6, false);
+  }
+
   function airStep(dt, steer) {
     P.airT += dt;
     if (P.coyote > 0) P.coyote -= dt;
     P.vy -= (P.giant ? GIANT_G : G) * dt;
-    // gentle air control: the flight bends with the course so big airs land on the piste
     const hs = Math.hypot(P.vx, P.vz);
-    if (hs > 2) {
-      const course = Math.atan2(world.center(P.z + 2) - world.center(P.z - 2), 4);
+    if (P.pipeAir) {
+      // keep the flight over the coping so you come back down the wall you left
+      const lim = PIPE.LIP - 0.25, off = P.x - world.center(P.z);
+      if (Math.abs(off) > lim) P.x = world.center(P.z) + Math.sign(off) * lim;
+    } else if (hs > 2) {
       const ang = Math.atan2(P.vx, P.vz);
-      const na = ang + clamp(wrap(course - ang), -0.35 * dt, 0.35 * dt);
-      P.vx = Math.sin(na) * hs;
-      P.vz = Math.cos(na) * hs;
+      let na = ang;
+      const st = P.finished || ai.on ? 0 : steer;
+      // air control: A/D drift the flight sideways so you can line up a rail or a landing. A tap (or
+      // holding the way you carved off the lip) drifts; once you're into a full spin it stops drifting
+      const drifting = st ? 1 - clamp(Math.abs(P.spinVel) / SPIN_RATE, 0, 1) * (P.spinLock ? 0 : 1) : 0;
+      if (drifting > 0.02) {
+        const push = clamp(st * AIR_PUSH * drifting * dt, -AIR_DRIFT - P.drift, AIR_DRIFT - P.drift);
+        P.drift += push;
+        P.vx += Math.cos(ang) * push;
+        P.vz -= Math.sin(ang) * push;
+      } else if (!st) {
+        // hands off: the flight bends gently with the course so big airs land on the piste
+        const course = Math.atan2(world.center(P.z + 2) - world.center(P.z - 2), 4);
+        na += clamp(wrap(course - ang), -0.35 * dt, 0.35 * dt);
+      }
+      const h2 = Math.hypot(P.vx, P.vz);
+      P.vx = Math.sin(na) * h2;
+      P.vz = Math.cos(na) * h2;
+      // the body turns with the flight, so the landing lines up with where you're going
+      P.heading = clamp(lerpAngle(P.heading, na, Math.min(1, dt * 5)), -1.45, 1.45);
       const off = P.x - world.center(P.z);
       if (Math.abs(off) > C.HALF - 3) P.vx -= Math.sign(off) * 4 * dt;
     }
@@ -821,9 +993,10 @@
     const gx = (world.Hk(P.x + e, P.z) - world.Hk(P.x - e, P.z)) / (2 * e);
     const gz = (world.Hk(P.x, P.z + e) - world.Hk(P.x, P.z - e)) / (2 * e);
     const groundVy = gx * P.vx + gz * P.vz;
-    const impact = Math.max(0, groundVy - P.vy);
+    if (P.pipeAir) P.pipeLandV = Math.max(0, -P.vy);
+    const impact = P.pipeAir ? 0 : Math.max(0, groundVy - P.vy);
     const hs = Math.hypot(P.vx, P.vz);
-    P.heading = clamp(Math.atan2(P.vx, P.vz), -1.45, 1.45);
+    if (!P.pipeAir) P.heading = clamp(Math.atan2(P.vx, P.vz), -1.45, 1.45);
     // the longer you fly, the more your legs soak up: big airs off normal kickers land on a slope
     // you can't always reach, so grade them a bit kinder (giants have their own landing hill)
     const soft = P.giant ? 3 : 1 + 0.5 * Math.max(0, P.airT - 0.9);
@@ -837,6 +1010,7 @@
     P.spin = 0; P.flip = 0; P.spinVel = 0; P.flipVel = 0;
     P.surf = surf;
     if (surf === 2) startGrind(ref);
+    if (P.pipeAir && !inPipe()) P.pipeAir = 0;
     run.bigAir = Math.max(run.bigAir, air);
     // landing quality
     let qual = 'clean';
@@ -926,12 +1100,34 @@
     run.combo = 0;
     run.bails++;
     if (P.surf === 2) { P.grindRef = null; P.grind = 0; }
-    P.bailT = 1.7;
+    // how you go down depends on what went wrong
+    const kind = /TREE|WALL/.test(reason) ? 'hit' : /EDGE|BALANCE/.test(reason) ? 'slam' : 'tumble';
+    const side = P.lean ? -Math.sign(P.lean) : Math.random() < 0.5 ? -1 : 1; // +1 = onto your back, -1 = onto your front
+    P.bailKind = kind;
+    P.bailSide = side;
+    P.bailT = BAIL_T;
+    P.bailAge = 0;
+    P.bailHits = 0;
     P.tumble = 0;
     P.tumbleRoll = 0;
-    P.tumbleV = 8 + P.speed * 0.15;
     P.boosting = false;
     P.spin = 0; P.flip = 0; P.slide = 0;
+    if (kind === 'slam') {
+      // edge catch: the board stops, you don't: whipped onto your back or your face
+      P.rollV = side * (7 + P.speed * 0.12);
+      P.tumbleV = (Math.random() - 0.5) * 2;
+    } else if (kind === 'hit') {
+      // bounce off and fall back into the snow
+      P.speed = 0;
+      P.rollV = 6.5;
+      P.bailSide = 1;
+      P.tumbleV = 0;
+      P.grounded = false; P.vy = 2.4; P.vx = -Math.sin(P.heading) * 2.5; P.vz = -Math.cos(P.heading) * 2.5;
+    } else {
+      // cartwheel down the hill
+      P.tumbleV = (P.flip < 0 ? -1 : 1) * (5.5 + P.speed * 0.22);
+      P.rollV = side * (1.5 + Math.random() * 1.5);
+    }
     show(ui.popMeter, false);
     burst(P.x, P.y, P.z, 60, 5, P.vx || 0, P.vz || 0);
     if (mode === 'menu') return;
@@ -941,9 +1137,13 @@
     if (mode === 'mp') net.send({ t: 'ev', txt: 'BAILED' });
   }
 
+  const BAIL_T = 2.35, GETUP_T = 0.75;
   function bailStep(dt) {
     P.bailT -= dt;
-    P.speed *= Math.exp(-1.7 * dt);
+    P.bailAge += dt;
+    const kind = P.bailKind || 'tumble';
+    const getUp = clamp(1 - P.bailT / GETUP_T, 0, 1);
+    P.speed *= Math.exp(-(kind === 'slam' ? 1.5 : 1.7) * dt);
     const sh = Math.sin(P.heading), ch = Math.cos(P.heading);
     if (P.grounded) {
       P.x += sh * P.speed * dt;
@@ -955,11 +1155,49 @@
       P.z += P.vz * dt * 0.6;
       P.y += P.vy * dt;
       const h = world.H(P.x, P.z);
-      if (P.y <= h) { P.y = h; P.grounded = true; P.speed = Math.hypot(P.vx, P.vz) * 0.5; P.heading = clamp(Math.atan2(P.vx, P.vz), -1.3, 1.3); }
+      if (P.y <= h) {
+        P.y = h;
+        P.grounded = true;
+        const hs = Math.hypot(P.vx, P.vz);
+        if (kind === 'hit') P.speed = 0.6;
+        else if (P.bailAge > 0.02 && hs > 0.5) { P.speed = hs * 0.55; P.heading = clamp(Math.atan2(P.vx, P.vz), -Math.PI, Math.PI); }
+        P.bailHits++;
+        burst(P.x, P.y, P.z, 26, 3, 0, 0);
+        if (!ai.on && P.bailHits < 4) shake = Math.max(shake, 0.45);
+      }
     }
+    // tumbling slows down; every half turn the body hits the snow and bounces a little
+    const prevHalf = Math.floor(P.tumble / Math.PI + 0.5);
     P.tumble += P.tumbleV * dt;
-    P.tumbleV *= Math.exp(-2.2 * dt);
-    P.tumbleRoll = lerp(P.tumbleRoll, 1.45, Math.min(1, dt * 3));
+    P.tumbleRoll += P.rollV * dt;
+    if (kind === 'tumble' && P.grounded && P.speed > 5 && Math.floor(P.tumble / Math.PI + 0.5) !== prevHalf && P.bailAge < 1.3) {
+      P.grounded = false;
+      P.vy = 1.4 + P.speed * 0.07;
+      P.vx = Math.sin(P.heading) * P.speed;
+      P.vz = Math.cos(P.heading) * P.speed;
+    }
+    const settle = kind === 'tumble' ? 1.15 : 0.35;
+    if (P.bailAge < settle && P.speed > 3) {
+      P.tumbleV *= Math.exp(-1.4 * dt);
+      P.rollV *= Math.exp(-1.2 * dt);
+      // a slam stops when you're flat on the snow
+      if (kind !== 'tumble' && Math.abs(P.tumbleRoll) > 1.45) { P.tumbleRoll = Math.sign(P.tumbleRoll) * 1.45; P.rollV = 0; }
+    } else {
+      // come to rest flat on your back (or front), then get up
+      P.tumbleV = 0; P.rollV = 0;
+      const flat = (P.bailSide || 1) * 1.45;
+      const tPitch = Math.round(P.tumble / TAU) * TAU;
+      const tRoll = Math.round((P.tumbleRoll - flat) / TAU) * TAU + flat;
+      const k = Math.min(1, dt * 7);
+      P.tumble = lerp(P.tumble, tPitch, k);
+      P.tumbleRoll = lerp(P.tumbleRoll, getUp > 0 ? Math.round(P.tumbleRoll / TAU) * TAU : tRoll, getUp > 0 ? Math.min(1, dt * 9 * getUp) : k);
+    }
+    P.bailUp = getUp;
+    if (getUp > 0) {
+      // stand up facing back down the course
+      const course = Math.atan2(world.center(P.z + 4) - world.center(P.z - 4), 8);
+      P.heading = lerpAngle(P.heading, course, Math.min(1, dt * 5));
+    }
     if (P.speed > 3 && Math.random() < 0.6) emit(P.x, P.y + 0.2, P.z, rand(-1, 1), rand(1, 2.5), rand(-1, 1), 0.8, 0.35, 0.92, 0.95, 1, 0.75, false);
     if (P.bailT <= 0) respawn();
   }
@@ -968,7 +1206,7 @@
     const c = world.center(P.z);
     P.x = clamp(P.x, c - C.HALF + 3, c + C.HALF - 3);
     P.y = world.H(P.x, P.z);
-    Object.assign(P, { heading: 0, speed: 7, slip: 0, vy: 0, vx: 0, vz: 0, grounded: true, stance: 0, spin: 0, flip: 0, inv: 1.3, surf: 0, tumble: 0, tumbleRoll: 0, lean: 0, slide: 0, wobble: 0, giant: false, ref: null, grabs: [], grabAmt: 0 });
+    Object.assign(P, { pipeMode: false, pipeAir: 0, wallRoll: 0, heading: Math.atan2(world.center(P.z + 4) - world.center(P.z - 4), 8), speed: 7, slip: 0, vy: 0, vx: 0, vz: 0, grounded: true, stance: 0, spin: 0, flip: 0, inv: 1.3, surf: 0, tumble: 0, tumbleRoll: 0, rollV: 0, tumbleV: 0, bailUp: 0, bailAge: 0, lean: 0, slide: 0, wobble: 0, giant: false, ref: null, grabs: [], grabAmt: 0 });
     if (mode !== 'menu') setTrick('BACK ON YOUR FEET', '', false, 1.6);
   }
 
@@ -1005,8 +1243,19 @@
     const steer = P.finished ? 0 : steerInput();
     P.wind = lerp(P.wind, P.grounded ? 0 : clamp(P.spinVel / SPIN_RATE, -1, 1) * 0.6, Math.min(1, dt * 6));
     const px = P.x, pz = P.z;
-    if (P.grounded) groundStep(dt, steer);
-    else airStep(dt, steer);
+    if (P.grounded) {
+      if (inPipe()) pipeStep(dt, steer);
+      else { if (P.pipeMode) leavePipe(); groundStep(dt, steer); }
+    } else airStep(dt, steer);
+    if (!P.pipeMode) P.wallRoll *= Math.exp(-(P.grounded ? 12 : 5) * dt);
+    // the big air tower has railings: you can't ride off the side of the deck
+    if (world.towerArr && P.bailT <= 0 && world.sample(world.towerArr, P.z) > 1) {
+      const c = world.center(P.z), lim = world.map.towerHalf - 0.45, off = P.x - c;
+      if (Math.abs(off) > lim) {
+        P.x = c + Math.sign(off) * lim;
+        if (P.grounded) { P.heading = lerpAngle(P.heading, 0, 0.35); P.slip = 0; } else P.vx *= -0.2;
+      }
+    }
     // legs as a spring
     P.compV += (-70 * P.comp - 10 * P.compV) * dt;
     P.comp = clamp(P.comp + P.compV * dt, -0.15, 0.85);
@@ -1154,7 +1403,10 @@
 
   function follow(dt, t, opts) {
     opts = opts || {};
-    const travel = t.grounded === false && Math.hypot(t.vx || 0, t.vz || 0) > 1 ? Math.atan2(t.vx, t.vz) : t.heading;
+    const pipeCam = t === P && (P.pipeMode || P.pipeAir) ? 1 : 0;
+    cam.pipe = lerp(cam.pipe || 0, pipeCam, Math.min(1, dt * 2));
+    let travel = t.grounded === false && Math.hypot(t.vx || 0, t.vz || 0) > 1 ? Math.atan2(t.vx, t.vz) : t.heading;
+    if (pipeCam) travel = Math.atan2(world.center(t.z + 6) - world.center(t.z - 6), 12);
     const k = cam.snap ? 1 : 1 - Math.exp(-dt * 3.2);
     cam.head = cam.snap ? travel : lerpAngle(cam.head, travel, k);
     const far = settings.camera === 'far' || opts.far;
@@ -1172,7 +1424,14 @@
       if (world.ground(ex, ez) + 1.4 <= t.y + hgt + 0.6 || dist < 3) break;
       dist *= 0.78;
     }
+    if (cam.pipe > 0.01) {
+      // keep the whole pipe in view: slide toward the middle and rise above the decks
+      const c = world.center(ez);
+      ex = lerp(ex, c + (t.x - world.center(t.z)) * 0.35, cam.pipe);
+      ez -= 2.5 * cam.pipe;
+    }
     let ey = Math.max(t.y + hgt, world.ground(ex, ez) + 1.4);
+    if (cam.pipe > 0.01) ey = lerp(ey, Math.max(ey, world.base(ez) + SS.PIPE.H + 2.8), cam.pipe);
     if (world.cave && world.inCave(ez)) ey = Math.min(ey, world.ceilingY(ex, ez) - 1.2);
     const kp = cam.snap ? 1 : 1 - Math.exp(-dt * 9);
     const ky = cam.snap ? 1 : 1 - Math.exp(-dt * (t.grounded === false ? 3 + cam.big * 3 : 6));
@@ -1361,14 +1620,28 @@
     const st = r.st || (r.st = {});
     st.x = lerp(A[0], B[0], k); st.y = lerp(A[1], B[1], k); st.z = lerp(A[2], B[2], k);
     st.heading = lerpAngle(A[3], B[3], k);
+    const wasBail = st.bail;
     st.bail = !!(flags & 4);
-    if (st.bail) { st.tumble = lerp(A[4], B[4], k); st.tumbleRoll = lerp(A[5], B[5], k); st.spin = 0; st.flip = 0; }
+    if (st.bail) {
+      st.tumble = lerp(A[4], B[4], k); st.tumbleRoll = lerp(A[5], B[5], k); st.spin = 0; st.flip = 0;
+      if (!wasBail) st.bailStart = time;
+      st.bailAge = time - st.bailStart;
+      st.bailUp = clamp((st.bailAge - (BAIL_T - GETUP_T)) / GETUP_T, 0, 1);
+      const bdt = Math.max(0.03, (c.t - a.t) / 1000 || 0.08);
+      st.bailK = clamp((Math.abs(B[4] - A[4]) + Math.abs(B[5] - A[5])) / bdt / 6, 0, 1);
+    }
     else { st.spin = lerpAngle(A[4], B[4], k); st.flip = lerpAngle(A[5], B[5], k); }
     st.stance = 0;
     st.lean = lerp(A[6], B[6], k);
     st.crouch = lerp(A[7], B[7], k);
     st.grounded = !!(flags & 1);
     st.air = !st.grounded;
+    // other riders in the halfpipe lean onto the walls too
+    st.wallRoll = 0;
+    if (world.pipeArr && st.grounded && !st.bail && world.sample(world.pipeArr, st.z) > 0.9) {
+      const off = st.x - world.center(st.z);
+      if (Math.abs(off) < SS.PIPE.LIP) st.wallRoll = Math.sign(off) * SS.PIPE.at(SS.PIPE.arc(off)).ang;
+    }
     st.grab = !!(flags & 2);
     st.fin = !!(flags & 8);
     st.slide = flags & 32 ? 1 : 0;
@@ -1491,6 +1764,7 @@
     P.finished = true;
     bank();
     run.finalTime = raceT;
+    if (rivals.length) run.place = 1 + rivals.filter((r) => r.fin && r.fin < raceT).length;
     run.bonus = Math.max(0, Math.round((TARGET_TIME * (C.LENGTH / 2600) - raceT) * 20));
     run.score += run.bonus;
     finishedAt = time;
@@ -1499,7 +1773,9 @@
     setTrick('', '', false, 0);
     ui.landTag.classList.remove('show');
     Sfx.finish();
-    setBig('FINISH!', fmtTime(raceT) + (run.bonus ? '   +' + fmt(run.bonus) + ' TIME BONUS' : ''), 3);
+    const PLACES = ['', '1ST PLACE!', '2ND PLACE', '3RD PLACE', '4TH PLACE'];
+    if (rivals.length) setBig(PLACES[run.place] || 'FINISH!', fmtTime(raceT) + (run.place === 1 ? '   YOU WON THE RACE' : ''), 3.2);
+    else setBig('FINISH!', fmtTime(raceT) + (run.bonus ? '   +' + fmt(run.bonus) + ' TIME BONUS' : ''), 3);
     if (mode === 'sp' && (!bestGhost || bestGhost.seed !== world.seed || bestGhost.map !== world.mapId || run.score > bestGhost.score)) {
       bestGhost = { seed: world.seed, map: world.mapId, score: run.score, frames: ghostRec };
     }
@@ -1521,7 +1797,8 @@
     updateStars();
     const newBest = run.score > best;
     if (newBest) { best = Math.round(run.score); store.set(BEST_KEY, best); ui.bestScore.textContent = fmt(best); }
-    ui.resTitle.innerHTML = `RUN COMPLETE<small>${esc(map.name)}, ${sentence(map.time).toLowerCase()}</small>`;
+    const placeTxt = rivals.length ? ['', '1ST PLACE', '2ND PLACE', '3RD PLACE', '4TH PLACE'][run.place] || 'RUN COMPLETE' : 'RUN COMPLETE';
+    ui.resTitle.innerHTML = `${placeTxt}<small>${esc(map.name)}, ${sentence(map.time).toLowerCase()}</small>`;
     ui.results.style.setProperty('--acc', map.accent);
     ui.resBody.innerHTML = `<div class="res-top">
       <div class="res-score"><b>${fmt(run.score)}</b><span>points</span>${mapBest ? '<span class="stamp">NEW BEST!</span>' : ''}${run.bonus ? `<small>incl. +${fmt(run.bonus)} time bonus</small>` : ''}</div>
@@ -1692,6 +1969,57 @@
         <path d="M60 128 L150 108 L150 116 L60 136Z" fill="#ff3fbf"/><path d="M60 128 L150 108" stroke="#ffd0f2" stroke-width="2"/>
         <path d="M170 120 Q215 86 262 116" stroke="#38e8ff" stroke-width="4" fill="none"/><path d="M180 104 L180 120 M244 104 L244 118" stroke="#333" stroke-width="2"/>
         <path d="M100 100 L120 92 L132 92 L146 100Z" fill="#b48cff"/>`;
+    } else if (m.id === 'bigairfinal') {
+      // city big air: scaffold tower, one huge kicker, stadium lights and a skyline
+      let city = '';
+      for (let i = 0; i < 16; i++) {
+        const x = i * 20 - 6, h = 20 + r() * 50;
+        city += `<rect x="${x}" y="${92 - h}" width="17" height="${h}" fill="#0b0d18"/>`;
+        for (let y = 96 - h; y < 88; y += 7) if (r() < 0.6) city += `<rect x="${x + 2}" y="${y}" width="${4 + r() * 10}" height="2" fill="${r() < 0.3 ? '#9fd0ff' : '#ffd27a'}" opacity="0.85"/>`;
+      }
+      body = `<defs>${grad(gid, [[0, '#05070f'], [0.6, '#1a1838'], [1, '#46305a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(25, '#fff', 55)}${city}
+        <path d="M0 ${H} L0 120 Q150 100 300 116 L300 ${H}Z" fill="#c7d0ea"/>
+        <path d="M14 30 L70 30 L150 104 L100 104Z" fill="#dfe6f6"/><path d="M14 30 L70 30" stroke="#ff7a2e" stroke-width="2"/>
+        ${[22, 36, 50, 64, 78, 92].map((x) => `<path d="M${x} ${30 + (x - 14) * 0.9} L${x} 120" stroke="#8792ad" stroke-width="1.4"/>`).join('')}
+        <path d="M24 44 L60 80 M40 44 L76 96 M24 64 L56 100" stroke="#8792ad" stroke-width="0.9"/>
+        <path d="M150 104 L168 90 L190 90 L176 110Z" fill="#eef2fb"/><path d="M168 90 L190 90" stroke="#4fa8ff" stroke-width="2.5"/>
+        <path d="M190 112 Q250 100 300 140 L300 ${H} L200 ${H}Z" fill="#eef2fb"/>
+        <g transform="translate(222 48) rotate(-35)"><rect x="-11" y="5" width="22" height="4.5" rx="2.2" fill="#ffc21a"/><rect x="-4.5" y="-10" width="9" height="14" rx="4" fill="#2fbf71"/><circle cx="0" cy="-13" r="4.5" fill="#1c1d22"/></g>
+        ${[[118, 12], [282, 20]].map(([x, y]) => `<rect x="${x}" y="${y}" width="3" height="${120 - y}" fill="#222"/><rect x="${x - 7}" y="${y - 5}" width="17" height="7" fill="#fff4cc"/><circle cx="${x + 1.5}" cy="${y}" r="20" fill="#ffd27a" opacity="0.18"/>`).join('')}
+        <g>${Array.from({ length: 30 }, (_, i) => `<rect x="${206 + (i % 15) * 6}" y="${128 + ((i / 15) | 0) * 8}" width="4" height="6" fill="${['#ff4060', '#2f7dff', '#ffc21a', '#2fbf71', '#fff'][i % 5]}"/>`).join('')}</g>`;
+    } else if (m.id === 'superpipe') {
+      // looking down a floodlit halfpipe with a rider above the coping
+      body = `<defs>${grad(gid, [[0, '#040a1c'], [0.6, '#123064'], [1, '#2a4f8a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>${dots(30, '#fff', 55)}
+        <path d="M-10 30 Q90 10 170 28 T320 18" stroke="#4dffa6" stroke-width="8" fill="none" opacity="0.3"/>
+        ${peaks('#16244a', '#9fb2d8', 70, 121, 6)}
+        <path d="M0 ${H} L0 70 L120 64 L180 64 L300 70 L300 ${H}Z" fill="#dfe7f8"/>
+        <path d="M0 150 Q60 150 90 110 L136 66 L164 66 L210 110 Q240 150 300 150 L300 ${H} L0 ${H}Z" fill="#a9bde6"/>
+        <path d="M30 ${H} Q100 ${H} 120 110 L144 72 L156 72 L180 110 Q200 ${H} 270 ${H}Z" fill="#eef3fd"/>
+        <path d="M0 150 Q60 150 90 110 L136 66" stroke="#2f6dff" stroke-width="3" fill="none"/><path d="M300 150 Q240 150 210 110 L164 66" stroke="#2f6dff" stroke-width="3" fill="none"/>
+        <g transform="translate(72 64) rotate(-150)"><rect x="-12" y="5" width="24" height="5" rx="2.5" fill="#ff4060"/><rect x="-5" y="-11" width="10" height="15" rx="4" fill="#ffc21a"/><circle cx="0" cy="-14" r="5" fill="#1c1d22"/></g>
+        ${[[24, 34], [272, 34]].map(([x, y]) => `<rect x="${x}" y="${y}" width="2.5" height="${100 - y}" fill="#222"/><circle cx="${x + 1}" cy="${y}" r="12" fill="#ffd27a" opacity="0.35"/><circle cx="${x + 1}" cy="${y}" r="3.5" fill="#fff4cc"/>`).join('')}`;
+    } else if (m.id === 'sbx') {
+      // four riders racing into a banked turn
+      const riders = [[118, 92, '#ff4060', -12], [150, 104, '#2fbf71', -8], [182, 98, '#2f7dff', -10], [140, 126, '#ffc21a', -6]];
+      body = `<defs>${grad(gid, [[0, '#1c55c4'], [0.55, '#6fb0f2'], [1, '#f5f9ff']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <g fill="#fff" opacity="0.9"><ellipse cx="70" cy="22" rx="28" ry="7"/><ellipse cx="236" cy="30" rx="22" ry="6"/></g>
+        ${peaks('#7d97c8', '#ffffff', 74, 131, 6)}
+        <path d="M0 ${H} L0 86 Q150 70 300 84 L300 ${H}Z" fill="#ffffff"/>
+        <path d="M40 ${H} Q60 110 150 92 Q260 70 300 96 L300 120 Q250 96 170 116 Q100 132 110 ${H}Z" fill="#e2ebfa"/>
+        <path d="M300 96 Q260 70 150 92 Q60 110 40 ${H}" stroke="#ff4060" stroke-width="2" fill="none" stroke-dasharray="6 5"/>
+        <path d="M300 120 Q250 96 170 116 Q100 132 110 ${H}" stroke="#2f7dff" stroke-width="2" fill="none" stroke-dasharray="6 5"/>
+        ${riders.map(([x, y, c, rot]) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-9" y="4" width="18" height="3.6" rx="1.8" fill="#1c1d22"/><rect x="-3.6" y="-8" width="7.2" height="11" rx="3" fill="${c}"/><circle cx="0" cy="-10.5" r="3.6" fill="#1c1d22"/></g>`).join('')}
+        ${pine(18, 96, 0.9, '#2f5a46', '#fff')}${pine(276, 88, 0.8, '#2f5a46', '#fff')}`;
+    } else if (m.id === 'slopequal') {
+      // golden-hour competition course: a kinked rail and a box up top, jumps below, crowd at the bottom
+      body = `<defs>${grad(gid, [[0, '#2a2a66'], [0.45, '#c8577a'], [0.75, '#ff9a52'], [1, '#ffd27a']])}</defs><rect width="${W}" height="${H}" fill="url(#${gid})"/>
+        <circle cx="60" cy="58" r="20" fill="#ffe6a8"/>${peaks('#5a2f62', '#ffb9a0', 82, 141, 6)}
+        <path d="M0 ${H} L0 88 L300 96 L300 ${H}Z" fill="#ffe3d6"/>
+        <path d="M40 104 L80 98 L104 104 L140 100" stroke="#5f6b80" stroke-width="3" fill="none"/><path d="M60 102 L60 110 M120 102 L120 110" stroke="#333" stroke-width="2"/>
+        <path d="M168 104 L240 96 L240 102 L168 110Z" fill="#ff7a2e" stroke="#2a1b3a" stroke-width="1.2"/>
+        ${[70, 150, 230].map((x) => `<path d="M${x - 26} 132 L${x} 114 L${x + 14} 114 L${x + 36} 132Z" fill="#fff4ec"/><path d="M${x} 114 L${x + 14} 114" stroke="#ffd23f" stroke-width="3"/>`).join('')}
+        <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${4 + (i % 20) * 4}" y="${136 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ff4060', '#2f7dff', '#ffc21a', '#2fbf71', '#fff'][i % 5]}"/>`).join('')}</g>
+        <g>${Array.from({ length: 40 }, (_, i) => `<rect x="${216 + (i % 20) * 4}" y="${136 + ((i / 20) | 0) * 7}" width="3" height="5" fill="${['#ffc21a', '#fff', '#ff4060', '#2f7dff', '#2fbf71'][i % 5]}"/>`).join('')}</g>`;
     } else if (m.id === 'bigair') {
       // a giant kicker with a rider spinning high above the landing hill
       let arc = '';
@@ -1980,7 +2308,7 @@
 
   // ------------------------------------------------------------------ HUD helpers
   const cache = {};
-  const setText = (el, key, v) => { if (cache[key] !== v) { cache[key] = v; el.textContent = v; } };
+  const setText = (el, key, v, html) => { if (cache[key] !== v) { cache[key] = v; if (html) el.innerHTML = v; else el.textContent = v; } };
   let trickT = 0;
   function setTrick(name, sub, bad, dur) {
     ui.trickName.textContent = name;
@@ -2044,6 +2372,13 @@
       ui.zone.classList.remove('flash'); void ui.zone.offsetWidth; ui.zone.classList.add('flash');
     }
     const mine = phase === 'riding' || phase === 'finished' || phase === 'countdown' || (mode === 'sp' && phase === 'results');
+    const racing = mine && rivals.length > 0;
+    show(ui.racePos, racing);
+    if (racing) {
+      const pl = run.place || 1;
+      setText(ui.racePos, 'pos', ['', '1ST', '2ND', '3RD', '4TH'][pl] + '<small>/ 4</small>', true);
+      ui.racePos.classList.toggle('lead', pl === 1);
+    }
     setText(ui.score, 'score', fmt(mine ? run.score : (focus.score || 0)));
     setText(ui.tokenCount, 'tok', mine ? run.tokens + '/' + world.tokens.length : '-');
     const sp = mine ? P.speed : focus.speed || 0;
@@ -2232,7 +2567,7 @@
     }
     run.topSpeed = Math.max(run.topSpeed, P.speed);
     emitSpray(dt);
-    trails.get('me').add(P.x, P.z, P.heading + P.yawOff * 0.5, P.grounded && P.surf === 0 && P.bailT <= 0 && P.speed > 2, 1 + P.slide * 1.2);
+    trails.get('me').add(P.x, P.z, P.heading + P.yawOff * 0.5, P.grounded && P.surf === 0 && P.bailT <= 0 && P.speed > 2 && !P.pipeMode && !(world.pipeArr && world.sample(world.pipeArr, P.z) > 0.05), 1 + P.slide * 1.2);
   }
 
   function update(dt) {
@@ -2269,6 +2604,7 @@
     } else if (phase === 'riding' || phase === 'finished') {
       if (!paused) {
         simulate(dt);
+        updateRivals(dt);
         if (!P.finished) { raceT += dt; recordGhost(dt); }
         if (!P.finished && P.z >= C.LENGTH) finish();
         if (P.finished) {
@@ -2332,6 +2668,50 @@
     engine.drawBaked(engine.disc, SH, 0.42 * k * (alpha === undefined ? 1 : alpha));
   }
 
+  // where you'll come down if you let go now: a ring on the snow (green when it's on a rail or box)
+  const MK = M4.create();
+  let markMeshes = null;
+  function ringData(col, seg = 32) {
+    const out = [];
+    const tri = (a, b, c) => out.push(...a, ...col, ...b, ...col, ...c, ...col);
+    for (let i = 0; i < seg; i++) {
+      const a0 = (i / seg) * TAU, a1 = ((i + 1) / seg) * TAU;
+      const p = (r, a) => [Math.cos(a) * r, 0, Math.sin(a) * r];
+      tri(p(0.72, a0), p(1, a0), p(1, a1));
+      tri(p(0.72, a0), p(1, a1), p(0.72, a1));
+      tri([0, 0, 0], p(0.16, a0), p(0.16, a1));
+    }
+    return new Float32Array(out);
+  }
+  function landingSpot() {
+    if (P.grounded || P.bailT > 0 || P.finished || ai.on || mode === 'menu' || P.airT < 0.1) return null;
+    const ss = world.surf, sr = world.surfRef;
+    const g = P.giant ? GIANT_G : G, dt = 1 / 30;
+    let x = P.x, y = P.y, z = P.z, vy = P.vy, hit = null;
+    for (let i = 1; i < 200; i++) {
+      vy -= g * dt; x += P.vx * dt; z += P.vz * dt; y += vy * dt;
+      const h = world.H(x, z);
+      if (y <= h) { hit = { x, z, y: h, rail: world.surf === 2, t: i * dt }; break; }
+    }
+    world.surf = ss; world.surfRef = sr;
+    return hit && hit.t > 0.12 ? hit : null;
+  }
+  function drawLandingMark() {
+    const m = landingSpot();
+    if (!m) return;
+    if (!markMeshes) markMeshes = [engine.mesh(ringData([1, 0.84, 0.32]), 6), engine.mesh(ringData([0.35, 1, 0.55]), 6)];
+    const e = 0.5;
+    const gx = m.rail ? 0 : (world.Hk(m.x + e, m.z) - world.Hk(m.x - e, m.z)) / (2 * e);
+    const gz = m.rail ? 0 : (world.Hk(m.x, m.z + e) - world.Hk(m.x, m.z - e)) / (2 * e);
+    const r = (m.rail ? 0.55 : 0.85) * (1 + 0.08 * Math.sin(time * 9));
+    M4.identity(MK);
+    M4.translate(MK, m.x, m.y + 0.09, m.z);
+    M4.rotX(MK, -Math.atan(gz));
+    M4.rotZ(MK, Math.atan(gx));
+    M4.scale(MK, r, 1, r);
+    engine.drawBaked(markMeshes[m.rail ? 1 : 0], MK, clamp(m.t * 2.5, 0.25, 0.8), 1.4);
+  }
+
   const MV = M4.create();
   const riderList = [];
   const tokenGlow = new Float32Array(120 * 8);
@@ -2385,7 +2765,8 @@
         st: {
           x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip, lean: P.lean,
           crouch: P.crouch, comp: P.comp, grab: grabbing() && !P.grounded, air: !P.grounded, tuck: tuckInput() && P.grounded,
-          slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time,
+          slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time, wallRoll: P.wallRoll,
+          bailAge: P.bailAge, bailUp: P.bailUp, bailK: P.bailT > 0 ? clamp(Math.abs(P.tumbleV) / 6 + Math.abs(P.rollV) / 6, 0, 1) : 0,
           spinV: P.grounded ? 0 : P.spinVel / SPIN_RATE, flipV: P.grounded ? 0 : P.flipVel / FLIP_RATE, grabType: P.grabType, grabK: P.grounded ? 0 : P.grabAmt, airT: P.grounded ? 0 : P.airT,
         },
         color: mode === 'mp' ? myColor : settings.outfit | 0,
@@ -2396,6 +2777,7 @@
       if (r.st && racers.has(r.id) && Math.hypot(r.st.x - eyeV[0], r.st.y + 1 - eyeV[1], r.st.z - eyeV[2]) > 3.2) riderList.push({ st: r.st, color: r.color, alpha: 1 });
     }
     if (g && Math.hypot(g.x - eyeV[0], g.y + 1 - eyeV[1], g.z - eyeV[2]) > 3.2) riderList.push({ st: g, color: 8, alpha: 0.35 });
+    if (rivals.length && showMe) rivalStates(riderList);
 
     engine.beginBaked();
     gl.enable(gl.BLEND);
@@ -2407,6 +2789,7 @@
       if (sunny) sunShadow(r.st, h, r.alpha);
       else SS.drawShadow(engine, world, r.st.x, r.st.z, r.st.heading, h, r.alpha);
     }
+    if (settings.marker !== false) drawLandingMark();
     gl.depthMask(true);
     gl.disable(gl.BLEND);
 
@@ -2485,11 +2868,14 @@
   if (/[?&]debug\b/.test(location.search)) {
     window.ShredSlopeDebug = {
       keys, P, run, cam, ai,
+      crash(reason) { bail(reason); },
       get world() { return world; },
       get spec() { const t = spectateTarget(); return t && t.st && { id: t.id, x: t.st.x, y: t.st.y, z: t.st.z, heading: t.st.heading, speed: t.st.speed }; },
       sim(seconds, bot) {
         const steps = Math.round(seconds / STEP);
-        for (let i = 0; i < steps && phase === 'riding'; i++) {
+        for (let i = 0; i < steps && (phase === 'riding' || (phase === 'finished' && rivals.length)); i++) {
+          updateRivals(STEP);
+          if (P.finished) continue;
           if (bot) bot(P, world, keys, ShredSlopeDebug);
           physics(STEP);
           if (!P.finished) { raceT += STEP; recordGhost(STEP); }

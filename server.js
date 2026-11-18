@@ -36,6 +36,10 @@ const MAPS = [
   { id: 'jumpline', name: 'Jump Line' },
   { id: 'cliffs', name: 'Cliff Drops' },
   { id: 'neon', name: 'Neon Park' },
+  { id: 'bigairfinal', name: 'Big Air Final' },
+  { id: 'superpipe', name: 'Superpipe Final' },
+  { id: 'sbx', name: 'Snowboard Cross' },
+  { id: 'slopequal', name: 'Slopestyle Qualifier' },
 ];
 
 const SERVER_DEFS = [

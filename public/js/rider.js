@@ -1,8 +1,10 @@
 /*
  * Shred Slope: the snowboarder.
- * A detailed, posed model built once from lofted shapes: jacket with a colour-blocked yoke,
- * hood, zip and pocket, baggy pants with knee patches, boots in strap bindings with highbacks,
- * mitts with cuffs, a backpack, and a helmet with vents, ear pads, goggles and a strap.
+ * A detailed, posed model built once from lofted shapes: jacket with a colour-blocked yoke, side
+ * panels, arm stripes, reflective wrist bands, hood with drawcords, zip, pocket and chest patch;
+ * baggy pants with knee patches, cargo pockets and hem stripes; laced boots in strap bindings with
+ * ratchets and highbacks; five-finger gloves with cuffs; a backpack with straps and a shovel; and a
+ * helmet with a stripe, vents, ear pads, goggles and a strap.
  * Body frame: board along +z, rider faces +x (regular stance), up is +y.
  */
 (function () {
@@ -41,6 +43,10 @@
   const SOLE = [0.1, 0.1, 0.11];
   const PACK = [0.16, 0.17, 0.2];
   const ZIP = [0.08, 0.08, 0.09];
+  const PATCH = [0.92, 0.93, 0.95];
+  const REFLECT = [0.78, 0.8, 0.84];
+  const SHOVEL = [0.95, 0.42, 0.1];
+  const LACE = [0.86, 0.85, 0.8];
 
   // shine presets [strength, sharpness]
   const SH_HELMET = [0.55, 42];
@@ -232,7 +238,18 @@
     const strap = loft([{ y: -0.018, rx: 0.152, rz: 0.142 }, { y: 0.018, rx: 0.152, rz: 0.142 }], 24);
 
     // ---- hands: mitt with a thumb and a gauntlet cuff (mitt points along +y) ----
-    const mitt = [...sphere(8, 12, 0.05, 0.5, 0.04, 0, 0.5, 0), ...sphere(6, 10, 0.02, 0.22, 0.02, 0.034, 0.36, 0.022)];
+    // glove: padded back of the hand, four curled fingers and a thumb (hand space: y 0..1 = wrist..fingertips)
+    const mitt = [...sphere(8, 12, 0.047, 0.32, 0.032, 0, 0.32, 0)];
+    for (let i = 0; i < 4; i++) {
+      const x = -0.03 + i * 0.02, lenK = [0.9, 1, 0.96, 0.82][i];
+      const rows = [];
+      for (let j = 0; j <= 4; j++) {
+        const u = j / 4;
+        rows.push({ y: 0.5 + u * 0.46 * lenK, rx: 0.0105 - u * 0.0015, rz: 0.0115 - u * 0.0015, ox: x, oz: -0.016 * u * u });
+      }
+      mitt.push(...loft(rows, 8, { capTop: true }));
+    }
+    mitt.push(...loft([{ y: 0.18, rx: 0.012, rz: 0.012, ox: 0.036, oz: -0.012 }, { y: 0.42, rx: 0.011, rz: 0.011, ox: 0.05, oz: -0.024 }, { y: 0.62, rx: 0.009, rz: 0.009, ox: 0.05, oz: -0.03 }], 8, { capTop: true }));
     const cuff = loft([{ y: 0, rx: 0.074, rz: 0.07 }, { y: 1, rx: 0.07, rz: 0.066 }], 14, { capTop: true, capBottom: true });
 
     // ---- feet: boot (toe toward +x), sole, binding plate, highback, straps ----
@@ -295,7 +312,61 @@
     }
     quad(gfx, onTop(0, 0.07), onTop(0.05, 0), onTop(0, -0.07), onTop(-0.05, 0), [0, 1, 0]);
 
+    // ---- extra detail ----
+    // cargo pocket with a flap on the outside of the thigh (thigh space: knee 0 -> hip 1, outside is +x)
+    const thighPocket = loft([{ y: 0.3, rx: 0.026, rz: 0.048, ox: 0.098 }, { y: 0.33, rx: 0.03, rz: 0.052, ox: 0.1 }, { y: 0.58, rx: 0.031, rz: 0.054, ox: 0.102 }, { y: 0.6, rx: 0.028, rz: 0.05, ox: 0.1 }], 14, { p: 4, capBottom: true, capTop: true });
+    const thighFlap = loft([{ y: 0.56, rx: 0.034, rz: 0.057, ox: 0.103 }, { y: 0.64, rx: 0.03, rz: 0.055, ox: 0.104 }], 14, { p: 4, capBottom: true, capTop: true });
+    // stripes: around the hem of the pants, the upper arm, and a reflective one at the wrist
+    const shinBand = loft([{ y: 0.12, rx: 0.111, rz: 0.1 }, { y: 0.17, rx: 0.108, rz: 0.098 }], 20);
+    const armBand = loft([{ y: 0.36, rx: 0.079, rz: 0.078 }, { y: 0.48, rx: 0.078, rz: 0.077 }], 14);
+    const wristBand = loft([{ y: 0.76, rx: 0.064, rz: 0.062 }, { y: 0.83, rx: 0.063, rz: 0.061 }], 14);
+    // jacket side panels, hood drawcords with toggles, a chest patch (torso space)
+    const sidePanels = [];
+    for (const c of [0, Math.PI]) {
+      sidePanels.push(...loft(TR.slice(0, 4).map(([y, rx, rz, oz]) => ({ y, rx: rx + 0.003, rz: rz + 0.003, oz })), 6, { p: TP, a0: c - 0.32, a1: c + 0.32 }));
+    }
+    const cords = [], toggles = [];
+    for (const sx of [-1, 1]) {
+      const x0 = sx * 0.035, x1 = sx * 0.044;
+      const A = [x0, 0.94, surfZ(x0, 0.94, -1, 0.01)], B = [x1, 0.8, surfZ(x1, 0.8, -1, 0.008)];
+      quad(cords, [A[0] - 0.003, A[1], A[2]], [A[0] + 0.003, A[1], A[2]], [B[0] + 0.003, B[1], B[2]], [B[0] - 0.003, B[1], B[2]], [0, 0, -1]);
+      toggles.push(...sphere(5, 8, 0.008, 0.028, 0.008, x1, 0.775, surfZ(x1, 0.78, -1, 0.012)));
+    }
+    const logo = [], logoStripe = [];
+    quad(logo, pk(-0.145, 0.6, 0.004), pk(-0.065, 0.6, 0.004), pk(-0.065, 0.67, 0.004), pk(-0.145, 0.67, 0.004), [0, 0, -1]);
+    quad(logoStripe, pk(-0.14, 0.62, 0.006), pk(-0.07, 0.62, 0.006), pk(-0.07, 0.64, 0.006), pk(-0.14, 0.64, 0.006), [0, 0, -1]);
+    // backpack: two compression straps, a grab loop and a shovel handle poking out of the top
+    const packStraps = [
+      ...loft([tr(0.4, 0.134, 0.067, 0.206), tr(0.43, 0.134, 0.067, 0.206)], 18, { p: 4 }),
+      ...loft([tr(0.56, 0.134, 0.068, 0.207), tr(0.59, 0.134, 0.068, 0.207)], 18, { p: 4 }),
+      ...remap(loft([{ y: -0.012, rx: 0.03, rz: 0.06 }, { y: 0.012, rx: 0.03, rz: 0.06 }], 10, { a0: 0, a1: Math.PI }), (x, y, z) => [x, 0.82 + z, 0.2 + y]),
+    ];
+    const shovel = [
+      ...loft([{ y: 0.78, rx: 0.011, rz: 0.011, ox: 0.06, oz: 0.215 }, { y: 0.98, rx: 0.011, rz: 0.011, ox: 0.062, oz: 0.22 }], 8, { capTop: true }),
+      ...remap(loft([{ y: -0.04, rx: 0.012, rz: 0.012 }, { y: 0.04, rx: 0.012, rz: 0.012 }], 8, { capTop: true, capBottom: true }), (x, y, z) => [0.062 + y, 0.99 + z * 0.4, 0.22 + x]),
+    ];
+    // boot: a tongue up the front with laces across it (boot space, toe +x)
+    const tongue = loft([{ y: 0.12, rx: 0.02, rz: 0.034, ox: 0.07 }, { y: 0.2, rx: 0.022, rz: 0.036, ox: 0.052 }, { y: 0.3, rx: 0.022, rz: 0.036, ox: 0.046 }], 10, { p: 4, capTop: true });
+    const laces = [];
+    for (const y of [0.15, 0.19, 0.23, 0.27]) {
+      const x = 0.072 - (y - 0.15) * 0.22 + 0.016;
+      quad(laces, [x, y, -0.036], [x + 0.004, y + 0.012, -0.036], [x + 0.004, y + 0.03, 0.036], [x, y + 0.018, 0.036], [1, 0.2, 0]);
+      quad(laces, [x, y + 0.018, -0.036], [x + 0.004, y + 0.03, -0.036], [x + 0.004, y + 0.012, 0.036], [x, y, 0.036], [1, 0.2, 0]);
+    }
+    // stomp pad between the bindings and ratchet buckles on the straps (board / foot space)
+    const stomp = [];
+    for (let i = 0; i < 5; i++) {
+      const z = -0.05 + i * 0.025;
+      stomp.push(...loft([{ y: TH, rx: 0.07, rz: 0.006, oz: z }, { y: TH + 0.007, rx: 0.068, rz: 0.005, oz: z }], 8, { p: 4, capTop: true }));
+    }
+    const ratchet = loft([{ y: 0, rx: 0.016, rz: 0.012 }, { y: 0.02, rx: 0.015, rz: 0.011 }], 8, { p: 4, capTop: true, capBottom: true });
+    // a stripe over the top of the helmet, front to back (head space)
+    const helmetStripe = remap(loft([{ y: -0.022, rx: 0.149, rz: 0.141, ox: -0.006 }, { y: 0.022, rx: 0.149, rz: 0.141, ox: -0.006 }], 18, { a0: 0.55, a1: Math.PI + 0.3 }), (x, y, z) => [x, z + 0.018, y]);
+
     meshes = {
+      thighPocket: mk(thighPocket), thighFlap: mk(thighFlap), shinBand: mk(shinBand), armBand: mk(armBand), wristBand: mk(wristBand),
+      sidePanels: mk(sidePanels), cords: mk(cords), toggles: mk(toggles), logo: mk(logo), logoStripe: mk(logoStripe),
+      packStraps: mk(packStraps), shovel: mk(shovel), tongue: mk(tongue), laces: mk(laces), stomp: mk(stomp), ratchet: mk(ratchet), helmetStripe: mk(helmetStripe),
       cyl: mk(cyl), sph: mk(sph), band: mk(band),
       sleeveUp: mk(sleeveUp), sleeveLo: mk(sleeveLo), thigh: mk(thigh), shin: mk(shin),
       body: mk(body), yoke: mk(yoke), hem: mk(hem), hood: mk(hood), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
@@ -349,7 +420,7 @@
   const tw = (p, a) => { const c = Math.cos(a), s = Math.sin(a); return [c * p[0] + s * p[2], p[1], -s * p[0] + c * p[2]]; };
   const add = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
   const mix = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
-  const SIDE = [0, 0, 1];
+  const SIDE = [0, 0, 1], SIDE_B = [0, 0, -1];
 
   // a limb from p0 to p1 using one of the clothing meshes (radii are already in metres)
   function limb(engine, base, mesh, p0, p1, col, spec, side) {
@@ -377,6 +448,7 @@
   const BM = M4.create(); // board frame
   const PT = [0, 0, 0];
   const clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  const lerp = (a, b, t) => a + (b - a) * t;
   const len3 = (a) => Math.hypot(a[0], a[1], a[2]);
 
   // two-bone reach: joint position between a and b, bending toward `bend`
@@ -419,15 +491,24 @@
 
     M4.identity(M);
     M4.translate(M, st.x, st.y, st.z);
+    if (st.wallRoll) M4.rotZ(M, st.wallRoll); // standing square to a halfpipe wall
     M4.rotY(M, st.heading || 0);
     const t = st.t || 0;
     const air = !!st.air && !st.bail;
     const mode = st.bail ? 'bail' : air ? 'air' : st.slide > 0.3 ? 'slide' : st.tuck ? 'tuck' : 'ride';
+    // crash: tumbling (bk), flat on the snow, then getting up (bu)
+    const bk = st.bail ? clamp(st.bailK || 0, 0, 1) : 0;
+    const bu = st.bail ? clamp(st.bailUp || 0, 0, 1) : 0;
+    const lieSide = (st.tumbleRoll || 0) >= 0 ? 1 : -1;
     if (st.bail) {
-      M4.translate(M, 0, 0.45, 0);
-      M4.rotX(M, st.tumble || 0);
-      M4.rotZ(M, st.tumbleRoll || 0);
-      M4.translate(M, 0, -0.45, 0);
+      // turn about the middle of the body; the lower it lies, the lower that middle sits
+      const tu = st.tumble || 0, ro = st.tumbleRoll || 0;
+      const upY = Math.cos(tu) * Math.cos(ro);
+      const piv = 0.82;
+      M4.translate(M, 0, piv * Math.abs(upY) + 0.2 * (1 - Math.abs(upY)), 0);
+      M4.rotX(M, tu);
+      M4.rotZ(M, ro);
+      M4.translate(M, 0, -piv, 0);
     } else {
       M4.translate(M, 0, 0.8, 0);
       M4.rotY(M, (st.spin || 0) + (st.stance || 0));
@@ -447,12 +528,14 @@
     const tuckAir = air ? clamp(0.28 + 0.3 * Math.abs(spinV) + 0.65 * Math.abs(flipV), 0, 1) * (1 - ext) * clamp(airT / 0.3, 0, 1) : 0;
     let k = clamp((st.crouch || 0) * 0.85 + (st.comp || 0) * 0.6 + (mode === 'tuck' ? 0.2 : 0), 0, 1);
     if (air) k = 0.2 - ext * 0.15;
+    // balled up while tumbling, loose when flat, then a deep squat to stand up
+    if (st.bail) k = bu > 0 ? lerp(0.95, 0.25, bu * bu * (3 - 2 * bu)) : lerp(0.3, 0.85, bk);
     const back = mode === 'slide' ? -0.12 : 0;
     const hip = [-0.05 - 0.05 * k + back, 0.93 - 0.38 * k, 0];
 
     // board tweak relative to the body
     M4.identity(BT);
-    M4.translate(BT, G.tw[0] * gk, tuckAir * 0.26 + G.tw[1] * gk - ext * 0.06, 0);
+    M4.translate(BT, G.tw[0] * gk, tuckAir * 0.26 + G.tw[1] * gk - ext * 0.06 + 0.16 * bk, 0);
     M4.rotX(BT, G.tw[2] * gk - ext * 0.22 + flipV * 0.1);
     M4.rotZ(BT, G.tw[3] * gk);
     M4.rotY(BT, G.tw[4] * gk);
@@ -464,7 +547,7 @@
     engine.drawLit(meshes.base, BM, BASE);
     engine.drawLit(meshes.baseGfx, BM, pal.board);
     engine.drawLit(meshes.side, BM, DARK);
-    if (!far) engine.drawLit(meshes.edge, BM, STEEL, 0, SH_STEEL);
+    if (!far) { engine.drawLit(meshes.edge, BM, STEEL, 0, SH_STEEL); engine.drawLit(meshes.stomp, BM, DARK, 0, SH_BOOT); }
 
     // ---- feet: bindings and boots, front foot angled toward the nose, back foot ducked out ----
     const TH = 0.026;
@@ -480,6 +563,10 @@
       engine.drawLit(meshes.sole, BF, SOLE);
       engine.drawLit(meshes.boot, BF, pal.boot, 0, SH_BOOT);
       if (!far) {
+        engine.drawLit(meshes.tongue, BF, pal.trim, 0, SH_BOOT);
+        engine.drawLit(meshes.laces, BF, LACE, 0, SH_PANTS);
+        M4.identity(L); M4.translate(L, 0.01, 0.1, 0.094);
+        engine.drawLit(meshes.ratchet, M4.mul(W, FF, L), STEEL, 0, SH_STEEL);
         // ankle strap over the instep and a toe strap
         M4.identity(L); M4.translate(L, 0.0, 0.09, 0); M4.rotZ(L, -0.45); M4.scale(L, 0.07, 0.2, 0.086);
         engine.drawLit(meshes.arch, M4.mul(W, FF, L), pal.board, 0, SH_BOOT);
@@ -497,6 +584,12 @@
       knees.push(knee);
       limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
       limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
+      if (!far) {
+        const out = hz > 0 ? SIDE : SIDE_B;
+        limb(engine, M, meshes.thighPocket, knee, hp, pal.pants, SH_PANTS, out);
+        limb(engine, M, meshes.thighFlap, knee, hp, pal.pantsPatch, SH_PANTS, out);
+        limb(engine, M, meshes.shinBand, ank, knee, pal.pantsPatch, SH_PANTS);
+      }
       ball(engine, M, knee, 0.094, pal.pants, SH_PANTS);
       if (!far) {
         // reinforced knee patch on the front of the knee
@@ -511,6 +604,7 @@
 
     // ---- upper body: shoulders lead a spin, lean into a grab ----
     let twist = -0.42 + (air ? spinV * 0.85 : (st.wind || 0) * 0.5);
+    if (st.bail) twist += Math.sin(t * 7.3) * 0.35 * bk;
     if (mode === 'tuck') twist = -0.75;
     const lean = mode === 'tuck' ? 0.18 : mode === 'slide' ? -0.1 : air ? 0.06 + flipV * 0.12 + tuckAir * 0.08 : 0;
     let sh = add(hip, tw([0.1 + 0.15 * k + lean, 0.53 - 0.06 * k - tuckAir * 0.05, 0.02], twist));
@@ -538,6 +632,13 @@
       engine.drawLit(meshes.zip, TF, ZIP, 0, SH_STEEL);
       engine.drawLit(meshes.pocket, TF, pal.trim, 0, SH_JACKET);
       engine.drawLit(meshes.straps, TF, DARK, 0, SH_JACKET);
+      engine.drawLit(meshes.sidePanels, TF, pal.trim, 0, SH_JACKET);
+      engine.drawLit(meshes.cords, TF, pal.trim, 0, SH_PANTS);
+      engine.drawLit(meshes.toggles, TF, STEEL, 0, SH_STEEL);
+      engine.drawLit(meshes.logo, TF, PATCH, 0, SH_JACKET);
+      engine.drawLit(meshes.logoStripe, TF, pal.board, 0, SH_JACKET);
+      engine.drawLit(meshes.packStraps, TF, DARK, 0, SH_JACKET);
+      engine.drawLit(meshes.shovel, TF, SHOVEL, 0, SH_BOOT);
     }
 
     // ---- head: looks ahead into the spin, down at a grab ----
@@ -545,7 +646,7 @@
     M4.identity(L);
     M4.translate(L, head[0], head[1], head[2]);
     M4.rotY(L, twist + spinV * 0.55);
-    M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV));
+    M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
     M4.mul(HF, M, L);
     engine.drawLit(meshes.gaiter, HF, pal.trim, 0, SH_PANTS);
     engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
@@ -554,6 +655,7 @@
     engine.drawLit(meshes.lens, HF, pal.lens, 0.3, SH_LENS);
     if (!far) {
       engine.drawLit(meshes.peak, HF, pal.helmet, 0, SH_HELMET);
+      engine.drawLit(meshes.helmetStripe, HF, pal.jacket, 0, SH_HELMET);
       engine.drawLit(meshes.vents, HF, DARK, 0, SH_HELMET);
       engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
     }
@@ -565,8 +667,22 @@
     let hf, hb;
     switch (mode) {
       case 'bail': {
-        const f = Math.sin(t * 13) * 0.15;
-        hf = add(sf, [0.1, 0.42 + f, 0.32]); hb = add(sb, [0.1, 0.42 - f, -0.32]);
+        // flailing while it's going wrong, spread out flat on the snow, then pushing back up
+        const w1 = t * 12.5, w2 = t * 12.5 + 2.1;
+        const flF = add(sf, [0.12 + 0.24 * Math.cos(w1), 0.28 + 0.3 * Math.sin(w1), 0.44]);
+        const flB = add(sb, [0.08 + 0.24 * Math.cos(w2), 0.28 + 0.3 * Math.sin(w2), -0.44]);
+        const lyF = add(sf, [-0.14 * lieSide, 0.34, 0.42]), lyB = add(sb, [-0.14 * lieSide, 0.3, -0.44]);
+        hf = mix(lyF, flF, bk); hb = mix(lyB, flB, bk);
+        if (bu > 0) {
+          // back hand plants in the snow beside the hip, front hand pushes off the knee
+          const e = bu * bu * (3 - 2 * bu);
+          const plantB = add(hip, [-0.3 * lieSide, 0.02, -0.3]);
+          const pushF = add(knees[0], [0.13, 0.06, 0.02]);
+          const rideF = add(sf, tw([0.22, -0.34, 0.36], twist)), rideB = add(sb, tw([0.15, -0.42, -0.28], twist));
+          const m1 = clamp(bu * 2.2, 0, 1);
+          hf = mix(mix(hf, pushF, m1), rideF, clamp((e - 0.55) / 0.45, 0, 1));
+          hb = mix(mix(hb, plantB, m1), rideB, clamp((e - 0.55) / 0.45, 0, 1));
+        }
         break;
       }
       case 'tuck':
@@ -605,11 +721,13 @@
       const elbow = ik(s0, hand, ARM_U, ARM_F, tw([-0.55, -0.6, side * 0.75], twist));
       ball(engine, M, s0, 0.088, pal.jacket, SH_JACKET);
       limb(engine, M, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);
+      if (!far) limb(engine, M, meshes.armBand, s0, elbow, pal.trim, SH_JACKET);
       ball(engine, M, elbow, 0.07, pal.jacket, SH_JACKET);
       // forearm stops short of the hand; the cuff and mitt cover the wrist
       const dir = nrm(sub(hand, elbow));
       const wrist = add(hand, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
       limb(engine, M, meshes.sleeveLo, elbow, wrist, pal.jacket, SH_JACKET);
+      if (!far) limb(engine, M, meshes.wristBand, elbow, wrist, REFLECT, SH_STEEL);
       const tip = add(hand, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
       const palmSide = nrm(cross(dir, [0, 1, 0]));
       if (!far) {
