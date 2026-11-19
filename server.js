@@ -44,6 +44,9 @@ const MAPS = [
   { id: 'oly18', name: 'PyeongChang 2018 Slopestyle' },
   { id: 'oly22', name: 'Beijing 2022 Slopestyle' },
   { id: 'oly26', name: 'Livigno 2026 Slopestyle' },
+  { id: 'yog12', name: 'Innsbruck 2012 Youth Park' },
+  { id: 'yog20', name: 'Lausanne 2020 Youth Park' },
+  { id: 'yog24', name: 'Gangwon 2024 Youth Park' },
 ];
 
 const SERVER_DEFS = [

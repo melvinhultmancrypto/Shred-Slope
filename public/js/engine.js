@@ -227,7 +227,8 @@ void main() {
     }
     // sun glare off the snow when you look toward it
     vec3 rv = normalize(vec3(vW.x - uEye.x, uEye.y - vW.y, vW.z - uEye.z));
-    c += uGlare * snow * pow(max(dot(rv, uSunDirF), 0.0), 14.0) * (1.0 - sh);
+    float gl = max(dot(rv, uSunDirF), 0.0);
+    c += uGlare * snow * (pow(gl, 48.0) * 0.7 + pow(gl, 12.0) * 0.18) * (1.0 - sh);
     if (snow > 0.0) {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;

@@ -1,13 +1,14 @@
 # Shred Slope 🏂
 
-A 3D snowboarding game that runs in the browser. Pick one of twenty mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, or the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, hit kickers and rails, land spins and flips, and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Pick one of twenty-three mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, or three tight Youth Olympic parks, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
-- **Twenty mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
-- **Star challenges:** 3 stars to earn on every mountain (48 in total), saved in the browser together with your best score per mountain.
+- **Twenty-three mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
+- **Star challenges:** 3 stars to earn on every mountain (69 in total), saved in the browser together with your best score per mountain.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
 - **Graphics:** real-time sun shadows for the riders (on the snow and on themselves), terrain that shades itself (banks and kickers throw long shadows at sunset, hollows go darker), cold blue shade on the snow, wind ripples that catch the light, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading per time of day, and FXAA. Trees are snow-laden firs, spruces, pines and dead snags, each with its own shade of green and snow load. Mountain ranges stand in three layers with smooth snow and rock, rising out of valley mist. Riders wear baggy outerwear with real fabric folds, plaid flannel, camo or colour-blocked jackets, beanies or helmets, mirrored goggles, and snow stuck to their pants. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows, bloom and sun rays off for older devices (it keeps FXAA and the colour grade).
 - **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
+- **Physics:** real gravity (9.81 m/s²) on every jump, snow friction and air drag that grows with speed (tuck to cut it), carves limited by edge grip so a turn that's too sharp for your speed skids and scrubs speed, and landings that keep the part of your speed along the slope (a steep landing keeps you moving, landing flat stops you). On the in-run to every jump you scrub or pump to the speed that puts you in the sweet spot of its landing, like a real rider does; gap kickers and step-ups get you just the speed to reach the rail or the table. An ollie with a rail ahead is sized so you come down onto it.
 - **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, frame rate, music, sound and camera.
 - **Smooth frame rate:** the course is built 50 m at a time in a background thread (a Web Worker running the same world code with the same seed), so new parts of the mountain never hold up a frame. The frame rate is capped at 30, 60 or 90 FPS (60 to start with).
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
@@ -36,8 +37,13 @@ A 3D snowboarding game that runs in the browser. Pick one of twenty mountains, f
 | **PyeongChang 2018 Slopestyle** | Cold and windy | Butter pad to down rail, trapezoid rail, rainbow to flat-down with a wallride; a high bar with three take-offs; a skate bowl with a curved rail; three butter boxes; skewed jumps; a jump with quarterpipe side hits; the cheese-wedge kicker. |
 | **Beijing 2022 Slopestyle** | Cold and clear | Rails stepped down from left to right behind a Great Wall replica: rainbow to down, tank, flat rail, down-flat-down, transfer mailbox; a watch tower with a rail on its roof; gap to flat rail, roller, cannon; the twisted sisters skew jumps, the matrix (roller to knuckle, transfer jumps, quarterpipes) and a 5 m kicker over a 21 m table. |
 | **Livigno 2026 Slopestyle** | Snowy day | Big, clean, simple modules: long box, down and kinked rails, rainbow box, gap to down rail, then jumps of 22 to 25 m with a side option each. The exact 2026 rail layout wasn't published in detail, so the rails follow the "clean features" brief. |
+| **Innsbruck 2012 Youth Park** | Sunny day | Kühtai, above the trees in the Tyrol: log slides, an A-frame box, a wave box, a stair set with a handrail, a double barrel, a step-up and a step-down, then a tight kicker line and an 18 m big line. |
+| **Lausanne 2020 Youth Park** | Windy day | Leysin Park & Pipe in red and white: gaps to rails and boxes, three step-ups side by side, a nine-stair with two handrails, twin kickers with quarterpipe side hits and a big step-down to finish. |
+| **Gangwon 2024 Youth Park** | Cold and clear | Welli Hilli Park under a low winter sun: two pyramid funboxes with a box over the top, wave boxes, stair sets, step-downs, quarterpipe side hits and an 18 m big line. |
 
 Courses built like the ones at the Games carry an **OLYMPIC STYLE** badge in the mountain picker and on the title card. On the Olympic courses rails come in real shapes (down, flat-down, down-flat-down, rainbow, cannon, mailbox, butter pad, high bar), many start on snow decks, and an ollie with a rail just ahead is sized to land you on it.
+
+The three Youth Olympic parks are short (about a minute) and packed: three lanes of features about 11 m apart, with a new one every 15 to 25 m down each lane, so there's always something to hit. They bring new features: **step-ups** (pop over a dip onto a table built higher than the lip), **step-downs** (ride up onto a deck and drop off its kick onto a long landing), **stair sets** with handrails (level treads, so you clear the stairs or grind the rail), **log slides**, **double barrels** (a high and a low rail side by side), **wave boxes**, **A-frame boxes** and **pyramid funboxes**. The Youth Games course plans weren't published feature by feature, so these are built in the style of each park rather than copied from it.
 
 Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing*, *Grind for 12 seconds* or *Land all three giants*. The mountain picker shows five mountains per page; switch pages with the arrows next to BACK (or `←` `→`).
 
@@ -119,7 +125,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
-- The mountain changes every round and goes through all twenty, then around again. The three servers start on different mountains, and the server list shows which one is up.
+- The mountain changes every round and goes through all twenty-three, then around again. The three servers start on different mountains, and the server list shows which one is up.
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
 
@@ -132,7 +138,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
-| `public/js/world.js` | The twenty mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
+| `public/js/world.js` | The twenty-three mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
 | `public/js/chunks.js` | The background worker that bakes the course's 50 m chunks off the main thread (it loads `engine.js` and `world.js`) |
 | `public/js/rider.js` | The 3D snowboarder and its poses |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |

@@ -58,6 +58,10 @@
     GK: { Hk: 1.3, Lu: 5, Lt: 0.6, Ll: 3, w: 1.6, pe: 2.2 },
     // snow deck / ledge that rails start from (sizes set per deck)
     D: { Hk: 1.5, Lu: 7, Lt: 4, Ll: 3.2, w: 2.2, sh: 's' },
+    // step-up: a small kicker over a dip onto a table built higher than the lip (Lt is the gap plus the table)
+    SU: { Hk: 1.4, Lu: 6, Lg: 4.5, Ht: 2.6, Lt: 11.5, Ll: 11, w: 3, sh: 'u' },
+    // step-down: ride up onto a deck, pop off the kick at its end and drop onto a long landing
+    SD: { Hk: 2.5, Hd: 1.9, Lr: 6, Lk: 2.6, Lu: 13, Lt: 0.6, Ll: 18, w: 3, sh: 'd' },
   };
   // features that are not jumps: no flags, no lip line, no tokens, and the riders' AI doesn't pop off them
   const NOT_JUMP = { P: 1, D: 1, B: 1, RK: 1, GK: 1 };
@@ -153,7 +157,7 @@
       trees: { near: 0.55, far: 0.6, snow: 0.8, green: [0.08, 0.16, 0.11] },
       snowfall: 0, nets: true, shadows: true,
       mtn: { dark: [0.25, 0.16, 0.26], cap: [1.0, 0.72, 0.6], k: [0.4, 0.6] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'time', v: 105, t: 'Finish under 1:45' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'time', v: 145, t: 'Finish under 2:25' }],
       card: 'linear-gradient(180deg,#2a2a66 0%,#c8577a 45%,#ff9a52 75%,#ffd27a 100%)', accent: '#ffb14a',
     },
     woods: {
@@ -352,7 +356,7 @@
       trees: { near: 0.7, far: 0.85, snow: 0.6, green: [0.08, 0.2, 0.14] },
       snowfall: 0, nets: true, shadows: true,
       mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'win', t: 'Win the race' }, { k: 'time', v: 70, t: 'Finish under 1:10' }],
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'win', t: 'Win the race' }, { k: 'time', v: 76, t: 'Finish under 1:16' }],
       card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ff4060',
     },
     oly14: {
@@ -424,9 +428,65 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 14000, t: 'Score 14,000' }, { k: 'perfects', v: 4, t: 'Land 4 perfect landings' }],
       card: 'linear-gradient(180deg,#6f7b8f 0%,#a9b6c8 55%,#f2f5f9 100%)', accent: '#15c2b0',
     },
+    // ---- Youth Olympic Games parks: short and tight, a feature every few seconds
+    yog12: {
+      id: 'yog12', name: 'Innsbruck 2012 Youth Park', time: 'SUNNY DAY', diff: 'MEDIUM', oly: true,
+      sub: 'The first Youth Olympic slopestyle, above the trees in the Tyrolean Alps: log slides, a stair set, a step-up and a tight kicker line, all packed close together.',
+      half: 22, curve: [6, 300, 3, 140], slope: 0.22, alt: 2020, length: 850,
+      firstType: 'yogStart', firstLen: 70,
+      zones: [Z('LOG GARDEN', 'yog', 115, { c: 12, s: 0 }), Z('STEP-UP GARDEN', 'yog', 125, { c: 12, s: 1 }), Z('KICKER LINE', 'yog', 120, { c: 12, s: 2, j: 1 }),
+        Z('RAIL TIER', 'yog', 115, { c: 12, s: 3 }), Z('BIG LINE · 18 M', 'yog', 150, { c: 12, s: 4, j: 1 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.36, 0.45, 0.64], ground: [0.27, 0.27, 0.31], sunDir: norm3([-0.35, 0.55, 0.76]), sun: [0.66, 0.62, 0.54], fog: [0.76, 0.84, 0.95], rim: [0.26, 0.3, 0.38], snow: [0.92, 0.94, 0.97], powder: [0.88, 0.91, 0.97] },
+      sky: { zen: [0.08, 0.3, 0.8], hor: [0.66, 0.8, 0.96], dir: norm3([-0.35, 0.55, 0.76]), col: [1.0, 0.96, 0.84], disk: 0.9993, glow: [8, 0.34, 120, 0.6], aurora: 0, cloudDark: [0.74, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.35, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.9, 0.12, 0.18], [0.98, 0.98, 1.0], [0.15, 0.55, 0.95], [1.0, 0.72, 0.1], [0.2, 0.7, 0.4]],
+      boxCol: [0.98, 0.6, 0.1], railCol: [0.82, 0.85, 0.92],
+      trees: { near: 0.3, far: 0.45, snow: 0.9, green: [0.08, 0.17, 0.12] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.42, 0.46, 0.56], cap: [0.97, 0.98, 1.0], k: [0.68, 0.38] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'grind', v: 5, t: 'Grind for 5 seconds in total' }],
+      card: 'linear-gradient(180deg,#1556c9 0%,#6fa9ee 55%,#f4f8ff 100%)', accent: '#ff9a1a',
+    },
+    yog20: {
+      id: 'yog20', name: 'Lausanne 2020 Youth Park', time: 'WINDY DAY', diff: 'MEDIUM', oly: true,
+      sub: 'Leysin Park & Pipe above Lake Geneva: gaps to rails and boxes, step-ups, step-downs and a nine-stair, with a big step-down to finish. Red and white everywhere.',
+      half: 22, curve: [6, 300, 3, 140], slope: 0.22, alt: 1850, length: 840,
+      firstType: 'yogStart', firstLen: 70,
+      zones: [Z('GAP GARDEN', 'yog', 115, { c: 20, s: 0 }), Z('STEP-UPS', 'yog', 120, { c: 20, s: 1, j: 1 }), Z('NINE-STAIR', 'yog', 115, { c: 20, s: 2 }),
+        Z('TWIN KICKERS', 'yog', 130, { c: 20, s: 3, j: 1 }), Z('BIG STEP-DOWN', 'yog', 130, { c: 20, s: 4, j: 1 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.46, 0.5, 0.6], ground: [0.3, 0.31, 0.35], sunDir: norm3([0.45, 0.6, 0.66]), sun: [0.46, 0.45, 0.42], fog: [0.74, 0.78, 0.86], rim: [0.24, 0.26, 0.32], snow: [0.93, 0.94, 0.97], powder: [0.9, 0.92, 0.97] },
+      sky: { zen: [0.24, 0.38, 0.62], hor: [0.76, 0.8, 0.88], dir: norm3([0.45, 0.6, 0.66]), col: [1.0, 0.97, 0.9], disk: 0.9995, glow: [6, 0.24, 100, 0.35], aurora: 0, cloudDark: [0.6, 0.64, 0.72], cloudLit: [0.96, 0.97, 1.0], clouds: 0.85, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.88, 0.1, 0.14], [0.98, 0.98, 1.0], [0.88, 0.1, 0.14], [0.2, 0.3, 0.55], [0.98, 0.98, 1.0]],
+      boxCol: [0.88, 0.12, 0.16], railCol: [0.84, 0.86, 0.9],
+      trees: { near: 0.8, far: 0.9, snow: 0.9, green: [0.08, 0.17, 0.12] },
+      fogNear: 80, fogFar: 600,
+      snowfall: 0.3, nets: true, shadows: true,
+      mtn: { dark: [0.4, 0.44, 0.52], cap: [0.92, 0.94, 0.97], k: [0.6, 0.4] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'perfects', v: 5, t: 'Land 5 perfect landings' }],
+      card: 'linear-gradient(180deg,#4d6283 0%,#9eb0c8 55%,#f2f4f8 100%)', accent: '#e8202a',
+    },
+    yog24: {
+      id: 'yog24', name: 'Gangwon 2024 Youth Park', time: 'COLD AND CLEAR', diff: 'MEDIUM', oly: true,
+      sub: 'Welli Hilli Park in Korea under a low winter sun: two pyramid funboxes, wave boxes, stair sets and step-downs, then quarterpipe side hits and a big line.',
+      half: 24, curve: [6, 300, 3, 140], slope: 0.22, alt: 1050, length: 840,
+      firstType: 'yogStart', firstLen: 70,
+      zones: [Z('FUNBOX', 'yog', 115, { c: 24, s: 0 }), Z('STEP-UP LINE', 'yog', 110, { c: 24, s: 1, j: 1 }), Z('PYRAMID PARK', 'yog', 120, { c: 24, s: 2 }),
+        Z('KICKER LINE', 'yog', 120, { c: 24, s: 3, j: 1 }), Z('BIG LINE · 18 M', 'yog', 150, { c: 24, s: 4, j: 1 })],
+      first: 'START GATE', stands: true, comp: true,
+      light: { sky: [0.34, 0.42, 0.62], ground: [0.26, 0.26, 0.32], sunDir: norm3([0.62, 0.38, 0.68]), sun: [0.72, 0.62, 0.5], fog: [0.74, 0.8, 0.94], rim: [0.3, 0.3, 0.4], snow: [0.92, 0.94, 0.98], powder: [0.88, 0.91, 0.98] },
+      sky: { zen: [0.06, 0.24, 0.72], hor: [0.74, 0.8, 0.95], dir: norm3([0.62, 0.38, 0.68]), col: [1.0, 0.92, 0.78], disk: 0.9993, glow: [7, 0.36, 110, 0.6], aurora: 0, cloudDark: [0.7, 0.74, 0.88], cloudLit: [1.0, 0.98, 0.95], clouds: 0.25, stars: 0 },
+      lamps: null, banners: true, bannerCols: [[0.1, 0.65, 0.85], [0.95, 0.3, 0.55], [0.98, 0.98, 1.0], [0.25, 0.35, 0.9], [1.0, 0.8, 0.15]],
+      boxCol: [0.12, 0.66, 0.86], railCol: [0.82, 0.85, 0.92],
+      trees: { near: 0.9, far: 1.0, snow: 0.5, green: [0.07, 0.15, 0.11] },
+      snowfall: 0, nets: true, shadows: true,
+      mtn: { dark: [0.3, 0.34, 0.46], cap: [0.86, 0.9, 0.97], k: [0.45, 0.5] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'air', v: 2.5, t: 'Stay in the air for 2.5 seconds' }],
+      card: 'linear-gradient(180deg,#0b3aa8 0%,#5b97ea 55%,#ffe9f1 100%)', accent: '#1fb8e0',
+    },
   };
   SS.MAPS = MAPS;
-  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26'];
+  SS.MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24'];
   // the courses built like the ones at the Games get an OLYMPIC STYLE badge
   for (const id of ['slopestyle', 'slopequal', 'bigairfinal', 'superpipe', 'sbx']) MAPS[id].oly = true;
   SS.GIANT = GIANT;
@@ -529,7 +589,7 @@
         if (z < 30) s = lerp(0.1, s, clamp((z + 30) / 60, 0, 1));
         if (z > C.LENGTH + 10) s = lerp(s, 0.025, clamp((z - C.LENGTH - 10) / 70, 0, 1));
         slope[i] = s;
-        amp[i] = t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
+        amp[i] = t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' || t === 'yog' || t === 'yogStart' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
         if (z < 20) amp[i] = 0;
       }
       const blur = (src, w) => {
@@ -685,11 +745,32 @@
       let p;
       if (u < f.Lu) {
         const q = u / f.Lu;
+        if (f.sh === 'd') {
+          // step-down: an easy ramp up onto a deck, then a short kick at the end of it
+          const dk = f.Lu - f.Lk;
+          p = u < f.Lr ? f.Hd * (1 - (1 - u / f.Lr) ** 2) : u < dk ? f.Hd : f.Hd + (f.Hk - f.Hd) * Math.pow((u - dk) / f.Lk, 1.7);
+        }
         // 's': rounded hump; 'q': deck ramp, steepest at the bottom and easing out, so it never throws you at the top
-        p = f.sh === 's' ? f.Hk * smooth(q) : f.sh === 'q' ? f.Hk * (1 - (1 - q) * (1 - q)) : f.Hk * Math.pow(q, f.pe || 1.7);
+        else p = f.sh === 's' ? f.Hk * smooth(q) : f.sh === 'q' ? f.Hk * (1 - (1 - q) * (1 - q)) : f.Hk * Math.pow(q, f.pe || 1.7);
       }
-      else if (u < f.Lu + f.Lt) p = f.Hk + (f.lv || 0) * (u - f.Lu);
-      else p = (f.Hk + (f.lv || 0) * f.Lt) * 0.5 * (1 + Math.cos(Math.PI * ((u - f.Lu - f.Lt) / f.Ll)));
+      else if (u < f.Lu + f.Lt) {
+        if (f.sh === 'u') {
+          // step-up: the gap dips down to a wall, and you land on the raised table beyond it
+          const g = u - f.Lu;
+          if (g < f.Lg) { const k = g / f.Lg; p = k < 0.5 ? lerp(f.Hk, 0.5, smooth(k * 2)) : lerp(0.5, f.Ht, smooth(k * 2 - 1)); }
+          else p = f.Ht + (f.lv || 0) * (g - f.Lg);
+        } else p = f.Hk + (f.lv || 0) * (u - f.Lu);
+      }
+      else {
+        const top = f.sh === 'u' ? f.Ht + (f.lv || 0) * (f.Lt - f.Lg) : f.Hk + (f.lv || 0) * f.Lt;
+        const v = u - f.Lu - f.Lt;
+        if (f.stairs) {
+          // a stair set: level treads and equal risers all the way down to the snow
+          const k = Math.min(f.stairs - 1, Math.floor((v * f.stairs) / f.Ll));
+          p = top - f.rise * (k + 1) + f.gs * v;
+        } else if (f.lin) p = top * (1 - v / f.Ll);
+        else p = top * 0.5 * (1 + Math.cos(Math.PI * (v / f.Ll)));
+      }
       // skew jumps: one side of the lip is built higher than the other
       if (f.tw) p *= 1 + f.tw * clamp(dxs / f.w, -1, 1);
       return p * lat;
@@ -768,7 +849,8 @@
           const t = rx * f.dx + rz * f.dz;
           if (t < -f.ramp || t > f.len) continue;
           const lat = Math.abs(rx * f.dz - rz * f.dx);
-          if (lat > f.w) continue;
+          // the entry ramp catches you a little off-line too (the grind then centres you)
+          if (lat > (t < 0.6 ? f.w + 0.35 : f.w)) continue;
           let top;
           if (t >= 0) top = Math.max(this.railY(f, t), g + 0.25);
           else top = g + ((this.railY(f, 0) - g) * (t + f.ramp)) / f.ramp;
@@ -923,13 +1005,193 @@
         return srail(z + d.Lu + 1.4, off, segs, { table: top - 0.6, ...(o || {}) });
       };
       const DFD = [[3.5, 0.06], [4, 'f'], [4, 0.4]];
+      // a little kicker that sends you onto a rail or box: its in-run speed is checked to put you a couple of metres along it
+      const gap = (k, r) => { k.gap = r; k.tu = r.az - k.z0 + 2; return r; };
+      // ---- park features for the compact youth-games courses
+      // step-up: pop over the dip and land on a table that stands higher than the lip
+      const stepUp = (z, off, o) => {
+        o = o || {};
+        const Hk = o.Hk || 1.4, Lu = o.Lu || 6, Lg = o.Lg || 4.5, tab = o.tab || 7, Ll = o.Ll || 11;
+        const sl = slopeAt(off, z + Lu, Lg + tab);
+        const Ht = Hk + sl * Lg + (o.up || 0.7);
+        return kicker(z, off, 'SU', { Hk, Lu, Lg, Ht, Lt: Lg + tab, Ll, w: o.w || 3, lv: sl * 0.45, tu: Lu + Lg + 3.6 });
+      };
+      // step-down: up onto a deck, off the kick at its end, down a long landing
+      const stepDown = (z, off, o) => kicker(z, off, 'SD', o);
+      // a stair set off the end of a deck, with handrails down one or both sides (rails: -1 left, 1 right)
+      const stairSet = (z, off, H, top, n, tread, w, rails) => {
+        const Lu = Math.max(7, H * 4.5), Ll = n * tread;
+        const gs = slopeAt(off, z + Lu + top, Ll);
+        const d = deck(z, off, H, top, w, { Ll, stairs: n, gs, rise: (H + gs * Ll) / (n + 1) });
+        for (const sd of rails || []) srail(z + Lu + top - 1.8, off + sd * (w - 0.45), [[1.8, 'f'], [Ll + 1.2, 0.3]], { h: 0.8, end: 0.7, label: 'HANDRAIL' });
+        return d;
+      };
+      // two rails side by side off one deck, one high and one low
+      const doubleBarrel = (z, off, H, top, L) => {
+        const d = deck(z, off, H, top + 0.8, 2.2);
+        for (const [o, h] of [[-0.6, 0.6], [0.6, 0.85]]) srail(z + d.Lu + 1.4, off + o, [[2.5, 0.03], [L, 0.2]], { table: top - 0.6, h, label: 'DOUBLE BARREL' });
+        return d;
+      };
+      // a pyramid funbox: straight ramps up and down with a flat top, and a box over the whole thing
+      const pyramid = (z, off, H, top, w) => {
+        const Lu = H * 4.5, Ll = H * 4.5;
+        const d = kicker(z, off, 'D', { Hk: H, Lu, Lt: top, Ll, w, sh: 'lin', pe: 1, lin: true, ride: true });
+        srail(z + 1.2, off, [[Lu - 1.2, -H / Lu], [top, 0], [Ll - 0.6, H / Ll]], { type: 'box', h: 0.3, w: 0.45, ramp: 1.0, fit: false, label: 'PYRAMID BOX' });
+        return d;
+      };
+      const gapRail = (z, off, len, o) => gap(kicker(z, off, 'GK'), srail(z + 10, off, [[len, 0.015]], { h: 0.8, label: 'GAP TO RAIL', ...(o || {}) }));
+      const gapBox = (z, off, len) => gap(kicker(z, off, 'GK'), srail(z + 9, off, [[len, 0]], { type: 'box', h: 0.6, ramp: 1.2, label: 'GAP TO BOX' }));
+      const LOG = { type: 'box', style: 'log', w: 0.42, h: 0.55, ramp: 1.8 };
+      const WAVE = [...arc(7, 0.6, 4), ...arc(7, 0.6, 4)];
+      const AFRAME = [[3.5, 'u'], [2, 'f'], [4.5, 0.3]];
+      const UFD = [[2.5, 'u'], [3, 'f'], [4, 0.4]];
+      // Youth Olympic Games slopestyle, built in the style of each park with everything packed close together
+      // (+ off is the rider's right; the lanes are about 11 m apart)
+      const yog = (c, sec, z0) => {
+        if (c === 12) {
+          // Innsbruck 2012, Kühtai: high in the Tyrolean Alps, with log slides
+          if (sec === 0) {
+            srail(z0 + 12, -11, [[12, 0]], { ...LOG, label: 'LOG SLIDE' });
+            deckRail(z0 + 6, 0, 1.2, 3, 1.6, [[3, 0.04], [9, 0.22]], { label: 'DOWN RAIL' });
+            srail(z0 + 14, 11, AFRAME, { type: 'box', h: 0.45, label: 'A-FRAME BOX' });
+            stairSet(z0 + 40, -11, 1.6, 3, 7, 0.9, 3, [1]);
+            srail(z0 + 46, 0, WAVE, { type: 'box', h: 0.45, fit: false, label: 'WAVE BOX' });
+            doubleBarrel(z0 + 40, 11, 1.0, 3, 10);
+            gapRail(z0 + 74, -11, 12);
+            deckRail(z0 + 76, 0, 0.9, 4.5, 1.6, [[4, 'f'], [8, 0.25]], { label: 'FLAT-DOWN RAIL' });
+            srail(z0 + 80, 11, [[14, 0]], { ...LOG, label: 'LONG LOG' });
+            prop({ type: 'wallride', off: 19.5, z: z0 + 70, len: 12, h: 3.2 });
+          } else if (sec === 1) {
+            deckRail(z0 + 8, -11, 1.0, 2.5, 1.6, [...arc(8, 0.8, 5, 0, 0.5), [6, 0.3]], { label: 'RAINBOW TO DOWN' });
+            stepUp(z0 + 8, 0);
+            stairSet(z0 + 8, 11, 1.8, 3, 8, 0.9, 3.2, [-1, 1]);
+            stepDown(z0 + 48, -11);
+            kicker(z0 + 52, 0, 'M');
+            srail(z0 + 52, 11, [[6, 0], [7, 0.2]], { ...LOG, label: 'KINKED LOG' });
+            gapBox(z0 + 88, -11, 12);
+            srail(z0 + 98, 0, UFD, { type: 'box', h: 0.4, label: 'UP-FLAT-DOWN BOX' });
+            kicker(z0 + 90, 11, 'S');
+          } else if (sec === 2) {
+            kicker(z0 + 8, 0, 'L');
+            kicker(z0 + 12, -12, 'M');
+            kicker(z0 + 12, 12, 'M');
+            stepUp(z0 + 64, -12);
+            kicker(z0 + 66, 0, 'L');
+            stepDown(z0 + 62, 12);
+          } else if (sec === 3) {
+            deckRail(z0 + 8, -11, 1.5, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            gapBox(z0 + 8, 0, 12);
+            srail(z0 + 12, 11, arc(14, 1.1, 7), { type: 'box', h: 0.45, fit: false, label: 'RAINBOW BOX' });
+            srail(z0 + 48, -11, [[2, 'u'], [3, 'f'], [3.5, 0.4]], { h: 0.55, label: 'TRAPEZOID RAIL' });
+            stairSet(z0 + 42, 0, 1.6, 3, 7, 0.9, 3, [-1, 1]);
+            doubleBarrel(z0 + 42, 11, 1.0, 3, 10);
+            prop({ type: 'wallride', off: -19.5, z: z0 + 44, len: 12, h: 3.2 });
+            srail(z0 + 82, -11, [[6, 0], [7, 0.2]], { ...LOG, label: 'KINKED LOG' });
+            deckRail(z0 + 78, 0, 1.4, 2.5, 1.6, [[2.5, 0.03], [8, 0.28]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN MAILBOX' });
+            gapRail(z0 + 78, 11, 12);
+          } else {
+            kicker(z0 + 6, 0, 'J15');
+            kicker(z0 + 10, -12.5, 'M');
+            kicker(z0 + 10, 12.5, 'M');
+            kicker(z0 + 74, 0, 'J18', { w: 4.4 });
+            kicker(z0 + 84, -13, 'M');
+            kicker(z0 + 84, 13, 'M');
+          }
+        } else if (c === 20) {
+          // Lausanne 2020, Leysin Park & Pipe: gaps, step-ups and step-downs, Swiss red and white
+          if (sec === 0) {
+            gapRail(z0 + 8, -11, 12);
+            stepUp(z0 + 6, 0, { Hk: 1.2, Lg: 4, tab: 6, Ll: 10, w: 2.6 });
+            deckRail(z0 + 8, 11, 1.4, 3, 1.6, [[3, 0.03], [10, 0.18]], { label: 'DOWN RAIL' });
+            stairSet(z0 + 42, -11, 1.8, 3, 8, 0.9, 3.2, [1]);
+            srail(z0 + 50, 0, AFRAME, { type: 'box', h: 0.45, label: 'A-FRAME BOX' });
+            gapBox(z0 + 44, 11, 13);
+            srail(z0 + 82, -11, [...arc(8, 0.9, 5, 0, 0.5), [6, 0.35]], { h: 0.6, label: 'RAINBOW TO DOWN' });
+            stepDown(z0 + 76, 0);
+            doubleBarrel(z0 + 78, 11, 1.0, 3, 10);
+          } else if (sec === 1) {
+            kicker(z0 + 10, -12, 'M');
+            stepUp(z0 + 8, 0, { w: 3.4 });
+            kicker(z0 + 10, 12, 'M');
+            stepUp(z0 + 62, -12);
+            stepDown(z0 + 60, 0, { Hd: 2.2, Hk: 2.8, Lu: 14, Ll: 18, w: 3.4 });
+            stepUp(z0 + 62, 12);
+          } else if (sec === 2) {
+            deckRail(z0 + 8, -11, 1.3, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            stairSet(z0 + 6, 0, 2.0, 3, 9, 0.9, 3.4, [-1, 1]);
+            srail(z0 + 12, 11, [[16, 0]], { type: 'box', w: 0.5, label: 'LONG BOX', style: 'clean' });
+            gapRail(z0 + 42, -11, 12);
+            srail(z0 + 44, 0, arc(16, 1.3, 8), { type: 'box', h: 0.45, w: 0.55, fit: false, label: 'RAINBOW BOX', style: 'clean' });
+            deckRail(z0 + 42, 11, 0.9, 4.5, 1.6, [[4, 'f'], [8, 0.25]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'FLAT-DOWN MAILBOX' });
+            prop({ type: 'wallride', off: -19.5, z: z0 + 40, len: 12, h: 3.2 });
+            srail(z0 + 82, -11, UFD, { h: 0.55, label: 'UP-FLAT-DOWN RAIL' });
+            deckRail(z0 + 78, 0, 1.8, 2, 1.6, [[2, 0.03], [8, 0.28]], { h: 0.75, label: 'HIGH DOWN BAR', style: 'bar' });
+            kicker(z0 + 80, 12, 'S');
+          } else if (sec === 3) {
+            kicker(z0 + 8, -6.5, 'L', { w: 3 });
+            kicker(z0 + 8, 6.5, 'L', { w: 3 });
+            kicker(z0 + 22, -19.5, 'Q', { w: 2.2, ew: 1.4 });
+            kicker(z0 + 22, 19.5, 'Q', { w: 2.2, ew: 1.4 });
+            kicker(z0 + 66, 0, 'XL');
+          } else {
+            stepDown(z0 + 10, 0, { Hd: 3.0, Hk: 3.8, Lr: 9, Lk: 3, Lu: 18, Lt: 1, Ll: 26, w: 5 });
+            stepUp(z0 + 14, -13, { w: 2.6 });
+            stepUp(z0 + 14, 13, { w: 2.6 });
+            kicker(z0 + 66, 0, 'J15', { w: 4.4 });
+          }
+        } else {
+          // Gangwon 2024, Welli Hilli Park: a colourful Korean park with a pyramid, wave boxes and stair sets
+          if (sec === 0) {
+            srail(z0 + 12, -11, WAVE, { type: 'box', h: 0.45, fit: false, label: 'WAVE BOX' });
+            pyramid(z0 + 8, 0, 1.6, 6, 3.4);
+            deckRail(z0 + 8, 11, 1.2, 3, 1.6, [[3, 0.04], [9, 0.22]], { label: 'DOWN RAIL' });
+            stairSet(z0 + 40, -11, 1.6, 3, 7, 0.9, 3, [1]);
+            gapRail(z0 + 44, 0, 12);
+            srail(z0 + 46, 11, arc(14, 1.1, 7), { type: 'box', h: 0.45, fit: false, label: 'RAINBOW BOX' });
+            doubleBarrel(z0 + 76, -11, 1.0, 3, 10);
+            srail(z0 + 82, 0, AFRAME, { type: 'box', h: 0.45, label: 'A-FRAME BOX' });
+            deckRail(z0 + 78, 11, 1.5, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
+            prop({ type: 'wallride', off: 21.5, z: z0 + 74, len: 12, h: 3.2 });
+          } else if (sec === 1) {
+            kicker(z0 + 10, -12, 'S');
+            stepUp(z0 + 8, 0, { w: 3.4 });
+            kicker(z0 + 10, 12, 'S');
+            stepDown(z0 + 56, -12);
+            kicker(z0 + 58, 0, 'M');
+            stepDown(z0 + 56, 12);
+          } else if (sec === 2) {
+            deckRail(z0 + 10, -12, 0.9, 4.5, 1.6, [[4, 'f'], [8, 0.25]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'FLAT-DOWN MAILBOX' });
+            pyramid(z0 + 8, 0, 2.0, 8, 4);
+            srail(z0 + 12, 12, UFD, { h: 0.55, label: 'UP-FLAT-DOWN RAIL' });
+            gapBox(z0 + 46, -12, 12);
+            stairSet(z0 + 48, 0, 2.0, 3, 9, 0.9, 3.4, [-1, 1]);
+            srail(z0 + 50, 12, [...arc(10, 1.0, 6), [4, 'f'], [5, 0.2]], { h: 0.6, label: 'RAINBOW TO FLAT-DOWN' });
+            srail(z0 + 84, -12, WAVE, { type: 'box', h: 0.45, fit: false, label: 'WAVE BOX' });
+            srail(z0 + 86, 0, [[16, 0]], { type: 'box', w: 0.5, label: 'LONG BOX', style: 'clean' });
+            kicker(z0 + 82, 12, 'S');
+          } else if (sec === 3) {
+            kicker(z0 + 8, 0, 'L');
+            kicker(z0 + 12, -12, 'M');
+            kicker(z0 + 12, 12, 'M');
+            kicker(z0 + 24, -21, 'Q', { w: 2.2, ew: 1.4 });
+            kicker(z0 + 24, 21, 'Q', { w: 2.2, ew: 1.4 });
+            kicker(z0 + 66, 0, 'L');
+            kicker(z0 + 70, -12, 'M');
+            kicker(z0 + 70, 12, 'M');
+          } else {
+            kicker(z0 + 8, 0, 'J18', { w: 4.4 });
+            stepUp(z0 + 14, -13.5, { w: 2.6 });
+            stepUp(z0 + 14, 13.5, { w: 2.6 });
+            kicker(z0 + 86, 0, 'J15', { w: 4.4 });
+          }
+        }
+      };
       const oly = (c, sec, z0) => {
         if (c === 14) {
           // Sochi 2014, Rosa Khutor: three jib sections, then three jumps that get bigger, each with a smaller jump beside it
           if (sec === 0) {
             // the very first hit: jump from a kicker onto a rail
-            kicker(z0 + 34, 0, 'GK');
-            srail(z0 + 44, 0, [[16, 0]], { h: 0.8, label: 'GAP TO RAIL' });
+            gap(kicker(z0 + 34, 0, 'GK'), srail(z0 + 44, 0, [[16, 0]], { h: 0.8, label: 'GAP TO RAIL' }));
             deckRail(z0 + 30, -11, 1.0, 4.8, 1.6, [[4, 'f'], [8, 0.2]], { type: 'box', h: 0.45, ramp: 0, label: 'FLAT-DOWN BOX' });
             deckRail(z0 + 30, 11, 1.6, 3, 1.6, [[3, 0.03], [10, 0.15]], { label: 'DOWN RAIL' });
           } else if (sec === 1) {
@@ -939,8 +1201,7 @@
           } else if (sec === 2) {
             deckRail(z0 + 34, -11, 1.8, 4, 1.6, [[3.5, 0.03], [12.5, 0.15]], { label: 'LONG DOWN RAIL' });
             srail(z0 + 40, 0, [[2.5, 'u'], [3, 'f'], [4, 0.3]], { type: 'box', h: 0.4, label: 'UP-FLAT-DOWN BOX' });
-            kicker(z0 + 36, 11, 'GK');
-            srail(z0 + 45, 11, [[14, 0]], { type: 'box', h: 0.6, ramp: 1.2, label: 'GAP TO BOX' });
+            gap(kicker(z0 + 36, 11, 'GK'), srail(z0 + 45, 11, [[14, 0]], { type: 'box', h: 0.6, ramp: 1.2, label: 'GAP TO BOX' }));
           } else if (sec === 3) {
             kicker(z0 + 50, 0, 'J18');
             kicker(z0 + 58, 14, 'J15');
@@ -965,8 +1226,8 @@
             prop({ type: 'wallride', off: -20.5, z: z0 + 42, len: 13, h: 3.4 });
           } else if (sec === 1) {
             // a high bar with three take-offs at different angles
-            [[-3.2, -0.3], [0, 0], [3.2, 0.3]].forEach(([o, tw]) => kicker(z0 + 38, 13 + o, 'GK', { tw, w: 1.3 }));
-            srail(z0 + 47, 13, [[7, 0]], { h: 1.7, label: 'HIGH BAR', style: 'bar' });
+            const hk = [[-3.2, -0.3], [0, 0], [3.2, 0.3]].map(([o, tw]) => kicker(z0 + 38, 13 + o, 'GK', { tw, w: 1.3 }));
+            gap(hk[1], srail(z0 + 47, 13, [[7, 0]], { h: 1.7, label: 'HIGH BAR', style: 'bar' }));
             deckRail(z0 + 36, 0, 1.8, 3, 1.6, DFD, { label: 'DOWN-FLAT-DOWN RAIL' });
             // up box into an uphill closeout, then a flat-down rail
             srail(z0 + 34, -13, [[3.5, 'u']], { type: 'box', h: 0.4, label: 'UP BOX' });
@@ -1018,10 +1279,10 @@
             deckRail(z0 + 32, -6, 0.9, 4.8, 1.6, [[4, 'f'], [10, 0.25]], { label: 'FLAT-DOWN RAIL' });
             deckRail(z0 + 30, -17, 1.4, 3, 1.8, [[3.5, 0.04], [4, 'f'], [4, 0.4]], { type: 'box', style: 'mail', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN-FLAT-DOWN MAILBOX' });
           } else if (sec === 2) {
-            kicker(z0 + 32, 13, 'GK');
+            const gk = kicker(z0 + 32, 13, 'GK');
             const sl = slopeAt(13, z0 + 44, 8);
             deck(z0 + 41, 13, 1.4, 8, 1.8, { Lu: 2.5, lv: sl });
-            srail(z0 + 44.1, 13, [[8, 'f']], { h: 0.6, label: 'GAP TO FLAT RAIL' });
+            gap(gk, srail(z0 + 44.1, 13, [[8, 'f']], { h: 0.6, label: 'GAP TO FLAT RAIL' }));
             kicker(z0 + 40, 0, 'RK');
             deckRail(z0 + 36, -13, 0.8, 1.2, 1.5, [[3.5, 'u']], { h: 0.5, label: 'CANNON' }, { Lu: 5 });
           } else if (sec === 3) {
@@ -1049,8 +1310,7 @@
             srail(z0 + 40, 0, arc(16, 1.3, 8), { type: 'box', h: 0.45, w: 0.55, fit: false, label: 'RAINBOW BOX', style: 'clean' });
             deckRail(z0 + 32, 12, 0.9, 5.3, 1.6, [[4.5, 'f'], [9, 0.24]], { label: 'FLAT-DOWN RAIL' });
           } else if (sec === 2) {
-            kicker(z0 + 34, -12, 'GK');
-            srail(z0 + 43, -12, [[14, 0.06]], { h: 0.85, end: 0.45, label: 'GAP TO DOWN RAIL' });
+            gap(kicker(z0 + 34, -12, 'GK'), srail(z0 + 43, -12, [[14, 0.06]], { h: 0.85, end: 0.45, label: 'GAP TO DOWN RAIL' }));
             srail(z0 + 42, 0, [[2.5, 'u'], [3, 'f'], [4, 0.4]], { h: 0.55, label: 'UP-FLAT-DOWN RAIL' });
             deckRail(z0 + 32, 12, 1.6, 3, 1.8, [[2.5, 0.05], [14, 0.1]], { type: 'box', w: 0.5, h: 0.5, ramp: 0, label: 'DOWN BOX', style: 'clean' });
           } else if (sec === 3) {
@@ -1203,6 +1463,9 @@
           case 'oly':
             oly(zn.opt.c, zn.opt.s, z0);
             break;
+          case 'yog':
+            yog(zn.opt.c, zn.opt.s, z0);
+            break;
           case 'jib':
             rail(z0 + 30, R(-6, 6), 'box', 14);
             kicker(z0 + 80, R(-6, 6), 'S');
@@ -1219,9 +1482,9 @@
 
       // Olympic dressing: a judges' tower beside the last jump; walls and towers get solid edges
       if (M.oly) {
-        const last = this.zones.filter((q) => q.type === 'oly').pop();
+        const last = this.zones.filter((q) => q.type === 'oly' || q.type === 'yog').pop();
         if (last) {
-          const jz = last.z0 + 130, jx = this.center(jz) + HALF + 11;
+          const jz = last.z0 + (last.type === 'yog' ? 60 : 130), jx = this.center(jz) + HALF + 11;
           prop({ type: 'judges', x: jx, z: jz });
           solid(jx, jz, 3);
         }
@@ -1247,7 +1510,7 @@
       this.ab = [];
       const avoidPt = (x, z, rad) => { const b = ((z - C.Z0) / 10) | 0; (this.ab[b] = this.ab[b] || []).push({ x, z, r: rad, top: 1e4 }); };
       for (const f of this.features) {
-        if (f.kind === 'kicker' && f.size === 'D') for (let u = 0; u <= f.len; u += 2.5) { const z = f.z0 + u; avoidPt(this.center(z) + f.off, z, f.w + 0.6); }
+        if (f.kind === 'kicker' && f.size === 'D' && !f.ride) for (let u = 0; u <= f.len; u += 2.5) { const z = f.z0 + u; avoidPt(this.center(z) + f.off, z, f.w + 0.6); }
         else if (f.kind === 'rail' && f.ramp < 0.1) for (let t = -1.5; t <= f.len; t += 2) avoidPt(f.ax + f.dx * t, f.az + f.dz * t, 0.9);
       }
 
@@ -1376,7 +1639,7 @@
       this.nets = [];
       if (M.nets) {
         for (const zn of this.zones) {
-          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant', 'jumpline', 'jumpStation'].includes(zn.type) && !(zn.type === 'oly' && zn.opt.s >= 3)) continue;
+          if (!['kickers', 'bigair', 'mega', 'rollers', 'finish', 'giant', 'jumpline', 'jumpStation'].includes(zn.type) && !(zn.type === 'oly' && zn.opt.s >= 3) && !(zn.type === 'yog' && zn.opt.j)) continue;
           for (let z = Math.max(zn.z0, 10); z < Math.min(zn.z1, C.LENGTH + 40); z += 6) {
             for (const sd of [-1, 1]) if (r() < 0.92) this.nets.push({ z0: z, z1: z + 6, side: sd });
           }
@@ -1506,13 +1769,13 @@
 
     // colliders near (x, z): returns the first one the rider overlaps, or null
     // the nearest rail or box starting just ahead along the rider's line (for aiming an ollie onto it)
-    railAhead(x, z, heading, sh, ch, maxD) {
+    railAhead(x, z, heading, sh, ch, maxD, boxes) {
       let best = null;
       for (let b = ((z - C.Z0) / 10) | 0, b1 = ((z + maxD - C.Z0) / 10) | 0; b <= b1; b++) {
         const list = this.fb[b];
         if (!list) continue;
         for (const f of list) {
-          if (f.kind !== 'rail' || f.ramp > 0.1) continue;
+          if (f.kind !== 'rail' || (f.ramp > 0.1 && !boxes)) continue;
           let da = heading - f.ang;
           da = Math.atan2(Math.sin(da), Math.cos(da));
           if (Math.abs(da) > 0.5) continue;
@@ -1537,7 +1800,7 @@
         const lat = rx * f.dz - rz * f.dx;
         if (Math.abs(lat) > f.w + 0.5) continue;
         const top = this.railY(f, t);
-        if (y - top > 0.3 || y - top + drop < -0.35) continue;
+        if (y - top > 0.45 || y - top + drop < -0.35) continue;
         return { f, x: f.ax + f.dx * t, z: f.az + f.dz * t };
       }
       return null;
@@ -2094,6 +2357,20 @@
       for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], col, o, em);
     }
 
+    // a round bar (a log) from one point to another, flat-shaded with n sides
+    tube(x0, y0, z0, x1, y1, z1, r, n, col) {
+      const dx = x1 - x0, dy = y1 - y0, dz = z1 - z0, L = Math.hypot(dx, dy, dz) || 1;
+      const ax = dx / L, ay = dy / L, az = dz / L;
+      const hl = Math.hypot(ax, az) || 1, ux = -az / hl, uz = ax / hl;
+      const vx = ay * uz, vy = az * ux - ax * uz, vz = -ay * ux;
+      const o = [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2];
+      const p = (bx, by, bz, a) => { const c = Math.cos(a) * r, s = Math.sin(a) * r; return [bx + ux * c + vx * s, by + vy * s, bz + uz * c + vz * s]; };
+      for (let i = 0; i < n; i++) {
+        const a0 = (i / n) * TAU, a1 = ((i + 1) / n) * TAU;
+        this.quad(p(x0, y0, z0, a0), p(x1, y1, z1, a0), p(x1, y1, z1, a1), p(x0, y0, z0, a1), col, o);
+      }
+    }
+
     cyl(x, y0, z, r0, r1, h, sides, col, cap, em) {
       const o = [x, y0 + h * 0.4, z];
       for (let i = 0; i < sides; i++) {
@@ -2615,20 +2892,37 @@
     kicker(f) {
       const w = this.w;
       const span = f.w + (f.ew || 2.5);
-      const nu = Math.ceil(f.len / 0.7), nv = Math.ceil((span * 2) / 0.55);
+      const nv = Math.ceil((span * 2) / 0.55);
+      let us = [];
+      const nu0 = Math.ceil(f.len / 0.7);
+      for (let i = 0; i <= nu0; i++) us.push((i / nu0) * f.len);
+      const riser = new Set();
+      if (f.stairs) {
+        const s0 = f.Lu + f.Lt, tr = f.Ll / f.stairs;
+        for (let k = 0; k <= f.stairs; k++) {
+          const ue = s0 + k * tr + (k === f.stairs ? 0.01 : 0);
+          us = us.filter((u) => Math.abs(u - ue) > 0.05);
+          for (const d of [-0.03, -0.006, 0.006, 0.03]) { us.push(ue + d); if (Math.abs(d) < 0.01) riser.add(+(ue + d).toFixed(4)); }
+        }
+        us.sort((a, b) => a - b);
+      }
+      const nu = us.length - 1;
+      const ri = (uu) => { let b = 0; for (let i = 1; i < us.length; i++) if (Math.abs(us[i] - uu) < Math.abs(us[b] - uu)) b = i; return b; };
       const grid = [];
       const sn = w.L.snow;
       for (let i = 0; i <= nu; i++) {
-        const z = f.z0 + (i / nu) * f.len;
+        const z = f.z0 + us[i];
         const c = w.center(z) + f.off;
         const row = [];
+        const isR = riser.has(+us[i].toFixed(4));
         for (let j = 0; j <= nv; j++) {
           const x = c - span + (j / nv) * span * 2;
           const k = w.kickerH(f, x, z);
           const y = w.ground(x, z) + k + 0.03;
-          const e = 0.3;
+          const e = 0.3, ez = f.stairs ? 0.02 : e;
           const gx = (w.ground(x + e, z) + w.kickerH(f, x + e, z) - w.ground(x - e, z) - w.kickerH(f, x - e, z)) / (2 * e);
-          const gz = (w.ground(x, z + e) + w.kickerH(f, x, z + e) - w.ground(x, z - e) - w.kickerH(f, x, z - e)) / (2 * e);
+          // stair risers face down the hill; treads are lit flat
+          const gz = isR && k > 0.05 ? -3 : (w.ground(x, z + ez) + w.kickerH(f, x, z + ez) - w.ground(x, z - ez) - w.kickerH(f, x, z - ez)) / (2 * ez);
           const l = Math.hypot(gx, 1, gz);
           w.light(-gx / l, 1 / l, -gz / l, x, y, z, L3, w.map.shadows ? w.treeShadow(x, z) : 1);
           row.push([x, y, z, sn[0] * 1.03 * L3[0], sn[1] * 1.02 * L3[1], sn[2] * L3[2], k]);
@@ -2662,22 +2956,26 @@
         return;
       }
       if (f.size === 'D') {
-        // decks: a dye line along the drop edge so you can read where the table ends
-        const ei = Math.min(nu, Math.round(((f.Lu + f.Lt) / f.len) * nu));
+        // decks: a dye line along the drop edge so you can read where the table ends (and on every stair)
         const j0 = Math.round(((span - f.w) / (span * 2)) * nv), j1 = nv - j0;
-        for (let j = j0; j < j1; j++) {
-          const a = grid[ei][j], b = grid[ei][j + 1];
-          this.line(a[0], a[1] + 0.05, a[2], b[0], b[1] + 0.05, b[2], blue);
+        const edges = [f.Lu + f.Lt - 0.03];
+        if (f.stairs) for (let k = 1; k < f.stairs; k++) edges.push(f.Lu + f.Lt + (k * f.Ll) / f.stairs - 0.03);
+        for (const eu of edges) {
+          const ei = Math.min(nu, ri(eu));
+          for (let j = j0; j < j1; j++) {
+            const a = grid[ei][j], b = grid[ei][j + 1];
+            this.line(a[0], a[1] + 0.05, a[2], b[0], b[1] + 0.05, b[2], blue);
+          }
         }
         return;
       }
-      const lipI = Math.round((f.Lu / f.len) * nu);
+      const lipI = ri(f.Lu);
       const j0 = Math.round(((span - f.w) / (span * 2)) * nv), j1 = nv - j0;
       for (let j = j0; j < j1; j++) {
         const a = grid[lipI][j], b = grid[lipI][j + 1];
         this.line(a[0], a[1] + 0.06, a[2], b[0], b[1] + 0.06, b[2], blue);
       }
-      const endI = Math.round(((f.Lu + f.Lt + f.Ll * 0.6) / f.len) * nu);
+      const endI = ri(f.Lu + f.Lt + f.Ll * 0.6);
       for (const j of [j0, j1]) {
         for (let i = 2; i < endI; i++) {
           const a = grid[i][j], b = grid[i + 1][j];
@@ -2709,6 +3007,33 @@
       }
       const N = P.length - 1;
       const oly = w.map.oly;
+      if (f.style === 'log') {
+        // a whole tree trunk on short wooden legs, with a snow ramp up to it
+        const bark = [0.34, 0.22, 0.13], cut = [0.84, 0.68, 0.45], wood = [0.26, 0.17, 0.1];
+        for (let i = 0; i < N; i++) {
+          const a = P[i], b = P[i + 1];
+          const ea = i === 0 ? 0.3 : 0, eb = i === N - 1 ? 0.3 : 0;
+          this.tube(a.x - f.dx * ea, a.top - 0.2 + (b.top - a.top) * (-ea / Math.max(0.1, b.t - a.t)), a.z - f.dz * ea,
+            b.x + f.dx * eb, b.top - 0.2 + (b.top - a.top) * (eb / Math.max(0.1, b.t - a.t)), b.z + f.dz * eb, 0.22, 7, bark);
+        }
+        for (const [q, d] of [[P[0], -0.31], [P[N], 0.31]]) this.box(q.x + f.dx * d, q.top - 0.2, q.z + f.dz * d, 0.17, 0.17, 0.02, f.ang, cut);
+        const legs = Math.max(2, Math.round(f.len / 4));
+        for (let i = 0; i <= legs; i++) {
+          const p = P[Math.round((i / legs) * N)];
+          for (const sd of [-1, 1]) {
+            const lx = p.x + f.dz * sd * 0.35, lz = p.z - f.dx * sd * 0.35;
+            this.beam(lx, w.Hk(lx, lz) - 0.2, lz, p.x, p.top - 0.32, p.z, 0.06, 0.06, wood);
+          }
+        }
+        if (f.ramp >= 0.1) {
+          const sx = f.dz * 0.32, sz = -f.dx * 0.32;
+          const x0 = P[0].x, z0 = P[0].z, t0 = P[0].top - 0.12;
+          const rx = x0 - f.dx * f.ramp, rz = z0 - f.dz * f.ramp, gr = w.Hk(rx, rz) - 0.05;
+          this.quad([rx - sx, gr, rz - sz], [rx + sx, gr, rz + sz], [x0 + sx, t0, z0 + sz], [x0 - sx, t0, z0 - sz], [0.82, 0.86, 0.94], [(rx + x0) / 2, gr - 1, (rz + z0) / 2]);
+          for (const sd of [-1, 1]) this.tri(rx + sx * sd, gr, rz + sz * sd, x0 + sx * sd, t0, z0 + sz * sd, x0 + sx * sd, P[0].gy - 0.3, z0 + sz * sd, [0.78, 0.82, 0.9], rx, gr + 2, rz);
+        }
+        return;
+      }
       if (isBox) {
         const hw = f.style === 'pad' ? f.w * 0.95 : f.w > 0.45 ? f.w * 0.82 : 0.3;
         const sx = f.dz * hw, sz = -f.dx * hw;
