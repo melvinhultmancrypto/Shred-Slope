@@ -1689,11 +1689,36 @@
     }
 
     // ---------------------------------------------------------------- meshes
-    ensureChunks(engine, z, budget) {
+    initChunks() {
+      if (this.chunks.length) return;
       const n = Math.ceil((C.ZMAX - C.Z0) / C.CHUNK);
-      if (!this.chunks.length) {
-        for (let i = 0; i < n; i++) this.chunks.push({ i, z0: C.Z0 + i * C.CHUNK, z1: C.Z0 + (i + 1) * C.CHUNK, minZ: 0, maxZ: 0, tri: null, lines: null });
-        this.assignObjects();
+      for (let i = 0; i < n; i++) this.chunks.push({ i, z0: C.Z0 + i * C.CHUNK, z1: C.Z0 + (i + 1) * C.CHUNK, minZ: 0, maxZ: 0, tri: null, lines: null });
+      this.assignObjects();
+    }
+
+    // Chunks are built ahead of the rider. With a background worker, only the chunks right around
+    // the rider are ever built here (when the worker hasn't delivered them yet); the rest arrive
+    // from the worker without holding up a frame. A budget of 50+ means "build them all now".
+    ensureChunks(engine, z, budget) {
+      this.initChunks();
+      const n = this.chunks.length;
+      if (this.cw && !this.cw.dead && budget < 50) {
+        if (this.allDone) return 0;
+        if (this.chunks.every((c) => c.tri)) { this.allDone = true; return 0; }
+        let done = 0;
+        for (const c of this.chunks) {
+          if (!c.tri && c.z0 < z + 110 && c.z1 > z - 40) { this.buildChunk(engine, c); done++; }
+        }
+        const ci = clamp(Math.floor((z - C.Z0) / C.CHUNK), 0, n - 1);
+        // ask for the rest nearest first: ahead within sight, a couple behind, then everything else
+        const order = [];
+        for (let k = 0; k < n; k++) { const c = this.chunks[ci + k]; if (!c) break; order.push(c); }
+        for (let k = 1; k < n; k++) { const c = this.chunks[ci - k]; if (!c) break; order.push(c); }
+        for (const c of order) {
+          if (this.inFlight >= 3) break;
+          if (!c.tri && !c.req) this.cw.request(this, c);
+        }
+        return done;
       }
       let done = 0;
       const ci = clamp(Math.floor((z - C.Z0) / C.CHUNK), 0, n - 1);
@@ -1746,6 +1771,15 @@
     }
 
     buildChunk(engine, ch) {
+      const d = this.chunkData(ch);
+      ch.minZ = d.minZ;
+      ch.maxZ = d.maxZ;
+      ch.tri = engine.mesh(d.tri, 6);
+      ch.lines = d.lines ? engine.mesh(d.lines, 6, engine.gl.LINES) : null;
+    }
+
+    // the geometry of one chunk, as plain arrays (this also runs inside the background worker)
+    chunkData(ch) {
       const tri = new SS.FBuf(1 << 16), lines = new SS.FBuf(1024);
       const B = new Builder(this, tri, lines);
       ch.minZ = ch.z0;
@@ -1782,8 +1816,7 @@
       }
       ch.minZ -= 12;
       ch.maxZ += 12;
-      ch.tri = engine.mesh(tri.data(), 6);
-      ch.lines = lines.n ? engine.mesh(lines.data(), 6, engine.gl.LINES) : null;
+      return { tri: tri.data(), lines: lines.n ? lines.data() : null, minZ: ch.minZ, maxZ: ch.maxZ };
     }
 
     draw(engine, camZ) {
@@ -2950,4 +2983,86 @@
   };
 
   SS.World = World;
+  SS.Builder = Builder;
+
+  // ------------------------------------------------------------------ background chunk building
+  // The worker runs this same file (and engine.js), makes its own copy of the world from the same
+  // map and seed (courses are seeded, so it comes out identical) and bakes chunks on request.
+  class ChunkWorker {
+    constructor(worker) {
+      this.w = worker;
+      this.gen = 0;
+      this.world = null;
+      this.engine = null;
+      this.dead = false;
+      worker.onmessage = (e) => this.done(e.data);
+      worker.onerror = () => { this.dead = true; };
+    }
+    attach(world, engine) {
+      this.gen++;
+      this.world = world;
+      this.engine = engine;
+      world.cw = this;
+      world.gen = this.gen;
+      world.inFlight = 0;
+      this.w.postMessage({ t: 'world', gen: this.gen, seed: world.seed, mapId: world.mapId, consts: { GIANT_SPEED: SS.GIANT_SPEED, GIANT_G: SS.GIANT_G } });
+    }
+    request(world, ch) {
+      ch.req = true;
+      world.inFlight++;
+      this.w.postMessage({ t: 'build', gen: world.gen, i: ch.i });
+    }
+    done(m) {
+      const world = this.world;
+      if (!world || m.gen !== world.gen) return;
+      if (m.err) { this.dead = true; return; }
+      world.inFlight = Math.max(0, world.inFlight - 1);
+      const ch = world.chunks[m.i];
+      if (!ch || ch.tri) return;
+      ch.minZ = m.minZ;
+      ch.maxZ = m.maxZ;
+      ch.tri = this.engine.mesh(m.tri, 6);
+      ch.lines = m.lines ? this.engine.mesh(m.lines, 6, this.engine.gl.LINES) : null;
+    }
+  }
+  SS.makeChunkWorker = function () {
+    if (typeof Worker === 'undefined' || typeof document === 'undefined') return null;
+    try {
+      let w;
+      if (document.querySelector('script[src*="world.js"]')) w = new Worker('js/chunks.js');
+      else {
+        // single-file build: make the worker from the page's own script text
+        const texts = [...document.scripts].map((sc) => sc.textContent);
+        const eng = texts.find((t) => t.indexOf('SS.Engine = Engine;') >= 0), wld = texts.find((t) => t.indexOf('SS.makeChunkWorker') >= 0);
+        if (!eng || !wld) return null;
+        w = new Worker(URL.createObjectURL(new Blob(['self.window = self;\n', eng, '\n', wld], { type: 'text/javascript' })));
+      }
+      return new ChunkWorker(w);
+    } catch (e) {
+      return null;
+    }
+  };
+
+  // inside the worker
+  if (typeof document === 'undefined' && typeof importScripts === 'function') {
+    let wld = null, gen = -1;
+    self.onmessage = (e) => {
+      const m = e.data;
+      try {
+        if (m.t === 'world') {
+          gen = m.gen;
+          Object.assign(SS, m.consts || {});
+          wld = new World(m.seed, m.mapId);
+          wld.initChunks();
+        } else if (m.t === 'build' && m.gen === gen && wld) {
+          const d = wld.chunkData(wld.chunks[m.i]);
+          const tr = [d.tri.buffer];
+          if (d.lines) tr.push(d.lines.buffer);
+          self.postMessage({ gen, i: m.i, tri: d.tri, lines: d.lines, minZ: d.minZ, maxZ: d.maxZ }, tr);
+        }
+      } catch (err) {
+        self.postMessage({ gen: m.gen, err: String(err) });
+      }
+    };
+  }
 })();

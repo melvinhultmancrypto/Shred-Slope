@@ -177,6 +177,14 @@ float vnoise(vec2 p) {
   vec2 i = floor(p), f = fract(p);
   f = f * f * (3.0 - 2.0 * f);
   return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+// value noise and its slope in one go (x: value, yz: d/dx, d/dy)
+vec3 vnoiseD(vec2 p) {
+  vec2 i = floor(p), f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f), du = 6.0 * f * (1.0 - f);
+  float a = h21(i), b = h21(i + vec2(1.0, 0.0)), c = h21(i + vec2(0.0, 1.0)), d = h21(i + vec2(1.0, 1.0));
+  float k1 = b - a, k2 = c - a, k4 = a - b - c + d;
+  return vec3(a + k1 * u.x + k2 * u.y + k4 * u.x * u.y, du * vec2(k1 + k4 * u.y, k2 + k4 * u.x));
 }`;
   const FS_BAKED = HEAD + NOISE + SHADOW + `
 varying vec3 vCol; varying float vFog; varying vec3 vW; varying vec4 vSh;
@@ -224,15 +232,12 @@ void main() {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
       c *= mix(1.0, 0.92 + n * 0.13, snow);
-      float d = length(vW - uEye);
+      float d = dCam;
       // ripples in the snow: their sunny sides light up, their lee sides fall into shade
       // (soft, round and only up close: long thin ripples turned into streaks at speed)
       if (d < 45.0) {
         vec2 rp = vec2(vW.x * 0.6 + vW.z * 0.12, vW.z * 0.55 - vW.x * 0.12);
-        float r0 = vnoise(rp) * 0.8 + vnoise(rp * 2.3 + 5.0) * 0.2;
-        float rx = vnoise(rp + vec2(0.12, 0.0)) * 0.8 + vnoise((rp + vec2(0.12, 0.0)) * 2.3 + 5.0) * 0.2;
-        float rz = vnoise(rp + vec2(0.0, 0.12)) * 0.8 + vnoise((rp + vec2(0.0, 0.12)) * 2.3 + 5.0) * 0.2;
-        vec2 gr = vec2(rx - r0, rz - r0) / 0.12;
+        vec2 gr = vnoiseD(rp).yz * 0.8 + vnoiseD(rp * 2.3 + 5.0).yz * 0.46;
         float bump = -dot(gr, normalize(uSunDirF.xz + vec2(0.0001))) * 0.04 * smoothstep(45.0, 8.0, d);
         c *= 1.0 + bump * snow * (1.0 - sh * 0.8) * uDetail;
       }
@@ -623,7 +628,9 @@ void main() {
   // ------------------------------------------------------------------ engine
   class Engine {
     constructor(canvas) {
-      const opts = { antialias: true, alpha: false, depth: true, powerPreference: 'high-performance' };
+      // no multisampling: the scene is drawn into its own buffer and smoothed with FXAA on every
+      // quality level, so a multisampled screen would only cost memory and bandwidth
+      const opts = { antialias: false, alpha: false, depth: true, powerPreference: 'high-performance' };
       const gl = canvas.getContext('webgl', opts) || canvas.getContext('experimental-webgl', opts);
       if (!gl) throw new Error('nogl');
       this.gl = gl;
@@ -945,12 +952,16 @@ void main() {
       gl.disable(gl.BLEND);
       gl.depthMask(false);
       const qx = 1 / P.a.w, qy = 1 / P.a.h;
-      this.pass(pp.bright, P.c, P.scene.tex, (u) => { gl.uniform2f(u.uPx, 1 / P.w, 1 / P.h); gl.uniform1f(u.uThr, G.thr); });
-      this.pass(pp.blur, P.b, P.c.tex, (u) => gl.uniform2f(u.uDir, qx, 0));
-      this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy));
-      this.pass(pp.blur, P.b, P.a.tex, (u) => gl.uniform2f(u.uDir, qx * 2.6, 0));
-      this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy * 2.6));
-      const rays = sunUV && shaftsK > 0.01;
+      // 'lite' (low graphics): no bloom or sun rays, just FXAA and the grade
+      const lite = this.postLite;
+      if (!lite) {
+        this.pass(pp.bright, P.c, P.scene.tex, (u) => { gl.uniform2f(u.uPx, 1 / P.w, 1 / P.h); gl.uniform1f(u.uThr, G.thr); });
+        this.pass(pp.blur, P.b, P.c.tex, (u) => gl.uniform2f(u.uDir, qx, 0));
+        this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy));
+        this.pass(pp.blur, P.b, P.a.tex, (u) => gl.uniform2f(u.uDir, qx * 2.6, 0));
+        this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy * 2.6));
+      }
+      const rays = !lite && sunUV && shaftsK > 0.01;
       if (rays) this.pass(pp.shafts, P.b, P.c.tex, (u) => { gl.uniform2f(u.uSun, sunUV[0], sunUV[1]); gl.uniform1f(u.uAspect, this.w / this.h); });
       const t = this.time;
       this.pass(pp.comp, null, P.scene.tex, (u) => {
@@ -958,7 +969,7 @@ void main() {
         gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, P.b.tex); gl.uniform1i(u.uShafts, 3);
         gl.activeTexture(gl.TEXTURE0);
         gl.uniform2f(u.uPx, 1 / P.w, 1 / P.h);
-        gl.uniform1f(u.uBloomK, G.bloom);
+        gl.uniform1f(u.uBloomK, lite ? 0 : G.bloom);
         const sk = rays ? shaftsK : 0;
         gl.uniform3f(u.uShaftCol, G.shafts[0] * sk, G.shafts[1] * sk, G.shafts[2] * sk);
         gl.uniform1f(u.uSat, G.sat); gl.uniform1f(u.uCon, G.con);

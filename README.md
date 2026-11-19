@@ -6,9 +6,10 @@ A 3D snowboarding game that runs in the browser. Pick one of twenty mountains, f
 - **Star challenges:** 3 stars to earn on every mountain (48 in total), saved in the browser together with your best score per mountain.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
-- **Graphics:** real-time sun shadows for the riders (on the snow and on themselves), terrain that shades itself (banks and kickers throw long shadows at sunset, hollows go darker), cold blue shade on the snow, wind ripples that catch the light, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading per time of day, and FXAA. Trees are snow-laden firs, spruces, pines and dead snags, each with its own shade of green and snow load. Mountain ranges stand in three layers with smooth snow and rock, rising out of valley mist. Riders wear baggy outerwear with real fabric folds, plaid flannel, camo or colour-blocked jackets, beanies or helmets, mirrored goggles, and snow stuck to their pants. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows and post-processing off for older devices.
+- **Graphics:** real-time sun shadows for the riders (on the snow and on themselves), terrain that shades itself (banks and kickers throw long shadows at sunset, hollows go darker), cold blue shade on the snow, wind ripples that catch the light, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading per time of day, and FXAA. Trees are snow-laden firs, spruces, pines and dead snags, each with its own shade of green and snow load. Mountain ranges stand in three layers with smooth snow and rock, rising out of valley mist. Riders wear baggy outerwear with real fabric folds, plaid flannel, camo or colour-blocked jackets, beanies or helmets, mirrored goggles, and snow stuck to their pants. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows, bloom and sun rays off for older devices (it keeps FXAA and the colour grade).
 - **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
-- **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, music, sound and camera.
+- **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, frame rate, music, sound and camera.
+- **Smooth frame rate:** the course is built 50 m at a time in a background thread (a Web Worker running the same world code with the same seed), so new parts of the mountain never hold up a frame. The frame rate is capped at 30, 60 or 90 FPS (60 to start with).
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
 
 ## The mountains
@@ -132,6 +133,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
 | `public/js/world.js` | The twenty mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
+| `public/js/chunks.js` | The background worker that bakes the course's 50 m chunks off the main thread (it loads `engine.js` and `world.js`) |
 | `public/js/rider.js` | The 3D snowboarder and its poses |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |
@@ -139,7 +141,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 
 ## Settings
 
-In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Music, Sound effects and Camera (Close / Far). Low graphics is the one to pick on older school computers.
+In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects and Camera (Close / Far). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
 
 The server reads these environment variables (all optional):
 

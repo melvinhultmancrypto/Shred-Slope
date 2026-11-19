@@ -69,10 +69,13 @@
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', music: 'on', sfx: 'on', camera: 'close', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
+  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', fps: '60', music: 'on', sfx: 'on', camera: 'close', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
   if (!SS.MAPS[settings.map]) settings.map = 'bluebird';
+  if (!['30', '60', '90'].includes(String(settings.fps))) settings.fps = '60';
+  settings.fps = String(settings.fps);
   const Q = {
-    low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: true, shadows: 0, post: false, rays: false },
+    // low still gets FXAA and the colour grade, just not bloom and sun rays ('lite')
+    low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: true, shadows: 0, post: 'lite', rays: false },
     medium: { detail: 0.6, dpr: 1.25, draw: 400, fog: 380, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
     high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
   };
@@ -90,6 +93,9 @@
   }
   const gl = engine.gl;
   const backdrop = SS.buildBackdrop(engine);
+  // the mountain's chunks are baked in a background thread, so new parts of the course never stall a frame
+  const chunkWorker = SS.makeChunkWorker ? SS.makeChunkWorker() : null;
+  const useWorker = () => chunkWorker && !chunkWorker.dead;
   let dpr = 1;
   const fxCtx = ui.fx.getContext('2d');
   function resize() {
@@ -336,6 +342,7 @@
     if (world && world.seed === (seed >>> 0) && world.mapId === mapId) return;
     if (world) world.dispose(engine);
     world = new SS.World(seed, mapId);
+    if (useWorker()) chunkWorker.attach(world, engine);
     engine.setSky(world.map.sky);
     setGrade(world.map);
     const cv = world.map.curve;
@@ -346,7 +353,7 @@
     document.body.classList.toggle('day', world.map.sky.stars < 0.5);
     ui.hud.style.setProperty('--acc', world.map.accent);
     world.featSorted = world.features.slice().sort((a, b) => (a.kind === 'kicker' ? a.z0 : a.az) - (b.kind === 'kicker' ? b.z0 : b.az));
-    world.ensureChunks(engine, 0, 14);
+    world.ensureChunks(engine, 0, useWorker() ? 1 : 14);
     mapBase = document.createElement('canvas');
     mapBase.width = ui.minimap.width;
     mapBase.height = ui.minimap.height;
@@ -2543,13 +2550,17 @@
 
   // speed lines and flashes on a 2D layer over the 3D view
   const streaks = [];
+  // the 2D overlay (speed streaks, lens glare, flashes) is only cleared after something was drawn on it
+  let fxDirty = true;
   function drawFx(dt) {
     const W = ui.fx.width, H = ui.fx.height;
-    fxCtx.clearRect(0, 0, W, H);
+    if (fxDirty) fxCtx.clearRect(0, 0, W, H);
+    fxDirty = false;
     const mine = phase === 'riding' || phase === 'finished' || phase === 'attract';
     const sp = mine ? P.speed : 0;
     const k = Math.max(clamp((sp - 24) / 16, 0, 1) * (P.grounded || phase === 'attract' ? 1 : 0.6), mine && P.boosting ? 1 : 0);
     if (k > 0 && settings.quality !== 'low' && !paused) {
+      fxDirty = true;
       while (streaks.length < 26) streaks.push({ a: rand(0, TAU), r: rand(0.3, 1.2), l: rand(0.08, 0.2), v: rand(1.2, 2.2) });
       const cx = W / 2, cy = H * 0.48, R = Math.hypot(W, H) * 0.5;
       fxCtx.lineCap = 'round';
@@ -2568,6 +2579,7 @@
     }
     drawGlare(dt, W, H);
     if (flash > 0) {
+      fxDirty = true;
       flash -= dt;
       fxCtx.fillStyle = `rgba(200,255,225,${(flash * 0.25).toFixed(3)})`;
       fxCtx.fillRect(0, 0, W, H);
@@ -2592,6 +2604,7 @@
     }
     glare += (target - glare) * Math.min(1, dt * 5);
     if (glare < 0.01 || paused) return;
+    fxDirty = true;
     const warm = world.mapId === 'sunset';
     const sx = sunOut[0], sy = sunOut[1], R = Math.min(W, H);
     const g = fxCtx.createRadialGradient(sx, sy, 0, sx, sy, R * 0.55);
@@ -2860,6 +2873,7 @@
       for (const r of near) { SS.drawRider(engine, world, r.st, r.color); shadowList.push(r.st); }
       engine.endShadow();
     }
+    engine.postLite = q.post === 'lite';
     engine.beginFrame(q.post);
     engine.clear(engine.fogCol);
     const sx = shake ? (Math.random() - 0.5) * shake * 0.25 : 0;
@@ -2979,8 +2993,26 @@
     }
   }
 
-  let last = performance.now();
+  // frame rate cap (30 / 60 / 90). The screen's own refresh interval is measured. At or above it,
+  // every frame is drawn; when the screen is a whole multiple of the cap (30 on 60 Hz, 60 on 120 Hz)
+  // exactly every 2nd/4th frame is drawn; otherwise frames are skipped until the next one is due,
+  // keeping the average rate (90 on 144 Hz).
+  let last = performance.now(), lastRaf = 0, rafDt = 16.7, lastDraw = 0, skipN = 0;
   function frame(now) {
+    requestAnimationFrame(frame);
+    if (lastRaf) rafDt += (clamp(now - lastRaf, 3, 60) - rafDt) * 0.1;
+    lastRaf = now;
+    const step = 1000 / (+settings.fps || 60), ratio = step / rafDt, nInt = Math.round(ratio);
+    if (ratio < 1.08) lastDraw = now;
+    else if (nInt >= 2 && Math.abs(ratio - nInt) < 0.06 * nInt) {
+      if (++skipN < nInt) return;
+      skipN = 0;
+      lastDraw = now;
+    } else {
+      const el = now - lastDraw;
+      if (el < step - rafDt * 0.5) return;
+      lastDraw = el < step * 2 ? lastDraw + step : now;
+    }
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
     if (world) world.ensureChunks(engine, P.z || 0, 1);
@@ -2991,7 +3023,6 @@
     drawMap();
     drawFx(dt);
     perf(dt);
-    requestAnimationFrame(frame);
   }
 
   // ------------------------------------------------------------------ boot
@@ -3006,6 +3037,7 @@
   if (/[?&]debug\b/.test(location.search)) {
     window.ShredSlopeDebug = {
       lockCam(o) { camLock = o; },
+      get q() { return q; },
       keys, P, run, cam, ai, engine,
       crash(reason) { bail(reason); },
       get world() { return world; },
