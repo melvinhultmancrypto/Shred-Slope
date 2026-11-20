@@ -257,7 +257,9 @@
     render();
     // is there an account server? (the offline demo has none)
     let health = false;
-    try { const r = await fetch('/health', { cache: 'no-store' }); health = r.ok && (await r.text()).trim() === 'ok'; } catch (e) { health = false; }
+    if (/^https?:$/.test(location.protocol)) {
+      try { const r = await fetch('/health', { cache: 'no-store' }); health = r.ok && (await r.text()).trim() === 'ok'; } catch (e) { health = false; }
+    }
     online = health;
     if (!online) { render(); return; }
     if (acc) {
