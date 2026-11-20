@@ -2724,8 +2724,8 @@
     for (const k of fields) keepP[k] = P[k];
     // stand still on the snow and look into the lens
     Object.assign(P, { y: world.H(P.x, P.z), grounded: true, spin: 0, flip: 0, crouch: 0.1, lean: 0, comp: 0, slide: 0, yawOff: 0, stance: 0, bailT: 0, grabAmt: 0, airT: 0, tumble: 0, tumbleRoll: 0, wind: 0, steerS: 0, spinVel: 0, flipVel: 0, wallRoll: 0 });
-    const yaw = P.heading + 0.62, d = 1.85;
-    Object.assign(cam, { x: P.x + Math.sin(yaw) * d, z: P.z + Math.cos(yaw) * d, y: P.y + 1.62, tx: P.x, tz: P.z, ty: P.y + 1.52, fov: 0.6, roll: 0, bump: 0 });
+    const yaw = P.heading + 0.62, d = 1.6;
+    Object.assign(cam, { x: P.x + Math.sin(yaw) * d, z: P.z + Math.cos(yaw) * d, y: P.y + 1.66, tx: P.x, tz: P.z, ty: P.y + 1.56, fov: 0.6, roll: 0, bump: 0 });
     const sk = shake;
     shake = 0;
     try {

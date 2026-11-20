@@ -210,6 +210,7 @@ void main() {
     // snow in shade goes cold and blue, like the real thing
     c *= mix(vec3(1.0), uCold, snow * (1.0 - smoothstep(0.42, 0.85, lum)));
     float dCam = length(vW - uEye);
+#ifndef LOWPOLY
     // foliage: clumps of needles instead of flat facets
     float fol = step(mx * 0.9, vCol.g) * step(vCol.r * 1.12, vCol.g) * (1.0 - snow) * step(lum, 0.5);
     if (fol > 0.0) {
@@ -232,10 +233,12 @@ void main() {
         c *= 1.0 + onPiste * (pass - 0.5) * 0.022 * (1.0 - smoothstep(60.0, 180.0, dCam));
       }
     }
+#endif
     // sun glare off the snow when you look toward it
     vec3 rv = normalize(vec3(vW.x - uEye.x, uEye.y - vW.y, vW.z - uEye.z));
     float gl = max(dot(rv, uSunDirF), 0.0);
     c += uGlare * snow * (pow(gl, 48.0) * 0.7 + pow(gl, 12.0) * 0.18) * (1.0 - sh);
+#ifndef LOWPOLY
     if (snow > 0.0) {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
@@ -284,6 +287,7 @@ void main() {
         c += vec3(0.95, 0.97, 1.0) * s * (0.6 + lum * 1.6) * uDetail * (1.0 - sh);
       }
     }
+#endif
   }
   // aerial perspective: the haze glows warmer toward the sun
   vec3 vd = normalize(vW - uEye);
@@ -334,6 +338,10 @@ void main() {
       n = normalize(n + vTy * cos(ph) * 0.3 * uFold * bunch);
     }
   }
+#ifdef FLAT
+  // low poly: every face lit as one flat facet
+  { vec3 fn = normalize(cross(dFdx(vRel), dFdy(vRel))); n = dot(fn, normalize(vN)) < 0.0 ? -fn : fn; }
+#endif
   if (uPat > 0.5) {
     vec2 q = uLimb > 0.5 ? vec2(ang * 1.27, vObj.y * 3.2) : vec2(vObj.x * 11.0, vObj.y * 7.0);
     if (uPat < 1.5) {
@@ -667,8 +675,11 @@ void main() {
       if (!gl) throw new Error('nogl');
       this.gl = gl;
       this.canvas = canvas;
-      this.baked = makeProgram(gl, VS_BAKED, FS_BAKED);
-      this.lit = makeProgram(gl, VS_LIT, FS_LIT);
+      // low-poly look: the ground and trees keep clean flat colours per face (no per-pixel snow texture),
+      // and lit things (riders) are shaded per face too, from the screen-space slope of the surface
+      this.derivs = !!gl.getExtension('OES_standard_derivatives');
+      this.baked = makeProgram(gl, VS_BAKED, '#define LOWPOLY 1\n' + FS_BAKED);
+      this.lit = makeProgram(gl, VS_LIT, (this.derivs ? '#extension GL_OES_standard_derivatives : enable\n#define FLAT 1\n' : '') + FS_LIT);
       this.pts = makeProgram(gl, VS_PTS, FS_PTS);
       this.skyP = makeProgram(gl, VS_SKY, FS_SKY);
       this.shd = makeProgram(gl, VS_SHD, FS_SHD);
