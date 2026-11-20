@@ -21,7 +21,12 @@
   <div id="hud" class="hidden">
     <div id="zone" class="brush"></div>
     <div id="racePos" class="brush hidden"></div>
-    <div id="mpbar" class="hidden"><span id="mpServer"></span><span id="mpTimer"></span></div>
+    <div id="mpbar" class="hidden"><span id="mpServer"></span><span id="mpTimer"></span><button id="mpVote" class="mpchip" type="button" title="Vote for the next mountain">NEXT: <b id="mpNext">&mdash;</b> &middot; VOTE</button></div>
+    <div id="voiceBox" class="hidden" aria-label="Voice chat">
+      <div class="vb-head"><span class="vb-ic" aria-hidden="true"></span><span id="vbMode">VOICE</span><button id="vbMute" type="button" class="vb-btn" title="Mute your microphone">MUTE ME</button></div>
+      <div id="vbList"></div>
+      <button id="vbTalk" type="button" class="vb-talk">HOLD TO TALK</button>
+    </div>
     <div id="scoreBox">
       <div class="lbl brush">SCORE</div>
       <div id="score" class="brush">0</div>
@@ -113,7 +118,11 @@
   <section id="servers" class="overlay hidden">
     <div class="panel">
       <h2 class="brush">MULTIPLAYER</h2>
-      <p class="lead">Up to 10 riders per server race the same course. Each round moves on to the next mountain.</p>
+      <p class="lead">Up to 10 riders per server race the same course. Vote for the next mountain, and talk with voice chat.</p>
+      <div id="mpAcct" class="mp-acct hidden">
+        <div class="mp-acct-txt"><b>Create an account to play multiplayer</b><span>It's free and takes a few seconds. Your name is saved and your stars and best runs come with you.</span></div>
+        <div class="mp-acct-btns"><button id="mpSignUp" class="btn" type="button">CREATE ACCOUNT</button><button id="mpSignIn" class="btn ghost" type="button">SIGN IN</button></div>
+      </div>
       <div id="serverList"></div>
       <p id="serverMsg" class="small"></p>
       <button id="backBtn" class="btn ghost" type="button">BACK</button>
@@ -126,6 +135,7 @@
       <h2 class="brush">MENU</h2>
       <button id="resumeBtn" class="btn" type="button">RESUME</button>
       <button id="restartBtn" class="btn alt" type="button">RESTART RUN</button>
+      <button id="voteBtn" class="btn alt hidden" type="button">VOTE FOR A MAP</button>
       <button id="pauseSettingsBtn" class="btn ghost" type="button">SETTINGS</button>
       <button id="quitBtn" class="btn ghost" type="button">QUIT TO MENU</button>
     </div>
@@ -156,8 +166,24 @@
       <div class="set"><span>Sound effects</span><div class="seg" data-key="sfx"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
       <div class="set"><span>Camera</span><div class="seg" data-key="camera"><button data-v="close" type="button">CLOSE</button><button data-v="far" type="button">FAR</button></div></div>
       <div class="set"><span>Auto rail<small>Ride straight at a rail and you hop on by yourself</small></span><div class="seg" data-key="autoRail"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
+      <div class="set"><span>Voice chat<small>In multiplayer. Push to talk: hold V</small></span><div class="seg" data-key="voice"><button data-v="ask" type="button">ASK</button><button data-v="off" type="button">OFF</button><button data-v="ptt" type="button">PUSH</button><button data-v="open" type="button">OPEN</button></div></div>
       <p class="lead">Low graphics and 30 FPS run best on older school computers. 90 FPS needs a screen that runs at 90 Hz or more.</p>
       <button id="settingsDone" class="btn" type="button">DONE</button>
+    </div>
+  </section>
+
+  <!-- Voice chat, asked when you join a server -->
+  <section id="voicePrompt" class="overlay hidden" aria-labelledby="vpTitle">
+    <div class="panel narrow vp">
+      <h2 id="vpTitle" class="brush">VOICE CHAT</h2>
+      <div class="vp-ic" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="22" y="6" width="20" height="34" rx="10" fill="#fff" stroke="#10204a" stroke-width="4"/><path d="M14 30 Q14 48 32 48 Q50 48 50 30" fill="none" stroke="#10204a" stroke-width="4" stroke-linecap="round"/><path d="M32 48 L32 58 M22 58 L42 58" stroke="#10204a" stroke-width="4" stroke-linecap="round"/></svg></div>
+      <p class="lead">Talk with the other riders on this server while you ride?</p>
+      <button id="vpOpen" class="btn" type="button">OPEN MIC</button>
+      <button id="vpPtt" class="btn alt" type="button">PUSH TO TALK <kbd>V</kbd></button>
+      <button id="vpOff" class="btn ghost" type="button">NO THANKS</button>
+      <label class="vp-remember"><input id="vpRemember" type="checkbox"> <span>Don't ask again (you can change it in Settings)</span></label>
+      <p class="small dim">Be kind out there. Click a rider's name in the voice list to mute them.</p>
+      <p id="vpErr" class="auth-err on"></p>
     </div>
   </section>
 
@@ -243,6 +269,7 @@
   <script src="js/audio.js"></script>
   <script src="js/net.js"></script>
   <script src="js/account.js"></script>
+  <script src="js/voice.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

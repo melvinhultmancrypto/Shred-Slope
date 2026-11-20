@@ -21,7 +21,14 @@ const TICK_MS = 1000 / 12;
 const COUNTDOWN_MS = Number(process.env.COUNTDOWN_MS) || 10000;
 const RACE_MAX_MS = Number(process.env.RACE_MAX_MS) || 240000;
 const RESULTS_MS = Number(process.env.RESULTS_MS) || 12000;
-const MAX_FRAME = 4096;
+const MAX_FRAME = 16384; // voice chat offers (SDP) run to a few kB
+// multiplayer is for signed-in riders; MP_GUESTS=1 lets guests in too (handy for testing)
+const MP_GUESTS = process.env.MP_GUESTS === '1';
+// voice chat connects riders directly (WebRTC). STUN finds a route through most home routers; some school and
+// office networks also need a TURN relay, which you can add as JSON in ICE_SERVERS, e.g.
+// [{"urls":"turn:turn.example.com:3478","username":"u","credential":"p"}]
+let ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+try { if (process.env.ICE_SERVERS) ICE_SERVERS = JSON.parse(process.env.ICE_SERVERS); } catch (e) { console.warn('ICE_SERVERS is not valid JSON, using STUN only'); }
 const LATE_JOIN_MS = 30000;
 
 // the mountains rotate every round (ids match public/js/world.js)
@@ -67,6 +74,8 @@ const MIME = {
   '.json': 'application/json; charset=utf-8',
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.webp': 'image/webp',
   '.ico': 'image/x-icon',
   '.txt': 'text/plain; charset=utf-8',
 };
@@ -102,7 +111,8 @@ function serveStatic(req, res) {
     }
     const gzip = entry.gz && /\bgzip\b/.test(req.headers['accept-encoding'] || '');
     const body = gzip ? entry.gz : entry.raw;
-    const headers = { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': 'no-cache' };
+    // pictures rarely change: let the browser keep them for a day; code and pages are checked every time
+    const headers = { 'Content-Type': type, 'Content-Length': body.length, 'Cache-Control': /^image\/(jpeg|webp|png)/.test(type) ? 'public, max-age=86400' : 'no-cache' };
     if (gzip) headers['Content-Encoding'] = 'gzip';
     res.writeHead(200, headers);
     res.end(req.method === 'HEAD' ? undefined : body);
@@ -260,12 +270,34 @@ class Room {
     this.timer = null;
     this.raceStart = 0;
     this.gone = new Map(); // finished riders who left before the results
+    this.votes = new Map(); // player id -> map index they want next
+  }
+
+  // the mountain the next round will use: the most votes (a tie goes to one of them), else the next in turn
+  nextMapIdx() {
+    const n = new Map();
+    for (const i of this.votes.values()) n.set(i, (n.get(i) || 0) + 1);
+    if (!n.size) return (this.mapIdx + 1) % MAPS.length;
+    const top = Math.max(...n.values());
+    const best = [...n.keys()].filter((i) => n.get(i) === top);
+    if (this._tie != null && best.includes(this._tie)) return this._tie;
+    this._tie = best[(Math.random() * best.length) | 0];
+    return this._tie;
+  }
+  votesMsg() {
+    const counts = {};
+    for (const i of this.votes.values()) counts[MAPS[i].id] = (counts[MAPS[i].id] || 0) + 1;
+    return { t: 'votes', counts, next: MAPS[this.nextMapIdx()].id, mine: null };
+  }
+  sendVotes() {
+    const base = this.votesMsg();
+    for (const p of this.players.values()) this.send(p, Object.assign({}, base, { mine: this.votes.has(p.id) ? MAPS[this.votes.get(p.id)].id : null }));
   }
 
   info() {
     // between rounds, show the mountain the next round will use
     const between = (this.phase === 'results' || this.phase === 'idle') && this.round > 0;
-    const map = MAPS[(this.mapIdx + (between ? 1 : 0)) % MAPS.length];
+    const map = MAPS[between ? this.nextMapIdx() : this.mapIdx];
     return { id: this.id, name: this.name, players: this.players.size, max: MAX_PLAYERS, phase: this.phase, map: map.id, mapName: map.name };
   }
 
@@ -309,11 +341,16 @@ class Room {
     clearTimeout(this.timer);
     this.phase = 'idle';
     this.racers.clear();
+    this.votes.clear();
   }
 
   startCountdown() {
     this.seed = (Math.random() * 2147483647) | 0;
-    if (this.round > 0) this.mapIdx = (this.mapIdx + 1) % MAPS.length;
+    if (this.round > 0) this.mapIdx = this.nextMapIdx();
+    const voted = this.votes.size > 0;
+    this.votes.clear();
+    this._tie = null;
+    if (voted) this.sendVotes();
     this.round++;
     this.racers = new Set(this.players.keys());
     for (const p of this.players.values()) this.resetPlayer(p);
@@ -378,7 +415,7 @@ class Room {
     if (!account && accounts.nameTaken(n)) n = cleanName(name).slice(0, 10) + ' guest';
     const names = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
     for (let k = 2; names.has(n.toLowerCase()); k++) n = cleanName(name).slice(0, 13) + ' ' + k;
-    const p = { id: nextId++, name: n, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0 };
+    const p = { id: nextId++, name: n, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0, voice: false };
     this.players.set(p.id, p);
     // join the current round during the countdown, or in the first 30 s of a race (you start at the top)
     const joinsRound = this.phase === 'countdown' || (this.phase === 'racing' && Date.now() - this.raceStart < LATE_JOIN_MS);
@@ -389,7 +426,9 @@ class Room {
       name: p.name,
       color: p.color,
       server: { id: this.id, name: this.name, max: MAX_PLAYERS },
-      players: [...this.players.values()].map((q) => ({ id: q.id, name: q.name, color: q.color })),
+      players: [...this.players.values()].map((q) => ({ id: q.id, name: q.name, color: q.color, voice: q.voice })),
+      ice: ICE_SERVERS,
+      votes: this.votesMsg(),
     }));
     this.broadcast({ t: 'join', p: { id: p.id, name: p.name, color: p.color }, racers: [...this.racers] }, p);
     log(`[${this.name}] + ${p.name} (${this.players.size}/${MAX_PLAYERS})`);
@@ -402,6 +441,7 @@ class Room {
     this.players.delete(p.id);
     if (this.racers.has(p.id) && p.fin) this.gone.set(p.id, p);
     this.broadcast({ t: 'leave', id: p.id });
+    if (this.votes.delete(p.id)) this.sendVotes();
     log(`[${this.name}] - ${p.name} (${this.players.size}/${MAX_PLAYERS})`);
     if (!this.players.size && this.phase !== 'results') this.idle();
     else this.checkRaceOver();
@@ -440,6 +480,41 @@ class Room {
       case 'ping':
         this.send(p, { t: 'pong', c: num(m.c, 0, 1e15) });
         break;
+      // vote for the next mountain (vote for the same one again to take it back)
+      case 'vote': {
+        const i = MAPS.findIndex((q) => q.id === m.map);
+        if (i < 0) return;
+        if (this.votes.get(p.id) === i) this.votes.delete(p.id);
+        else this.votes.set(p.id, i);
+        // during the countdown, a mountain that more than half the server wants is ridden right away
+        if (this.phase === 'countdown' && i !== this.mapIdx && this.ends - Date.now() > 1500) {
+          let n = 0;
+          for (const v of this.votes.values()) if (v === i) n++;
+          if (n * 2 > this.players.size) {
+            this.mapIdx = i;
+            this.seed = (Math.random() * 2147483647) | 0;
+            this.votes.clear();
+            this._tie = null;
+            for (const q of this.players.values()) this.resetPlayer(q);
+            this.racers = new Set(this.players.keys());
+            this.broadcast({ t: 'feed', id: p.id, txt: 'MAP CHANGED' });
+            this.setPhase('countdown', COUNTDOWN_MS);
+          }
+        }
+        this.sendVotes();
+        break;
+      }
+      // voice chat: who has it on, and passing connection details between two riders who both do
+      case 'vc':
+        p.voice = !!m.on;
+        this.broadcast({ t: 'vc', id: p.id, on: p.voice }, p);
+        break;
+      case 'rtc': {
+        const q = this.players.get(m.to);
+        if (!q || q === p || !p.voice || !q.voice || !m.d || typeof m.d !== 'object') return;
+        this.send(q, { t: 'rtc', from: p.id, d: m.d });
+        break;
+      }
     }
   }
 
@@ -488,17 +563,23 @@ server.on('upgrade', (req, socket) => {
   const conn = acceptUpgrade(req, socket);
   if (!conn) return;
   let player = null;
-  let budget = 40;
-  const refill = setInterval(() => { budget = 40; }, 1000);
+  let budget = 40, rtcBudget = 200; // voice setup sends a burst of messages, so it gets its own allowance
+  const refill = setInterval(() => { budget = 40; rtcBudget = 200; }, 1000);
   const hello = setTimeout(() => { if (!player) conn.close(1008); }, 10000);
   conn.onmessage = (text) => {
-    if (--budget < 0) return; // too chatty: drop
+    if (text.startsWith('{"t":"rtc"') ? --rtcBudget < 0 : --budget < 0) return; // too chatty: drop
     if (!player) {
       let m;
       try { m = JSON.parse(text); } catch (e) { return; }
       if (m && m.t === 'hello') {
         clearTimeout(hello);
-        player = room.join(conn, m.name, m.color, accounts.nameForToken(m.token));
+        const acct = accounts.nameForToken(m.token);
+        if (!acct && !MP_GUESTS) {
+          conn.send(JSON.stringify({ t: 'needAccount' }));
+          conn.close(1000);
+          return;
+        }
+        player = room.join(conn, m.name, m.color, acct);
       }
       return;
     }

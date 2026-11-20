@@ -2697,17 +2697,49 @@
     }
 
     // start house: a roofed hut across the deck with a gate for each rider
+    // the start house: an open wooden deck under a high roof, branded side walls, timing posts with lights,
+    // and a thin start wand across each gate (all high and open enough that the camera never sits inside it)
     startGate(g) {
-      const w = this.w, z = g.z, c = w.center(z), gy = w.ground(c, z), hw = g.half;
-      const FRAME = [0.2, 0.22, 0.28], ROOF = [0.9, 0.24, 0.2], GATE = [0.95, 0.85, 0.2];
-      for (const s of [-1, 1]) this.box(c + s * hw, gy + 2.25, z - 1.5, 0.25, 2.25, 2.2, 0, FRAME);
-      this.box(c, gy + 4.6, z - 2.2, hw + 0.4, 0.18, 1.9, 0, ROOF);
-      this.box(c, gy + 4.25, z - 0.35, hw, 0.32, 0.06, 0, [0.95, 0.95, 0.98], 0.25);
+      const w = this.w, M = w.map, z = g.z, c = w.center(z), gy = w.ground(c, z), hw = g.half;
+      const FRAME = [0.16, 0.18, 0.24], WOOD = [0.62, 0.45, 0.3], WOOD2 = [0.52, 0.37, 0.24];
+      const cols = (M.bannerCols && M.bannerCols.length ? M.bannerCols : [[1.0, 0.42, 0.1], [0.98, 0.98, 1.0], [0.2, 0.55, 1.0]]);
+      const acc = cols[0], acc2 = cols[1 % cols.length];
+      // a short deck of planks right under the riders
+      const segs = Math.ceil(hw / 1.5);
+      for (let i = 0; i < 7; i++) {
+        const za = z - 1.5 + i * 0.36, zb = za + 0.33;
+        for (let k = 0; k < segs * 2; k++) {
+          const xa = c - hw + (k / (segs * 2)) * hw * 2, xb = c - hw + ((k + 1) / (segs * 2)) * hw * 2;
+          this.quad([xa, w.ground(xa, za) + 0.05, za], [xb, w.ground(xb, za) + 0.05, za], [xb, w.ground(xb, zb) + 0.05, zb], [xa, w.ground(xa, zb) + 0.05, zb], i % 2 ? WOOD : WOOD2, [(xa + xb) / 2, gy - 1, (za + zb) / 2]);
+        }
+      }
+      // corner posts and the high roof
+      for (const sx of [-1, 1]) for (const zz of [z - 4.2, z + 0.6]) this.box(c + sx * (hw + 0.2), gy + 3.6, zz, 0.16, 3.6, 0.16, 0, FRAME);
+      this.box(c, gy + 7.3, z - 1.8, hw + 0.7, 0.14, 3.0, 0, [0.92, 0.94, 0.98]);
+      this.box(c, gy + 7.05, z - 1.8, hw + 0.5, 0.1, 2.8, 0, FRAME);
+      // a striped fascia along the front of the roof, facing down the course
+      const nS = Math.max(6, Math.round(hw * 1.6));
+      for (let i = 0; i < nS; i++) {
+        const x0 = c - hw - 0.7 + (i / nS) * (hw + 0.7) * 2, x1 = c - hw - 0.7 + ((i + 1) / nS) * (hw + 0.7) * 2;
+        const cc = i % 2 ? acc2 : acc;
+        this.quad([x0, gy + 6.45, z + 1.25], [x1, gy + 6.45, z + 1.25], [x1, gy + 7.2, z + 1.25], [x0, gy + 7.2, z + 1.25], cc, [(x0 + x1) / 2, gy + 6.8, z], 0.35);
+      }
+      // side walls in the course colours (no back wall: the camera sits behind you)
+      for (const sx of [-1, 1]) {
+        this.box(c + sx * (hw + 0.24), gy + 2.0, z - 1.8, 0.05, 2.0, 2.3, 0, acc, 0.12);
+        this.box(c + sx * (hw + 0.2), gy + 4.25, z - 1.8, 0.05, 0.25, 2.3, 0, acc2, 0.3);
+      }
+      // gates: a dividing rail between them, timing posts at each end and the thin wand across
       const n = g.gates;
+      for (let i = 0; i <= n; i++) {
+        const x = c - hw + (i / n) * hw * 2;
+        this.box(x, gy + 0.55, z + 0.55, 0.07, 0.55, 0.07, 0, FRAME);
+        this.box(x, gy + 1.18, z + 0.55, 0.11, 0.09, 0.11, 0, [1.0, 0.2, 0.15], 0.9);
+        if (i > 0 && i < n) this.box(x, gy + 0.9, z - 1.6, 0.05, 0.05, 2.2, 0, [0.85, 0.87, 0.9]);
+      }
       for (let i = 0; i < n; i++) {
-        const x = c - hw + ((i + 0.5) / n) * hw * 2;
-        this.box(x, gy + 0.45, z + 0.6, Math.min(0.9, hw / n - 0.15), 0.05, 0.05, 0, GATE);
-        if (i > 0) this.box(c - hw + (i / n) * hw * 2, gy + 0.6, z - 0.4, 0.06, 0.6, 1.0, 0, FRAME);
+        const xa = c - hw + (i / n) * hw * 2 + 0.1, xb = c - hw + ((i + 1) / n) * hw * 2 - 0.1;
+        this.tube(xa, gy + 0.5, z + 0.55, xb, gy + 0.5, z + 0.55, 0.025, 5, [1.0, 0.86, 0.15]);
       }
     }
 

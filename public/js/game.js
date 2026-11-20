@@ -77,6 +77,7 @@
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
   const settings = Object.assign({ quality: coarse ? 'medium' : 'high', fps: '60', music: 'on', sfx: 'on', camera: 'close', autoRail: 'on', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
   if (settings.autoRail !== 'off') settings.autoRail = 'on';
+  if (!['ask', 'off', 'ptt', 'open'].includes(settings.voice)) settings.voice = 'ask';
   if (!SS.MAPS[settings.map]) settings.map = 'bluebird';
   if (!['30', '60', '90'].includes(String(settings.fps))) settings.fps = '60';
   settings.fps = String(settings.fps);
@@ -123,6 +124,7 @@
     Sfx.setMusic(settings.music === 'on');
     store.set(SET_KEY, settings);
     accountChanged();
+    if (mode === 'mp' && myId && voice && settings.voice !== 'ask') applyVoice();
     document.querySelectorAll('.seg').forEach((seg) => {
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('sel', settings[seg.dataset.key] === b.dataset.v));
     });
@@ -210,6 +212,11 @@
       if (e.code === 'Enter' && document.activeElement === ui.nameInput) ui.nameInput.blur();
       return;
     }
+    if (e.code === 'KeyV' && mode === 'mp' && voice && voice.on && voice.mode === 'ptt') {
+      e.preventDefault();
+      voice.setTalkKey(true);
+      return;
+    }
     if (!hidden(ui.maps) && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
       e.preventDefault();
       setMapPage(mapPage + (e.code === 'ArrowRight' ? 1 : -1), e.code === 'ArrowRight' ? 1 : -1);
@@ -240,8 +247,10 @@
   window.addEventListener('keyup', (e) => {
     const k = KEYMAP[e.code];
     if (k) keys[k] = false;
+    if (e.code === 'KeyV' && voice) voice.setTalkKey(false);
   });
   window.addEventListener('blur', () => {
+    if (voice) voice.setTalkKey(false);
     for (const k in keys) keys[k] = false;
     for (const k in touch) touch[k] = false;
     if (mode === 'sp' && (phase === 'riding' || phase === 'countdown') && !paused) toggleMenu();
@@ -1734,6 +1743,9 @@
         ui.mpServer.textContent = m.server.name;
         show(ui.loading, false);
         onPhase(m);
+        if (voice) voice.reset(myId, m.players, m.ice);
+        onVotes(m.votes);
+        askVoice();
         break;
       case 'phase':
         onPhase(m);
@@ -1742,12 +1754,28 @@
         addRemote(m.p);
         if (m.racers) racers = new Set(m.racers);
         feed(m.p.name + ' joined', m.p.color);
+        if (voice) voice.joined(m.p);
         break;
       case 'leave': {
         const r = remotes.get(m.id);
         if (r) { feed(r.name + ' left', r.color); r.tag.remove(); remotes.delete(m.id); trails.delete(m.id); }
+        if (voice) voice.left(m.id);
         break;
       }
+      case 'vc':
+        if (voice) voice.peerVoice(m.id, m.on);
+        { const r = remotes.get(m.id); if (r && m.on) feed(r.name + ' turned voice on', r.color); }
+        break;
+      case 'rtc':
+        if (voice) voice.signal(m.from, m.d);
+        break;
+      case 'votes':
+        onVotes(m);
+        break;
+      case 'needAccount':
+        mpError('Create an account to play multiplayer.');
+        if (SS.Account && SS.Account.online) SS.Account.open('up', ui.servers);
+        break;
       case 'snap': {
         const now = performance.now();
         for (const row of m.p) {
@@ -1782,6 +1810,83 @@
     leaveMp();
     toMenu();
     openServers(msg);
+  }
+
+  // ---- map votes
+  let votes = { counts: {}, next: null, mine: null };
+  function onVotes(v) {
+    if (!v) return;
+    votes = { counts: v.counts || {}, next: v.next, mine: v.mine || null };
+    const m = SS.MAPS[votes.next];
+    const n = votes.counts[votes.next] || 0;
+    $('mpNext').textContent = m ? m.name + (n ? ` (${n} ${n === 1 ? 'vote' : 'votes'})` : '') : '—';
+    if (mapVote && !hidden(ui.maps)) buildMaps();
+  }
+
+  // ---- voice chat (voice.js does the talking)
+  const voice = SS.Voice ? new SS.Voice({ send: (o) => net.send(o), onChange: () => renderVoice() }) : null;
+  let voiceSession = null; // what you picked when asked on this visit, if you didn't make it stick
+  const voiceWant = () => (settings.voice !== 'ask' ? settings.voice : voiceSession);
+  async function applyVoice() {
+    if (!voice || mode !== 'mp' || !myId) return;
+    const w = voiceWant();
+    if (w === 'open' || w === 'ptt') {
+      const ok = await voice.enable(w);
+      if (!ok && voice.error) feed(voice.error, 6);
+    } else voice.disable();
+    renderVoice();
+  }
+  function askVoice() {
+    if (!voice || !SS.Voice.supported()) return;
+    if (settings.voice !== 'ask' || voiceSession !== null) { applyVoice(); return; }
+    $('vpRemember').checked = false;
+    $('vpErr').textContent = '';
+    show($('voicePrompt'), true);
+  }
+  function answerVoice(choice) {
+    if ($('vpRemember').checked) { settings.voice = choice; voiceSession = null; } else voiceSession = choice;
+    show($('voicePrompt'), false);
+    Sfx.init();
+    const ctx = voice && voice.audioCtx();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+    applySettings(); // turns voice on or off when the answer was kept as the setting
+    if (settings.voice === 'ask') applyVoice();
+  }
+  // the little box on the left: who has voice on, who's talking, click a name to mute them
+  function renderVoice() {
+    const box = $('voiceBox');
+    if (!voice || mode !== 'mp' || !myId) { show(box, false); return; }
+    const others = [...voice.others.entries()].filter(([, o]) => o.voice);
+    show(box, voice.on || others.length > 0);
+    $('vbMode').textContent = voice.on ? (voice.mode === 'ptt' ? 'VOICE · HOLD V TO TALK' : 'VOICE · OPEN MIC') : 'VOICE IS OFF · TURN IT ON IN SETTINGS';
+    box.classList.toggle('on', voice.on);
+    box.classList.toggle('talking', voice.talking);
+    show($('vbMute'), voice.on);
+    $('vbMute').textContent = voice.selfMuted ? 'UNMUTE ME' : 'MUTE ME';
+    show($('vbTalk'), voice.on && voice.mode === 'ptt' && coarse);
+    const rows = [];
+    if (voice.on) rows.push(`<div class="vb-row me" data-me="1"><i class="lv"></i><span class="nm">${esc(playerName)} (you)</span><span class="st">${voice.selfMuted ? 'muted' : voice.talking ? 'talking' : voice.mode === 'ptt' ? 'hold V' : ''}</span></div>`);
+    for (const [id, o] of others) {
+      const muted = voice.isMuted(id), conn = voice.connected(id);
+      rows.push(`<button type="button" class="vb-row${muted ? ' muted' : ''}" data-id="${id}" title="${muted ? 'Unmute' : 'Mute'} ${esc(o.name)}"><i class="lv"></i><span class="nm">${esc(o.name)}</span><span class="st">${muted ? 'muted' : !voice.on ? '' : conn ? '' : 'connecting'}</span></button>`);
+    }
+    $('vbList').innerHTML = rows.join('');
+  }
+  let voiceLvT = 0, voiceRenderT = 0;
+  function updateVoiceLevels(dt) {
+    if (!voice || !voice.on || mode !== 'mp') return;
+    voiceLvT -= dt;
+    if (voiceLvT > 0) return;
+    voiceLvT = 0.08;
+    voiceRenderT -= 0.08;
+    if (voiceRenderT <= 0) { voiceRenderT = 1; renderVoice(); } // connection states change quietly
+    const lv = voice.levels();
+    for (const el of $('vbList').children) {
+      const id = el.dataset.me ? voice.myId : +el.dataset.id;
+      const v = lv.get(id) || 0;
+      el.style.setProperty('--lv', v.toFixed(2));
+      el.classList.toggle('speaking', v > 0.12);
+    }
   }
 
   function addRemote(p) {
@@ -2384,13 +2489,26 @@
       b.className = 'mapCard';
       b.dataset.id = id;
       b.style.setProperty('--acc', m.accent);
-      b.innerHTML = `<div class="art">${mapArt(m)}${m.oly ? '<span class="olyTag">OLYMPIC STYLE</span>' : ''}<span class="play">RIDE &#9654;</span></div>
+      b.innerHTML = `<div class="art">${mapArt(m)}<img class="shot" src="img/maps/${id}.jpg" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m.oly ? '<span class="olyTag">OLYMPIC STYLE</span>' : ''}<span class="play">RIDE &#9654;</span></div>
         <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}<span>${esc(m.name)}</span></div>
         <div class="mc-tags">${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}</div>
         <div class="mc-sub">${esc(m.sub)}</div>
         <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'Best ' + fmt(pr.best) : 'Not ridden yet'}</span></div></div>`;
       b.title = m.goals.map((g, i) => (pr.stars[i] ? '★ ' : '☆ ') + g.t).join('\n');
-      b.addEventListener('click', (e) => { e.currentTarget.blur(); clearTimeout(previewTimer); saveName(); startSingle(false, id); });
+      if (mapVote) {
+        const n = votes.counts[id] || 0;
+        const tag = votes.mine === id ? 'YOUR VOTE' + (n > 1 ? ' + ' + (n - 1) : '') : n ? n + (n === 1 ? ' VOTE' : ' VOTES') : '';
+        if (tag) b.querySelector('.art').insertAdjacentHTML('beforeend', `<span class="voteTag${votes.mine === id ? ' mine' : ''}">${tag}</span>`);
+        if (world && world.mapId === id) b.querySelector('.art').insertAdjacentHTML('beforeend', '<span class="voteTag now">RIDING NOW</span>');
+        b.querySelector('.play').textContent = votes.mine === id ? 'TAKE BACK' : 'VOTE ▶';
+      }
+      b.addEventListener('click', (e) => {
+        e.currentTarget.blur();
+        clearTimeout(previewTimer);
+        if (mapVote) { net.send({ t: 'vote', map: id }); closeMaps(); return; }
+        saveName();
+        startSingle(false, id);
+      });
       const preview = () => {
         if (coarse || mode !== 'menu') return;
         clearTimeout(previewTimer);
@@ -2406,9 +2524,19 @@
       ui.mapGrid.appendChild(b);
     }
   }
-  function openMaps() {
-    hideOverlays();
-    mapPage = Math.floor(Math.max(0, SS.MAP_IDS.indexOf(spMap)) / perPage());
+  // in multiplayer the same picker is used to vote for the next mountain
+  let mapVote = false;
+  const mapsHead = { h: null, lead: null };
+  function openMaps(vote) {
+    mapVote = !!vote;
+    const h = ui.maps.querySelector('h2'), lead = ui.maps.querySelector('.lead');
+    if (mapsHead.h === null) { mapsHead.h = h.textContent; mapsHead.lead = lead.textContent; }
+    h.textContent = mapVote ? 'VOTE FOR A MOUNTAIN' : mapsHead.h;
+    lead.textContent = mapVote ? 'The most votes picks the next round’s mountain. If more than half the server votes for one during the countdown, you switch to it right away.' : mapsHead.lead;
+    if (mapVote) { show(ui.pauseMenu, false); show(ui.maps, true); }
+    else hideOverlays();
+    const cur = mapVote ? (votes.mine || (world && world.mapId)) : spMap;
+    mapPage = Math.floor(Math.max(0, SS.MAP_IDS.indexOf(cur)) / perPage());
     buildMaps();
     show(ui.maps, true);
     const sel = ui.mapGrid.querySelector(`[data-id="${spMap}"]`);
@@ -2418,6 +2546,7 @@
     clearTimeout(previewTimer);
     previewLock = false;
     show(ui.maps, false);
+    if (mapVote) { mapVote = false; return; }
     if (mode === 'menu') show(ui.title, true);
     else toMenu();
   }
@@ -2436,6 +2565,10 @@
 
   function leaveMp() {
     net.leave();
+    if (voice) { voice.disable(); voice.leave(); }
+    show($('voicePrompt'), false);
+    show($('voiceBox'), false);
+    if (mapVote) closeMaps();
     for (const r of remotes.values()) { r.tag.remove(); trails.delete(r.id); }
     remotes.clear();
     racers = new Set();
@@ -2469,6 +2602,7 @@
     show(ui.pauseMenu, open);
     if (mode === 'sp') paused = open;
     ui.restartBtn.textContent = mode === 'mp' ? 'LEAVE SERVER' : 'RESTART RUN';
+    show($('voteBtn'), mode === 'mp');
     if (open) Sfx.silence();
   }
 
@@ -2484,8 +2618,8 @@
           row = document.createElement('div');
           row.className = 'srv';
           row.dataset.id = s.id;
-          row.innerHTML = `<div class="info"><div class="nm"><span class="sn"></span><span class="mapTag"></span></div><div class="st"></div></div>
-            <div><div class="cnt"></div><div class="fill"><i></i></div></div>
+          row.innerHTML = `<div class="info"><div class="nm"><span class="sn"></span></div><div class="sub"><span class="mapTag"></span><span class="st"></span></div></div>
+            <div class="cap"><div class="cnt"></div><div class="fill"><i></i></div></div>
             <button class="btn" type="button" data-id="${s.id}">JOIN</button>`;
           row.querySelector('.sn').textContent = s.name;
           row.querySelector('button').addEventListener('click', (e) => { e.currentTarget.blur(); joinServer(s.id); });
@@ -2503,13 +2637,16 @@
         btn.disabled = full;
         btn.textContent = full ? 'FULL' : 'JOIN';
       }
+      show($('mpAcct'), needAccount());
       if (ui.serverMsg.dataset.sticky !== '1') ui.serverMsg.textContent = '';
     } catch (e) {
       ui.serverList.innerHTML = '';
+      show($('mpAcct'), false);
       ui.serverMsg.dataset.sticky = '1';
-      ui.serverMsg.textContent = 'Multiplayer needs the online version of Shred Slope (running on the Render server). Singleplayer works anywhere.';
+      ui.serverMsg.innerHTML = '<b>Create an account to play multiplayer.</b> Accounts and multiplayer live on the online version of Shred Slope, so open it there to race other riders. Singleplayer works anywhere.';
     }
   }
+  const needAccount = () => !!(SS.Account && SS.Account.online && !SS.Account.name);
   function openServers(msg) {
     hideOverlays();
     show(ui.servers, true);
@@ -2524,6 +2661,7 @@
   function stopServerPoll() { clearInterval(pollTimer); pollTimer = null; }
 
   function joinServer(id) {
+    if (needAccount()) { SS.Account.open('up', ui.servers); return; }
     Sfx.init();
     stopServerPoll();
     hideOverlays();
@@ -2600,6 +2738,25 @@
   click(ui.newBtn, () => startSingle(false, spMap));
   click(ui.resMenuBtn, () => toMenu());
   click(ui.menuBtn, () => toggleMenu());
+  click($('voteBtn'), () => { show(ui.pauseMenu, false); openMaps(true); });
+  click($('mpVote'), () => { if (mode === 'mp') openMaps(true); });
+  click($('mpSignUp'), () => SS.Account && SS.Account.open('up', ui.servers));
+  click($('mpSignIn'), () => SS.Account && SS.Account.open('in', ui.servers));
+  click($('vpOpen'), () => answerVoice('open'));
+  click($('vpPtt'), () => answerVoice('ptt'));
+  click($('vpOff'), () => answerVoice('off'));
+  click($('vbMute'), () => { if (voice) voice.setSelfMuted(!voice.selfMuted); });
+  $('vbList').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-id]');
+    if (b && voice) { b.blur(); voice.toggleMute(+b.dataset.id); }
+  });
+  {
+    const talk = $('vbTalk');
+    const down = (e) => { e.preventDefault(); if (voice) voice.setTalkKey(true); };
+    const up = () => { if (voice) voice.setTalkKey(false); };
+    talk.addEventListener('pointerdown', down);
+    for (const ev of ['pointerup', 'pointercancel', 'pointerleave']) talk.addEventListener(ev, up);
+  }
   document.querySelectorAll('.seg').forEach((seg) => {
     seg.querySelectorAll('button').forEach((b) => b.addEventListener('click', (e) => {
       e.currentTarget.blur();
@@ -2693,6 +2850,9 @@
   function setBig(text, sub, dur) {
     ui.bigText.textContent = text;
     ui.bigSub.textContent = sub || '';
+    // the countdown is a set of start lights: 3, 2, 1 in a round badge, then GO! in green
+    const cnt = /^[1-3]$/.test(text) ? 'n' + text : text === 'GO!' ? 'ngo' : '';
+    ui.big.className = cnt ? 'count ' + cnt : '';
     ui.big.classList.remove('pulse');
     void ui.big.offsetWidth;
     ui.big.classList.add('pulse');
@@ -2800,6 +2960,7 @@
     for (const f of feedEls) if (time - f.t > 5) f.d.style.opacity = '0';
 
     if (mode === 'mp') {
+      updateVoiceLevels(dt);
       const left = (phaseEnds - performance.now()) / 1000;
       const label = serverPhase === 'countdown' ? 'STARTS IN ' + clock(left) : serverPhase === 'racing' ? 'ROUND ENDS IN ' + clock(left) : serverPhase === 'results' ? 'NEXT ROUND IN ' + clock(left) : '';
       setText(ui.mpTimer, 'mpt', label);
@@ -3336,6 +3497,7 @@
     window.ShredSlopeDebug = {
       lockCam(o) { camLock = o; },
       ideal(f) { return idealSpeed(f); },
+      get voice() { return voice; },
       get q() { return q; },
       keys, P, run, cam, ai, engine,
       crash(reason) { bail(reason); },

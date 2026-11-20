@@ -6,7 +6,10 @@ A 3D snowboarding game that runs in the browser. Pick one of twenty-three mounta
 - **Star challenges:** 3 stars to earn on every mountain (69 in total), saved together with your best score per mountain.
 - **Accounts:** create an account with a username and password and your stars, best runs, outfit and settings are saved on the server, so they follow you to any computer. Playing as a guest still works and keeps progress in that browser; whatever you earned as a guest joins your account when you sign up. Signed-in riders race under their account name in multiplayer.
 - **Auto rail:** ride straight at a rail and you hop onto it by yourself (it also pops you off a gap kicker toward its rail). It's on by default and can be turned off in Settings.
-- **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
+- **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds. You need an account to join (guests can still ride singleplayer).
+- **Voice chat:** talk to the other riders on your server. When you join, the game asks whether to turn your mic on (open mic, push-to-talk on `V`, or no voice), with a "don't ask again" box. You can change it any time in Settings, mute anyone in the voice list, and riders without a mic still hear everyone.
+- **Map votes:** in multiplayer, tap the **NEXT: … · VOTE** chip at the top of the screen (or **VOTE FOR A MAP** in the menu) and pick a mountain. The next round goes to the mountain with the most votes; if more than half the server votes for one during the countdown, the round switches to it straight away.
+- **Map pictures:** every mountain's card shows a real shot from the game: a rider over one of its jumps, on its longest rail, above the superpipe's lip or off a cliff.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
 - **Far view:** past the detailed course, a lighter version of the whole valley (ground, trees and the valley walls) runs on for another 1.2 to 1.7 km, built in the background, so you look down the mountain instead of into fog. On High and Medium; Low keeps the fog.
 - **Snow and rock:** the snow has its own relief, lit per pixel: wind drifts (deeper off the groomed piste), ripples and grain, with the lee sides going cold and blue. Boulders and outcrops sit half buried on the banks, and no two trees grow quite straight.
@@ -108,6 +111,7 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 | Keep your balance on a rail | `←` `→` against the lean | ◀ ▶ |
 | Menu | `Esc` | ☰ MENU |
 | Sound on/off | `M` | |
+| Talk (push-to-talk voice) | hold `V` | HOLD TO TALK |
 
 ## Tricks and scoring
 
@@ -131,9 +135,13 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
-- The mountain changes every round and goes through all twenty-three, then around again. The three servers start on different mountains, and the server list shows which one is up.
+- You need an account to join a server. Without one, the servers panel shows **Create an account to play multiplayer** with buttons to create one or sign in. Your account name is your name in the race.
+- The mountain changes every round and goes through all twenty-three, then around again, unless riders vote. Tap **NEXT: … · VOTE** at the top (or **VOTE FOR A MAP** in the menu) and pick a mountain: the next round goes to the one with the most votes (a tie is picked at random). If more than half the riders vote for the same mountain during the countdown, the round switches to it right away. Tap your vote again to take it back.
+- The three servers start on different mountains, and the server list shows which one is up.
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
+- **Voice chat** goes straight between the riders' browsers (WebRTC, peer to peer); the server only passes along the messages that set up each connection, and only between riders who have voice on. The first time you join, the game asks whether to use your mic. Choose open mic, push-to-talk (hold `V`), or no voice, and tick "don't ask again" to skip the question next time. Settings → Voice chat changes it later (Ask / Off / Push / Open). The voice panel at the bottom left lists who's on voice; a ring lights up while someone talks, and you can mute anyone. The browser asks for mic permission the first time. Voice needs the page on `https` (Render gives you that) or `localhost`.
+- **Voice on strict networks:** voice finds a route between riders with a public STUN server. On some school or office networks that isn't enough, and those riders hear nothing. A TURN relay fixes that: set `ICE_SERVERS` (see Settings below) to your TURN server's details.
 
 ## Project layout
 
@@ -151,11 +159,13 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |
 | `public/js/account.js` | The sign in / create account screen, the account strip on the season pass, and syncing your save |
+| `public/js/voice.js` | Voice chat: the mic, a WebRTC connection to each rider on voice, push-to-talk, mute and the talking rings |
+| `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id) |
 | `public/js/audio.js` | Synthesised sound effects |
 
 ## Settings
 
-In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects, Camera (Close / Far) and Auto rail (On / Off). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
+In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects, Camera (Close / Far), Auto rail (On / Off) and Voice chat (Ask / Off / Push / Open). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
 
 The server reads these environment variables (all optional):
 
@@ -166,5 +176,7 @@ The server reads these environment variables (all optional):
 | `RACE_MAX_MS` | `240000` | Longest a round can last |
 | `RESULTS_MS` | `12000` | How long the results stay up |
 | `DATA_DIR` | `/var/data` if it exists, else `./data` | Where `accounts.json` is kept |
+| `MP_GUESTS` | off | Set to `1` to let riders without an account join multiplayer |
+| `ICE_SERVERS` | Google's public STUN | Voice chat route finders, as JSON in the WebRTC format, e.g. `[{"urls":"stun:stun.l.google.com:19302"},{"urls":"turn:turn.example.com:3478","username":"u","credential":"p"}]`. Add a TURN server if voice doesn't connect on some networks |
 
 Gameplay numbers (gravity, spin speed, top speed) are at the top of `public/js/game.js`. The course layout (length, piste width, zone list, kicker sizes) is at the top of `public/js/world.js`.
