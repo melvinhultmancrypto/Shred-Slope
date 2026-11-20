@@ -350,9 +350,9 @@ void main() {
       base = mix(base, uPatCol, smoothstep(0.76, 0.8, c1));
       base = mix(base, base * 0.62, smoothstep(0.8, 0.84, c2));
     } else {
-      // colour-blocked chest and upper arms
+      // a broad band across the chest and round the upper arms
       float yb = vObj.y;
-      float band = uLimb > 0.5 ? smoothstep(0.04, 0.06, abs(yb - 0.42) * -1.0 + 0.16) : smoothstep(0.0, 0.02, 0.13 - abs(yb - 0.5));
+      float band = uLimb > 0.5 ? smoothstep(0.0, 0.03, 0.22 - abs(yb - 0.5)) : smoothstep(0.0, 0.015, 0.105 - abs(yb - 0.6));
       base = mix(base, uPatCol, band);
     }
   }

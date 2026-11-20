@@ -128,7 +128,7 @@ function cleanSave(s) {
     }
   }
   if (s.prefs && typeof s.prefs === 'object') {
-    if (s.prefs.camera === 'close' || s.prefs.camera === 'far') out.prefs.camera = s.prefs.camera;
+    if (['close', 'far', 'high'].includes(s.prefs.camera)) out.prefs.camera = s.prefs.camera;
     if (s.prefs.autoRail === 'on' || s.prefs.autoRail === 'off') out.prefs.autoRail = s.prefs.autoRail;
   }
   return out;

@@ -211,22 +211,6 @@ body.touch #boostKey { display: none; }
 #bigSub { font-size: clamp(18px, 2.4vw, 28px); margin-top: 8px; }
 #big.pulse #bigText { animation: pulse 0.9s ease-out; }
 @keyframes pulse { from { transform: scale(1.4); opacity: 0; } 30% { opacity: 1; } to { transform: scale(1); } }
-/* countdown: a start light with the number in it */
-#big.count { top: 34%; }
-#big.count #bigText {
-  display: grid; place-items: center; width: 1.45em; height: 1.45em; margin: 0 auto; border-radius: 50%;
-  font: 900 clamp(64px, 8.5vw, 116px)/1 var(--ui); font-style: italic; color: #fff; text-shadow: 0 4px 0 rgba(0, 0, 0, 0.28);
-  background: radial-gradient(circle at 38% 30%, var(--l1), var(--l2) 62%, var(--l3));
-  box-shadow: 0 0 0 6px #fff, 0 0 0 11px var(--ink), 0 0 60px 12px var(--glow), 0 18px 30px rgba(0, 0, 0, 0.45);
-}
-#big.n3 { --l1: #ff8a7a; --l2: #e8202a; --l3: #9c0f17; --glow: rgba(255, 40, 40, 0.45); }
-#big.n2 { --l1: #ffc07a; --l2: #ff6a10; --l3: #a83c00; --glow: rgba(255, 120, 20, 0.45); }
-#big.n1 { --l1: #fff3a0; --l2: #ffc21a; --l3: #b07a00; --glow: rgba(255, 200, 30, 0.5); }
-#big.n1 #bigText { color: var(--ink); text-shadow: 0 3px 0 rgba(255, 255, 255, 0.5); }
-#big.ngo { --l1: #8af5b8; --l2: #16a35a; --l3: #0a5c32; --glow: rgba(30, 220, 110, 0.55); }
-#big.ngo #bigText { width: auto; height: auto; padding: 0.12em 0.5em 0.14em; border-radius: 0.6em; font-size: clamp(60px, 8vw, 110px); letter-spacing: 0.02em; }
-#big.count.pulse #bigText { animation: light 0.9s cubic-bezier(0.2, 1.4, 0.4, 1); }
-@keyframes light { from { transform: scale(0.4); opacity: 0; } 25% { opacity: 1; } to { transform: scale(1); } }
 
 #note {
   position: absolute;
@@ -455,7 +439,7 @@ body.touch #boostKey { display: none; }
 .pass-stars b { font-weight: 800; }
 .pass-body { display: flex; gap: 18px; padding: 22px 20px 4px; align-items: flex-start; }
 .avatar { width: 92px; height: 112px; flex: none; border-radius: 10px; overflow: hidden; border: 2.5px solid var(--ink); background: #cfe6ff; }
-.avatar svg { display: block; width: 100%; height: 100%; }
+.avatar svg, .avatar canvas { display: block; width: 100%; height: 100%; }
 .pass-fields { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 12px; }
 .field { display: flex; align-items: center; gap: 12px; font-size: 17px; font-weight: 700; color: var(--ink-2); }
 .field > span { width: 52px; flex: none; }

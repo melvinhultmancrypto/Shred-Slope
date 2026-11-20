@@ -593,6 +593,8 @@
   function takeoff(vx, vz) {
     if (P.surf === 2) endGrind();
     P.grounded = false;
+    P.fitDone = false;
+    P.carry = 1;
     P.vx = vx;
     P.vz = vz;
     P.airT = 0;
@@ -693,12 +695,9 @@
         turn = Math.sign(want) * (wGrip + (Math.abs(want) - wGrip) * 0.6);
       }
       P.heading += turn * dt;
-      if (Math.abs(steer) < 0.05) {
-        // hands off: the board swings back to pointing straight down the course
-        const course = Math.atan2(w.center(P.z + 4) - w.center(P.z - 4), 8);
-        P.heading = lerpAngle(P.heading, course, Math.min(1, dt * (2.2 + P.speed * 0.03)));
-        P.steerS *= Math.exp(-6 * dt);
-      }
+      // hands off: the board keeps going the way you pointed it, like a real board (it doesn't swing
+      // back down the hill by itself); only the look-into-the-turn eases off
+      if (Math.abs(steer) < 0.05) P.steerS *= Math.exp(-6 * dt);
       P.heading = clamp(P.heading, -1.45, 1.45);
     }
 
@@ -739,27 +738,19 @@
     const gk = giantAhead();
     if (gk) {
       const k = clamp((P.z - (gk.z0 - 45)) / 25, 0, 1);
-      if (v > GIANT_SPEED) v = Math.max(GIANT_SPEED, v - 16 * k * dt);
-      else v = Math.min(GIANT_SPEED, v + 7 * k * dt);
+      if (v < GIANT_SPEED) v = Math.min(GIANT_SPEED, v + 7 * k * dt);
     }
     // speed check for the kicker ahead (not while boosting, and not on the snowboard cross)
     P.check = Math.max(0, (P.check || 0) - dt * 3);
     if (!gk && !boosting && !grinding && !world.map.racers) {
       const kf = kickerAhead();
       if (kf) {
-        // brake just as hard as it takes to reach the right speed a few metres before the lip
-        const vt = Math.max(idealSpeed(kf) + 0.6, SPEED_CHECK[kf.size] || 0), d = Math.max(1, kf.z0 + kf.Lu - 3 - P.z);
-        if (v > vt) {
-          const dec = Math.min(12, (v * v - vt * vt) / (2 * d));
-          v = Math.max(vt, v - dec * dt);
-          P.check = Math.max(P.check, clamp(dec / 9, 0, 1)); // scrubbing speed: board turns across, snow sprays
-        }
-        // too slow: tuck and pump up toward it (the small ones are fine a bit slow; the big gaps and
+        // you never lose speed riding at a jump: coming in too fast is sorted out in the air (fitFlight).
+        // Too slow: tuck and pump up toward it (the small ones are fine a bit slow; the big gaps and
         // step-ups have to be cleared, and on the tight park courses you often come in slow off the last one)
-        else {
-          const lo = vt - (kf.size === 'S' || kf.size === 'M' ? 2 : 0.6);
-          if (v < lo) v = Math.min(lo, v + Math.min(6, (lo * lo - v * v) / (2 * d)) * dt);
-        }
+        const vt = Math.max(idealSpeed(kf) + 0.6, SPEED_CHECK[kf.size] || 0), d = Math.max(1, kf.z0 + kf.Lu - 3 - P.z);
+        const lo = vt - (kf.size === 'S' || kf.size === 'M' ? 2 : 0.6);
+        if (v < lo) v = Math.min(lo, v + Math.min(6, (lo * lo - v * v) / (2 * d)) * dt);
       }
     }
     P.speed = Math.max(v, P.finished || P.slide > 0.5 ? 0 : 1.2);
@@ -1074,9 +1065,50 @@
     if (P.speed > 2 && Math.random() < 0.4) emit(P.x, P.y + 0.1, P.z, rand(-1, 1), rand(0.5, 1.5), rand(-1, 1), 0.5, 0.25, 0.92, 0.95, 1, 0.6, false);
   }
 
+  // keep your speed into a jump: come in faster than a kicker is built for and, once you're off the lip
+  // (after the late-pop window), the flight is eased just enough that you still come down on its
+  // landing instead of flying onto the flat. The speed comes back when you land, so the in-run never
+  // brakes you and you ride away as fast as you came in. Boosting skips it: then the big send is yours.
+  function flightEnd(k, gp) {
+    let x = P.x, y = P.y, z = P.z, vx = P.vx * k, vy = P.vy * k, vz = P.vz * k;
+    const g = P.giant ? GIANT_G : G, dt = 1 / 60;
+    for (let i = 0; i < 600; i++) {
+      vy -= g * dt;
+      if (!P.giant) { const q = Math.max(0, 1 - DRAG_AIR * Math.hypot(vx, vy, vz) * dt); vx *= q; vy *= q; vz *= q; }
+      x += vx * dt; y += vy * dt; z += vz * dt;
+      if (vy < 0 && y <= world.Hk(x, z)) break;
+      // a gap kicker's flight ends where it comes down onto its rail
+      if (gp && vy < 0) {
+        const t = (x - gp.ax) * gp.dx + (z - gp.az) * gp.dz;
+        if (t > 0.3 && t < gp.len && y <= world.railY(gp, t) + 0.15) break;
+      }
+    }
+    return z;
+  }
+  function fitFlight() {
+    P.fitDone = true;
+    const kf = P.toRef;
+    if (!kf || P.boosting || P.pipeAir || world.map.racers || P.vz < 4) return;
+    const gp = kf.gap;
+    let end, aim;
+    if (gp) { end = gp.az + gp.dz * gp.len * 0.85; aim = gp.az + gp.dz * gp.len * 0.4; } // onto the rail, not past it
+    else if (kf.tu !== undefined) { end = kf.z0 + kf.tu + 6; aim = kf.z0 + kf.tu + 1; }
+    else { end = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.85; aim = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.55; }
+    if (!(end > 0) || flightEnd(1, gp) <= end) return;
+    let lo = 0.3, hi = 1;
+    for (let i = 0; i < 16; i++) {
+      const mid = (lo + hi) / 2;
+      if (flightEnd(mid, gp) > aim) hi = mid; else lo = mid;
+    }
+    const k = (lo + hi) / 2;
+    P.vx *= k; P.vy *= k; P.vz *= k;
+    P.carry = 1 / k;
+  }
+
   function airStep(dt, steer) {
     P.airT += dt;
     if (P.coyote > 0) P.coyote -= dt;
+    if (!P.fitDone && P.airT >= 0.15) fitFlight();
     P.vy -= (P.giant ? GIANT_G : G) * dt;
     // air drag slows the flight a little (none off the giants, whose landing hills are drawn for a clean arc)
     if (!P.giant && !P.pipeAir) {
@@ -1194,6 +1226,7 @@
       if (vn < 0) ts = Math.hypot(P.vx - vn * nx, P.vz - vn * nz);
     }
     P.speed = ts * clamp(1 - Math.max(0, impact - 7 * soft) * 0.02, 0.65, 1);
+    if (P.carry > 1) { P.speed = Math.min(MAX_SPEED, Math.max(P.speed, (P.toV || 0) * 0.97)); P.carry = 1; } // you ride away with the speed you came in with
     P.vy = groundVy;
     P.slip = 0;
     P.grounded = true;
@@ -1645,12 +1678,14 @@
     if (pipeCam) travel = Math.atan2(world.center(t.z + 6) - world.center(t.z - 6), 12);
     const k = cam.snap ? 1 : 1 - Math.exp(-dt * 3.2);
     cam.head = cam.snap ? travel : lerpAngle(cam.head, travel, k);
-    const far = settings.camera === 'far' || opts.far;
+    const camMode = opts.far ? 'far' : settings.camera;
+    const far = camMode === 'far', high = camMode === 'high' && !opts.far;
     const sp = t.speed || 0;
     const giantAir = t === P && P.giant && !P.grounded;
     cam.big = lerp(cam.big || 0, giantAir ? 1 : 0, Math.min(1, dt * (giantAir ? 1.5 : 0.8)));
-    let dist = (far ? 8.6 : 6.4) + sp * 0.05 + cam.big * 6;
-    const hgt = (far ? 3.3 : 2.3) + sp * 0.02 + cam.big * 2.5;
+    // HIGH hangs the camera up in the sky behind the rider, like a drone, so you see the course coming
+    let dist = (high ? 11 : far ? 8.6 : 6.4) + sp * (high ? 0.06 : 0.05) + cam.big * 6;
+    const hgt = (high ? 7.6 : far ? 3.3 : 2.3) + sp * (high ? 0.035 : 0.02) + cam.big * (high ? 3.5 : 2.5);
     const head = cam.head + (opts.orbit || 0);
     // if a bank is behind the rider, pull the camera in instead of lifting it over the rider's head
     let ex, ez;
@@ -1676,9 +1711,10 @@
     cam.y += (ey - cam.y) * ky;
     // look a little into the turn (and off to one side on the title screen)
     const side = (t.steerS || 0) * 1.6 + (opts.side || 0);
-    const tx = t.x + Math.sin(cam.head) * 7 + Math.cos(cam.head) * side;
-    const tz = t.z + Math.cos(cam.head) * 7 - Math.sin(cam.head) * side;
-    const ty = t.y + 0.5;
+    const ahead = high ? 9 : 7;
+    const tx = t.x + Math.sin(cam.head) * ahead + Math.cos(cam.head) * side;
+    const tz = t.z + Math.cos(cam.head) * ahead - Math.sin(cam.head) * side;
+    const ty = t.y + (high ? -0.6 : 0.5);
     cam.tx += (tx - cam.tx) * kp;
     cam.tz += (tz - cam.tz) * kp;
     cam.ty += (ty - cam.ty) * (cam.snap ? 1 : 1 - Math.exp(-dt * 6));
@@ -2675,8 +2711,39 @@
     net.connect(id, playerName, settings.outfit | 0, SS.Account ? SS.Account.token : null);
   }
 
-  // the photo on the season pass, drawn in the chosen outfit
+  // the photo on the season pass: a real shot of your 3D rider in the chosen outfit, taken on the
+  // mountain behind the title screen (the drawn one below shows until the first photo is ready)
+  const portraitCv = document.createElement('canvas');
+  portraitCv.width = 184; portraitCv.height = 224;
+  portraitCv.className = 'shot';
+  let portraitWant = true, portraitAt = performance.now() + 1200;
+  function takePortrait() {
+    portraitWant = false;
+    const keepP = {}, keepC = Object.assign({}, cam);
+    const fields = ['x', 'y', 'z', 'heading', 'spin', 'flip', 'grounded', 'crouch', 'lean', 'comp', 'slide', 'yawOff', 'stance', 'bailT', 'grabAmt', 'airT', 'tumble', 'tumbleRoll', 'wind', 'steerS', 'spinVel', 'flipVel', 'wallRoll'];
+    for (const k of fields) keepP[k] = P[k];
+    // stand still on the snow and look into the lens
+    Object.assign(P, { y: world.H(P.x, P.z), grounded: true, spin: 0, flip: 0, crouch: 0.1, lean: 0, comp: 0, slide: 0, yawOff: 0, stance: 0, bailT: 0, grabAmt: 0, airT: 0, tumble: 0, tumbleRoll: 0, wind: 0, steerS: 0, spinVel: 0, flipVel: 0, wallRoll: 0 });
+    const yaw = P.heading + 0.62, d = 1.85;
+    Object.assign(cam, { x: P.x + Math.sin(yaw) * d, z: P.z + Math.cos(yaw) * d, y: P.y + 1.62, tx: P.x, tz: P.z, ty: P.y + 1.52, fov: 0.6, roll: 0, bump: 0 });
+    const sk = shake;
+    shake = 0;
+    try {
+      render(null);
+      const c = engine.canvas, W = c.width, H = c.height;
+      const ch = H * 0.7, cw = (ch * 92) / 112;
+      const pc = portraitCv.getContext('2d');
+      pc.drawImage(c, (W - cw) / 2, (H - ch) / 2, cw, ch, 0, 0, portraitCv.width, portraitCv.height);
+      if (portraitCv.parentNode !== ui.avatar) { ui.avatar.innerHTML = ''; ui.avatar.appendChild(portraitCv); }
+    } catch (e) { /* keep the drawn one */ }
+    shake = sk;
+    Object.assign(P, keepP);
+    Object.assign(cam, keepC);
+  }
   function drawAvatar() {
+    portraitWant = true;
+    portraitAt = Math.max(portraitAt, performance.now() + 250);
+    if (portraitCv.parentNode === ui.avatar) return; // the old photo stays until the new one is taken
     const p = SS.PALETTE[settings.outfit | 0];
     const jacket = rgbOf(p.jacket), trim = rgbOf(p.trim), helmet = rgbOf(p.helmet), board = rgbOf(p.board), stripe = rgbOf(p.stripe);
     ui.avatar.innerHTML = `<svg viewBox="0 0 92 112" xmlns="http://www.w3.org/2000/svg">
@@ -2796,7 +2863,7 @@
     updateStars();
     if (sv.outfit != null && SS.PALETTE[sv.outfit]) { settings.outfit = sv.outfit; myColor = sv.outfit; }
     if (sv.prefs) {
-      if (sv.prefs.camera === 'close' || sv.prefs.camera === 'far') settings.camera = sv.prefs.camera;
+      if (['close', 'far', 'high'].includes(sv.prefs.camera)) settings.camera = sv.prefs.camera;
       if (sv.prefs.autoRail === 'on' || sv.prefs.autoRail === 'off') settings.autoRail = sv.prefs.autoRail;
     }
     applySettings();
@@ -2850,9 +2917,6 @@
   function setBig(text, sub, dur) {
     ui.bigText.textContent = text;
     ui.bigSub.textContent = sub || '';
-    // the countdown is a set of start lights: 3, 2, 1 in a round badge, then GO! in green
-    const cnt = /^[1-3]$/.test(text) ? 'n' + text : text === 'GO!' ? 'ngo' : '';
-    ui.big.className = cnt ? 'count ' + cnt : '';
     ui.big.classList.remove('pulse');
     void ui.big.offsetWidth;
     ui.big.classList.add('pulse');
@@ -2904,7 +2968,7 @@
     }
     setText(ui.score, 'score', fmt(mine ? run.score : (focus.score || 0)));
     setText(ui.tokenCount, 'tok', mine ? run.tokens + '/' + world.tokens.length : '-');
-    const sp = mine ? P.speed : focus.speed || 0;
+    const sp = mine ? (P.grounded ? P.speed : Math.hypot(P.vx, P.vz) * (P.carry || 1)) : focus.speed || 0;
     const air = mine && !P.grounded && P.airT > 0.3 && P.bailT <= 0;
     if (air) {
       setText(ui.speedLbl, 'lbl', 'AIR TIME');
@@ -3475,6 +3539,8 @@
     last = now;
     if (world) world.ensureChunks(engine, P.z || 0, 1);
     update(dt);
+    // a fresh season-pass photo, taken before the frame you see so it never shows on screen
+    if (portraitWant && world && mode === 'menu' && phase === 'attract' && P.x !== undefined && P.bailT <= 0 && !hidden(ui.title) && now > portraitAt) takePortrait();
     const g = ghostState();
     render(g);
     updateTags(g);
