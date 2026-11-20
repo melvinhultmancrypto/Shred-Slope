@@ -3,9 +3,13 @@
 A 3D snowboarding game that runs in the browser. Pick one of twenty-three mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, or three tight Youth Olympic parks, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
 - **Twenty-three mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
-- **Star challenges:** 3 stars to earn on every mountain (69 in total), saved in the browser together with your best score per mountain.
+- **Star challenges:** 3 stars to earn on every mountain (69 in total), saved together with your best score per mountain.
+- **Accounts:** create an account with a username and password and your stars, best runs, outfit and settings are saved on the server, so they follow you to any computer. Playing as a guest still works and keeps progress in that browser; whatever you earned as a guest joins your account when you sign up. Signed-in riders race under their account name in multiplayer.
+- **Auto rail:** ride straight at a rail and you hop onto it by yourself (it also pops you off a gap kicker toward its rail). It's on by default and can be turned off in Settings.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds, and every round moves to the next mountain.
 - **Looks:** a detailed rider (helmet, goggles, two-tone jacket, backpack, strap bindings), board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
+- **Far view:** past the detailed course, a lighter version of the whole valley (ground, trees and the valley walls) runs on for another 1.2 to 1.7 km, built in the background, so you look down the mountain instead of into fog. On High and Medium; Low keeps the fog.
+- **Snow and rock:** the snow has its own relief, lit per pixel: wind drifts (deeper off the groomed piste), ripples and grain, with the lee sides going cold and blue. Boulders and outcrops sit half buried on the banks, and no two trees grow quite straight.
 - **Graphics:** real-time sun shadows for the riders (on the snow and on themselves), terrain that shades itself (banks and kickers throw long shadows at sunset, hollows go darker), cold blue shade on the snow, wind ripples that catch the light, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading per time of day, and FXAA. Trees are snow-laden firs, spruces, pines and dead snags, each with its own shade of green and snow load. Mountain ranges stand in three layers with smooth snow and rock, rising out of valley mist. Riders wear baggy outerwear with real fabric folds, plaid flannel, camo or colour-blocked jackets, beanies or helmets, mirrored goggles, and snow stuck to their pants. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows, bloom and sun rays off for older devices (it keeps FXAA and the colour grade).
 - **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
 - **Physics:** real gravity (9.81 m/s²) on every jump, snow friction and air drag that grows with speed (tuck to cut it), carves limited by edge grip so a turn that's too sharp for your speed skids and scrubs speed, and landings that keep the part of your speed along the slope (a steep landing keeps you moving, landing flat stops you). On the in-run to every jump you scrub or pump to the speed that puts you in the sweet spot of its landing, like a real rider does; gap kickers and step-ups get you just the speed to reach the rail or the table. An ollie with a rail ahead is sized so you come down onto it.
@@ -83,6 +87,8 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 
 **Keep it to one instance.** The multiplayer servers live in the server's memory, so scaling to 2+ instances would put players on different copies and they wouldn't see each other.
 
+**Accounts need a disk.** Accounts are saved in `accounts.json` on a persistent disk mounted at `/var/data` (`render.yaml` asks for a 1 GB one). Without a disk, every deploy or restart wipes the file and everyone's account with it. If you made the service by hand rather than from the Blueprint, open the service → **Disks** → **Add disk**, set the mount path to `/var/data`, size 1 GB, and save. Disks cost a little extra per GB each month, and a service with a disk has a few seconds of downtime on each deploy. Render takes a snapshot of the disk every day. To keep the file somewhere else, set `DATA_DIR`.
+
 **Already made a free service?** Changing `render.yaml` doesn't change the size of a service that already exists. Open the service, go to **Settings → Instance Type** and pick **Starter**.
 
 **Your own domain (optional):** on the service, open **Settings → Custom Domains**, add e.g. `shredslope.fun`, and create the DNS record Render shows you at your domain registrar.
@@ -134,7 +140,8 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | File | What it does |
 | --- | --- |
 | `server.js` | Node server: serves the game, `/api/servers`, `/health`, and the WebSocket rooms |
-| `render.yaml` | Render Blueprint (one Starter web service) |
+| `accounts.js` | Accounts: sign up, sign in, sign out, delete, and the saved game per account (`/api/auth/*`, `/api/me`, `/api/save`). Passwords are hashed with scrypt; sign-in attempts are rate limited per IP |
+| `render.yaml` | Render Blueprint (one Starter web service with a 1 GB disk for accounts) |
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
@@ -143,11 +150,12 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 | `public/js/rider.js` | The 3D snowboarder and its poses |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |
+| `public/js/account.js` | The sign in / create account screen, the account strip on the season pass, and syncing your save |
 | `public/js/audio.js` | Synthesised sound effects |
 
 ## Settings
 
-In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects and Camera (Close / Far). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
+In the game, **Settings** (on the title screen and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects, Camera (Close / Far) and Auto rail (On / Off). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
 
 The server reads these environment variables (all optional):
 
@@ -157,5 +165,6 @@ The server reads these environment variables (all optional):
 | `COUNTDOWN_MS` | `10000` | Countdown before each round |
 | `RACE_MAX_MS` | `240000` | Longest a round can last |
 | `RESULTS_MS` | `12000` | How long the results stay up |
+| `DATA_DIR` | `/var/data` if it exists, else `./data` | Where `accounts.json` is kept |
 
 Gameplay numbers (gravity, spin speed, top speed) are at the top of `public/js/game.js`. The course layout (length, piste width, zone list, kicker sizes) is at the top of `public/js/world.js`.

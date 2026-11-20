@@ -4,6 +4,7 @@
  * - serves the game from ./public
  * - runs 3 multiplayer servers (rooms), max 10 riders each
  * - race rounds: countdown -> race -> results -> next round
+ * - rider accounts (sign up / sign in, saved progress): see accounts.js
  * No dependencies: plain Node.js 18+ (the WebSocket protocol is implemented below).
  */
 const http = require('http');
@@ -11,6 +12,7 @@ const fs = require('fs');
 const path = require('path');
 const zlib = require('zlib');
 const crypto = require('crypto');
+const accounts = require('./accounts');
 
 const PORT = Number(process.env.PORT) || 3000;
 const PUBLIC = path.join(__dirname, 'public');
@@ -48,6 +50,8 @@ const MAPS = [
   { id: 'yog20', name: 'Lausanne 2020 Youth Park' },
   { id: 'yog24', name: 'Gangwon 2024 Youth Park' },
 ];
+
+accounts.init(MAPS.map((m) => m.id));
 
 const SERVER_DEFS = [
   { id: 1, name: 'Server 1 · Avalanche' },
@@ -363,13 +367,15 @@ class Room {
     return 0;
   }
 
-  join(conn, name, pref) {
+  join(conn, name, pref, account) {
     if (this.players.size >= MAX_PLAYERS) {
       conn.send(JSON.stringify({ t: 'full' }));
       conn.close(1000);
       return null;
     }
-    let n = cleanName(name);
+    // signed-in riders race under their account name; a guest can't borrow someone's account name
+    let n = account || cleanName(name);
+    if (!account && accounts.nameTaken(n)) n = cleanName(name).slice(0, 10) + ' guest';
     const names = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
     for (let k = 2; names.has(n.toLowerCase()); k++) n = cleanName(name).slice(0, 13) + ' ' + k;
     const p = { id: nextId++, name: n, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0 };
@@ -462,6 +468,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return res.end(JSON.stringify({ servers: [...rooms.values()].map((r) => r.info()) }));
   }
+  if (url.startsWith('/api/auth/') || url === '/api/me' || url === '/api/save') return accounts.handle(req, res, url);
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405);
     return res.end();
@@ -491,7 +498,7 @@ server.on('upgrade', (req, socket) => {
       try { m = JSON.parse(text); } catch (e) { return; }
       if (m && m.t === 'hello') {
         clearTimeout(hello);
-        player = room.join(conn, m.name, m.color);
+        player = room.join(conn, m.name, m.color, accounts.nameForToken(m.token));
       }
       return;
     }

@@ -11,3 +11,9 @@ services:
     startCommand: npm start
     healthCheckPath: /health
     numInstances: 1
+    # rider accounts are kept on this disk (accounts.js finds /var/data by itself). Without it every
+    # deploy would wipe them. A disk-backed service is one instance with a few seconds' downtime per deploy.
+    disk:
+      name: shred-data
+      mountPath: /var/data
+      sizeGB: 1

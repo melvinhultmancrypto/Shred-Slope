@@ -30,6 +30,8 @@
   };
   C.ZMAX = C.LENGTH + C.RUNOUT + 90;
   SS.COURSE = C;
+  const FAR_SEG = 200;   // m of valley per far-view segment
+  const FAR_RUN = 1500;  // how far the far view reaches past the end of the run
 
   const KICK = {
     S: { Hk: 1.3, Lu: 6, Lt: 4, Ll: 11, w: 2.6 },
@@ -1670,6 +1672,28 @@
           }
         }
       }
+      // boulders and outcrops scattered over the banks, in small groups and more where it's steep
+      // (from a hash of the position, not the course's random numbers, so no course changes because of them)
+      if (!M.city) {
+        const zEnd = C.LENGTH + 40 - (M.stands ? 190 : 0);
+        for (let z = C.Z0 + 50; z < zEnd; z += 8) {
+          for (const sd of [-1, 1]) {
+            if (hash(z * 0.37 + sd * 11.3, 4.1) > 0.3) continue;
+            if (this.cave && this.inCave(z)) continue;
+            const e = 9 + hash(z * 0.61, sd * 3.7) * 34;
+            const x0 = this.center(z) + sd * (HALF + e);
+            const steep = Math.hypot(this.ground(x0 + 1, z) - this.ground(x0 - 1, z), this.ground(x0, z + 1) - this.ground(x0, z - 1)) / 2;
+            const n = 1 + Math.floor(hash(z * 1.9, sd + 2) * (steep > 0.45 ? 4 : 2.6));
+            for (let i = 0; i < n; i++) {
+              const x = x0 + (hash(z + i * 3.1, sd * 7) - 0.5) * 4.5, zz = z + (hash(z * 0.7 + i, 9.3) - 0.5) * 5;
+              const sz = (0.4 + Math.pow(hash(zz * 1.3, x * 0.7), 2) * 1.7) * (i ? 0.72 : 1);
+              const gy = this.ground(x, zz - 0.5);
+              this.rocks.push({ x, z: zz, s: sz, yaw: hash(x * 2.1, zz) * TAU, gy, bank: true });
+              if (e < 28) this.colliders.push({ x, z: zz, r: sz * 0.8, top: gy + sz * 1.1 });
+            }
+          }
+        }
+      }
       // competition dressing: a start house with gates, and scaffolding under the big air tower
       this.startGate = M.comp ? { z: M.firstType === 'tower' ? 4 : M.id === 'sbx' ? 8 : 2, gates: M.racers ? 4 : 1, half: M.towerHalf || Math.min(HALF, 9) } : null;
       this.scaffold = [];
@@ -1957,6 +1981,41 @@
       const n = Math.ceil((C.ZMAX - C.Z0) / C.CHUNK);
       for (let i = 0; i < n; i++) this.chunks.push({ i, z0: C.Z0 + i * C.CHUNK, z1: C.Z0 + (i + 1) * C.CHUNK, minZ: 0, maxZ: 0, tri: null, lines: null });
       this.assignObjects();
+      // the far view: the whole valley, coarse, out past the end of the run (not in caves, stadiums or pipes)
+      this.farOK = !this.cave && !this.map.city && !this.pipeArr && !this.towerArr;
+      this.farSegs = [];
+      if (this.farOK) {
+        for (let z = C.Z0 - 60, i = 0; z < C.ZMAX + FAR_RUN; z += FAR_SEG, i++) this.farSegs.push({ i, z0: z, z1: z + FAR_SEG, tri: null, trees: null, req: false });
+      }
+    }
+
+    // one far segment: the ground on a coarse grid that reaches far up the valley walls, and every tree as two cones
+    farData(i) {
+      const sg = this.farSegs[i];
+      const tri = new SS.FBuf(1 << 15), trees = new SS.FBuf(1 << 15);
+      new Builder(this, tri, null).terrain(sg.z0, sg.z1, 8, Builder.farOffs());
+      const B = new Builder(this, trees, null);
+      for (const t of this.trees) if (t.z >= sg.z0 && t.z < sg.z1) B.farTree(t);
+      return { tri: tri.data(), trees: trees.data() };
+    }
+    buildFar(engine, sg) {
+      const d = this.farData(sg.i);
+      sg.tri = engine.mesh(d.tri, 6);
+      sg.trees = d.trees.length ? engine.mesh(d.trees, 6) : null;
+    }
+
+    // draw the far view beyond what the detailed chunks cover (they stop at this.drawnEnd)
+    drawFar(engine, camZ, far) {
+      if (!this.farSegs || !this.farSegs.length) return;
+      const gl = engine.gl, cut = this.drawnEnd || camZ;
+      gl.enable(gl.POLYGON_OFFSET_FILL);
+      gl.polygonOffset(2, 6);
+      engine.setCut(cut, C.HALF + 108, 1);
+      for (const sg of this.farSegs) if (sg.tri && sg.z1 > cut - 4 && sg.z0 < camZ + far) engine.drawBaked(sg.tri);
+      engine.setCut(cut + 3, 0, 2);
+      for (const sg of this.farSegs) if (sg.trees && sg.z1 > cut && sg.z0 < camZ + far) engine.drawBaked(sg.trees);
+      engine.setCut(0, 0, 0);
+      gl.disable(gl.POLYGON_OFFSET_FILL);
     }
 
     // Chunks are built ahead of the rider. With a background worker, only the chunks right around
@@ -1966,8 +2025,9 @@
       this.initChunks();
       const n = this.chunks.length;
       if (this.cw && !this.cw.dead && budget < 50) {
-        if (this.allDone) return 0;
-        if (this.chunks.every((c) => c.tri)) { this.allDone = true; return 0; }
+        if (this.allDone && (!this.farOn || this.farDone)) return 0;
+        if (!this.allDone && this.chunks.every((c) => c.tri)) this.allDone = true;
+        if (this.farOn && !this.farDone && this.farSegs.every((sg) => sg.tri)) this.farDone = true;
         let done = 0;
         for (const c of this.chunks) {
           if (!c.tri && c.z0 < z + 110 && c.z1 > z - 40) { this.buildChunk(engine, c); done++; }
@@ -1980,6 +2040,11 @@
         for (const c of order) {
           if (this.inFlight >= 3) break;
           if (!c.tri && !c.req) this.cw.request(this, c);
+        }
+        // then the far view, from just ahead of the rider on down
+        if (this.farOn && this.inFlight < 2) {
+          const fs = this.farSegs.filter((sg) => !sg.tri && !sg.req).sort((a, b) => (a.z1 < z ? 1e5 : 0) + Math.abs(a.z0 - z) - ((b.z1 < z ? 1e5 : 0) + Math.abs(b.z0 - z)));
+          for (const sg of fs) { if (this.inFlight >= 2) break; this.cw.requestFar(this, sg); }
         }
         return done;
       }
@@ -2084,8 +2149,12 @@
 
     draw(engine, camZ) {
       const lo = camZ - 30, hi = camZ + C.DRAW;
+      // the ground the detailed chunks cover runs on, unbroken, from the rider to here; the far view starts at it
+      let end = camZ;
+      for (const c of this.chunks) if (c.z1 > camZ && c.z0 <= hi && c.tri && c.z0 <= end + 0.01) end = c.z1;
+      this.drawnEnd = end;
       for (const c of this.chunks) {
-        if (!c.tri || c.maxZ < lo || c.minZ > hi) continue;
+        if (!c.tri || c.maxZ < lo || c.minZ > hi || (c.z0 >= end && c.z0 > camZ)) continue;
         engine.drawBaked(c.tri);
         if (c.lines) engine.drawBaked(c.lines);
       }
@@ -2096,6 +2165,8 @@
         engine.free(c.tri);
         engine.free(c.lines);
       }
+      for (const sg of this.farSegs || []) { engine.free(sg.tri); engine.free(sg.trees); }
+      this.farSegs = [];
       engine.free(this.glowMesh);
       engine.free(this.mtnMesh);
       this.chunks = [];
@@ -2393,13 +2464,13 @@
     }
 
     // ---- terrain strip ----
-    terrain(z0, z1) {
+    terrain(z0, z1, step, offsList) {
       const w = this.w;
       const M = w.map, LT = w.L;
-      const offs = Builder.offs();
+      const offs = offsList || Builder.offs();
       const nc = offs.length;
       const rows = [];
-      for (let z = z0; z <= z1 + 0.001; z += 2) rows.push(z);
+      for (let z = z0; z <= z1 + 0.001; z += step || 2) rows.push(z);
       const nr = rows.length;
       const P = new Float32Array(nr * nc * 6);
       for (let i = 0; i < nr; i++) {
@@ -2785,6 +2856,7 @@
     // a lumpy boulder sitting in the snow
     rock(r) {
       const s = r.s, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
+      if (r.bank) { this.boulder(r); return; }
       const cy = r.gy + s * 0.25;
       const hx = s * 0.95, hy = s * 0.8, hz = s * 0.75;
       const P = (x, y, z, i) => {
@@ -2798,6 +2870,42 @@
       const col = hash(r.x, r.z) > 0.5 ? [0.34, 0.34, 0.38] : [0.27, 0.27, 0.32];
       const f = [[0, 1, 2, 3], [5, 4, 7, 6], [4, 0, 3, 7], [1, 5, 6, 2], [3, 2, 6, 7]];
       for (const q of f) this.quad(v[q[0]], v[q[1]], v[q[2]], v[q[3]], q[0] === 3 ? [0.92, 0.94, 0.98] : col, o);
+    }
+
+    // a weathered boulder half buried in the snow: a lumpy dome of granite, snow on its flatter top
+    boulder(r) {
+      const s = r.s, c = Math.cos(r.yaw), sn = Math.sin(r.yaw);
+      const N = 7, RINGS = 3;
+      const base = r.gy - s * 0.35;
+      const grey = 0.27 + hash(r.x * 1.7, r.z) * 0.12;
+      const tint = hash(r.z, r.x * 0.3);
+      const rockC = [grey * (0.98 + tint * 0.06), grey * (0.97 + tint * 0.04), grey * 1.08];
+      const snowC = [0.9, 0.93, 0.98];
+      const ring = [];
+      for (let j = 0; j <= RINGS; j++) {
+        const v = j / RINGS, rr = Math.cos(v * Math.PI * 0.5), yy = Math.sin(v * Math.PI * 0.5);
+        const row = [];
+        for (let k = 0; k < N; k++) {
+          const a = (k / N) * TAU;
+          const jit = 0.75 + hash(r.x + k * 1.3, r.z + j * 2.1) * 0.5;
+          const x = Math.cos(a) * rr * s * 1.05 * jit, z = Math.sin(a) * rr * s * 0.8 * jit;
+          row.push([r.x + x * c + z * sn, base + yy * s * (0.95 + hash(k, r.x) * 0.3), r.z - x * sn + z * c]);
+        }
+        ring.push(row);
+      }
+      const top = [r.x, base + s * 1.12, r.z];
+      const o = [r.x, base + s * 0.2, r.z];
+      for (let j = 0; j < RINGS; j++) {
+        for (let k = 0; k < N; k++) {
+          const k2 = (k + 1) % N;
+          const col = j === RINGS - 1 && hash(r.x + k, r.z * 1.1) < 0.6 ? snowC : rockC;
+          this.quad(ring[j][k], ring[j][k2], ring[j + 1][k2], ring[j + 1][k], col, o);
+        }
+      }
+      for (let k = 0; k < N; k++) {
+        const a = ring[RINGS][k], b = ring[RINGS][(k + 1) % N];
+        this.tri(a[0], a[1], a[2], b[0], b[1], b[2], top[0], top[1], top[2], snowC, o[0], o[1], o[2]);
+      }
     }
 
     pillar(p) {
@@ -2848,12 +2956,40 @@
       const tiers = shape.tiers;
       const sides = t.near ? 7 : 6;
       const base = shape.trunk - 0.4;
+      // no tree grows perfectly straight or evenly: a slight lean, and tiers that don't quite match
+      const lean = (hash(t.x * 3.1, t.z * 0.7) - 0.5) * 0.07, la = h2 * TAU;
       for (let i = 0; i < tiers; i++) {
-        const rb = Math.max(0.35, shape.rb - i * shape.taper * (shape.rb / 1.8)) * s;
-        const y0 = y + (base + i * shape.step) * s;
+        const rb = Math.max(0.35, shape.rb - i * shape.taper * (shape.rb / 1.8)) * s * (0.88 + hash(i * 1.7 + h1, h2 * 5) * 0.24);
+        const ht = (base + i * shape.step) * s;
+        const y0 = y + ht;
         const hh = (shape.hh - i * 0.18) * s;
-        this.bough(t.x, y0, t.z, rb, hh, sides, green, snow, sn, h1 * 7 + i * 1.7, t.near);
+        this.bough(t.x + Math.cos(la) * lean * ht, y0, t.z + Math.sin(la) * lean * ht, rb, hh, sides, green, snow, sn, h1 * 7 + i * 1.7, t.near);
       }
+    }
+
+    // a tree far away: two dark cones, snow on the sunny faces of the upper one
+    farTree(t) {
+      const w = this.w, T = w.map.trees, s = t.s;
+      const kind = t.kind || 'fir';
+      if (kind === 'snag') return;
+      const y = w.ground(t.x, t.z) - 0.2;
+      const h1 = hash(t.x, t.z);
+      const dark = kind === 'spruce' ? 0.8 : kind === 'pine' ? 1.12 : 1;
+      const g = [T.green[0] * dark * (0.95 + h1 * 0.1), T.green[1] * dark, T.green[2] * dark];
+      const sn = T.snow * (0.45 + hash(t.x * 0.7, t.z * 1.3) * 0.9);
+      const snow = [lerp(0.6, 0.82, Math.min(1, sn)), lerp(0.66, 0.87, Math.min(1, sn)), lerp(0.75, 0.96, Math.min(1, sn))];
+      const H = (kind === 'spruce' ? 10 : kind === 'pine' ? 9.5 : 8.6) * s, R0 = (kind === 'spruce' ? 1.6 : kind === 'pine' ? 1.8 : 2.1) * s;
+      const y0 = y + (kind === 'pine' ? 3.6 : 0.9) * s;
+      const cone = (cy, r, h, top) => {
+        const n = 5, ax = t.x, az = t.z, a0 = h1 * TAU;
+        for (let k = 0; k < n; k++) {
+          const a = a0 + (k / n) * TAU, b = a0 + ((k + 1) / n) * TAU;
+          const col = top && sn > 0.3 && k % 2 === 0 ? snow : g;
+          this.tri(ax + Math.cos(a) * r, cy, az + Math.sin(a) * r, ax + Math.cos(b) * r, cy, az + Math.sin(b) * r, ax, cy + h, az, col, ax, cy + h * 0.3, az);
+        }
+      };
+      cone(y0, R0, (H - (y0 - y)) * 0.62, false);
+      cone(y0 + (H - (y0 - y)) * 0.38, R0 * 0.7, (H - (y0 - y)) * 0.62, true);
     }
 
     // one tier of a conifer: branch tips poking out and drooping, snow lying on the upper boughs,
@@ -3267,6 +3403,18 @@
     }
   }
   // lateral sample offsets for the terrain (depends on the map's piste width)
+  // the far view's columns: coarse across the piste, then out across the banks and up the valley walls
+  Builder.farOffs = () => {
+    if (Builder._fHalf === C.HALF) return Builder._foffs;
+    const o = [];
+    const n = Math.max(2, Math.round((C.HALF + 4) / 5));
+    for (let i = -n; i <= n; i++) o.push(+(((C.HALF + 4) * i) / n).toFixed(2));
+    for (const d of [6.5, 13.5, 25, 43, 72, 118, 170, 240, 330, 460]) { o.push(C.HALF + d); o.unshift(-(C.HALF + d)); }
+    Builder._fHalf = C.HALF;
+    Builder._foffs = o;
+    return o;
+  };
+
   Builder.offs = () => {
     if (Builder._half === C.HALF && Builder._fine === C.FINE) return Builder._offs;
     const o = [];
@@ -3337,11 +3485,23 @@
       world.inFlight++;
       this.w.postMessage({ t: 'build', gen: world.gen, i: ch.i });
     }
+    requestFar(world, sg) {
+      sg.req = true;
+      world.inFlight++;
+      this.w.postMessage({ t: 'far', gen: world.gen, i: sg.i });
+    }
     done(m) {
       const world = this.world;
       if (!world || m.gen !== world.gen) return;
       if (m.err) { this.dead = true; return; }
       world.inFlight = Math.max(0, world.inFlight - 1);
+      if (m.far !== undefined) {
+        const sg = world.farSegs && world.farSegs[m.far];
+        if (!sg || sg.tri) return;
+        sg.tri = this.engine.mesh(m.tri, 6);
+        sg.trees = m.trees && m.trees.length ? this.engine.mesh(m.trees, 6) : null;
+        return;
+      }
       const ch = world.chunks[m.i];
       if (!ch || ch.tri) return;
       ch.minZ = m.minZ;
@@ -3384,6 +3544,9 @@
           const tr = [d.tri.buffer];
           if (d.lines) tr.push(d.lines.buffer);
           self.postMessage({ gen, i: m.i, tri: d.tri, lines: d.lines, minZ: d.minZ, maxZ: d.maxZ }, tr);
+        } else if (m.t === 'far' && m.gen === gen && wld) {
+          const d = wld.farData(m.i);
+          self.postMessage({ gen, far: m.i, tri: d.tri, trees: d.trees }, [d.tri.buffer, d.trees.buffer]);
         }
       } catch (err) {
         self.postMessage({ gen: m.gen, err: String(err) });

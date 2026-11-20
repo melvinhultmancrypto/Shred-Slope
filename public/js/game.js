@@ -75,15 +75,17 @@
 
   // ------------------------------------------------------------------ settings
   const coarse = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', fps: '60', music: 'on', sfx: 'on', camera: 'close', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
+  const settings = Object.assign({ quality: coarse ? 'medium' : 'high', fps: '60', music: 'on', sfx: 'on', camera: 'close', autoRail: 'on', outfit: 0, map: 'bluebird' }, store.get(SET_KEY, {}));
+  if (settings.autoRail !== 'off') settings.autoRail = 'on';
   if (!SS.MAPS[settings.map]) settings.map = 'bluebird';
   if (!['30', '60', '90'].includes(String(settings.fps))) settings.fps = '60';
   settings.fps = String(settings.fps);
   const Q = {
     // low still gets FXAA and the colour grade, just not bloom and sun rays ('lite')
-    low: { detail: 0, dpr: 1, draw: 320, fog: 300, particles: 0.5, trails: true, shadows: 0, post: 'lite', rays: false },
-    medium: { detail: 0.6, dpr: 1.25, draw: 400, fog: 380, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
-    high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
+    // far: how far down the valley you see (a coarse mesh past the detailed chunks; 0 = fog at the draw distance)
+    low: { detail: 0, dpr: 1, draw: 320, fog: 300, far: 0, particles: 0.5, trails: true, shadows: 0, post: 'lite', rays: false },
+    medium: { detail: 0.6, dpr: 1.25, draw: 380, fog: 380, far: 1200, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
+    high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, far: 1700, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
   };
   let q = Q[settings.quality] || Q.high;
 
@@ -114,11 +116,13 @@
     engine.detail = q.detail;
     engine.fog = [60, q.fog];
     C.DRAW = q.draw;
+    if (world) world.farOn = farView();
     dpr = Math.min(window.devicePixelRatio || 1, q.dpr);
     resize();
     Sfx.setSfx(settings.sfx === 'on');
     Sfx.setMusic(settings.music === 'on');
     store.set(SET_KEY, settings);
+    accountChanged();
     document.querySelectorAll('.seg').forEach((seg) => {
       seg.querySelectorAll('button').forEach((b) => b.classList.toggle('sel', settings[seg.dataset.key] === b.dataset.v));
     });
@@ -199,11 +203,11 @@
   const brakeInput = () => (ai.on ? ai.brake : keys.down);
   const tuckInput = () => (ai.on ? ai.tuck : keys.up);
   const boostInput = () => (ai.on ? ai.boost : keys.boost || touch.boost);
-  const typing = () => document.activeElement === ui.nameInput;
+  const typing = () => { const a = document.activeElement; return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); };
 
   window.addEventListener('keydown', (e) => {
     if (typing()) {
-      if (e.code === 'Enter') ui.nameInput.blur();
+      if (e.code === 'Enter' && document.activeElement === ui.nameInput) ui.nameInput.blur();
       return;
     }
     if (!hidden(ui.maps) && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
@@ -349,6 +353,7 @@
     if (world) world.dispose(engine);
     world = new SS.World(seed, mapId);
     if (useWorker()) chunkWorker.attach(world, engine);
+    world.farOn = farView();
     engine.setSky(world.map.sky);
     setGrade(world.map);
     const cv = world.map.curve;
@@ -553,6 +558,27 @@
     P.compV -= 2.5;
     if (!ai.on) Sfx.pop();
     burst(P.x, P.y, P.z, 10, 2, P.vx, P.vz);
+  }
+
+  // auto rail (a setting, on by default): ride straight at a rail and you hop onto it by yourself.
+  // Off a little gap kicker it pops at the lip when the rail past it is lined up. Boxes with a ramp
+  // you just ride onto, so they don't need it.
+  function autoRail() {
+    if (settings.autoRail !== 'on' || ai.on || mode === 'menu' || phase !== 'riding' || P.surf === 2 || P.bailT > 0 || P.finished || P.speed < 3) return;
+    const sh = Math.sin(P.heading), ch = Math.cos(P.heading);
+    const lined = (f, x, z) => {
+      if (Math.abs(wrap(P.heading - f.ang)) > 0.3) return false;
+      const rx = f.ax - x, rz = f.az - z;
+      return Math.abs(rx * ch - rz * sh) < f.w + 0.4;
+    };
+    const k = P.surf === 1 && P.ref && P.ref.kind === 'kicker' ? P.ref : null;
+    if (k && k.gap) {
+      const u = P.z - k.z0;
+      if (u > k.Lu - 0.45 && u < k.Lu + 0.3 && lined(k.gap, P.x, P.z)) pop();
+      return;
+    }
+    const r = world.railAhead(P.x, P.z, P.heading, sh, ch, 1.2 + P.speed * 0.12);
+    if (r && r.d < 0.9 + P.speed * 0.1 && lined(r.f, P.x, P.z)) pop();
   }
 
   function takeoff(vx, vz) {
@@ -1408,6 +1434,7 @@
     if (P.grounded) {
       if (inPipe()) pipeStep(dt, steer);
       else { if (P.pipeMode) leavePipe(); groundStep(dt, steer); }
+      if (P.grounded && !P.pipeMode) autoRail();
     } else airStep(dt, steer);
     if (!P.pipeMode) P.wallRoll *= Math.exp(-(P.grounded ? 12 : 5) * dt);
     // the big air tower has railings: you can't ride off the side of the deck
@@ -1997,6 +2024,7 @@
     updateStars();
     const newBest = run.score > best;
     if (newBest) { best = Math.round(run.score); store.set(BEST_KEY, best); ui.bestScore.textContent = fmt(best); }
+    accountChanged();
     const placeTxt = rivals.length ? ['', '1ST PLACE', '2ND PLACE', '3RD PLACE', '4TH PLACE'][run.place] || 'RUN COMPLETE' : 'RUN COMPLETE';
     ui.resTitle.innerHTML = `${placeTxt}<small>${esc(map.name)}, ${sentence(map.time).toLowerCase()}</small>`;
     ui.results.style.setProperty('--acc', map.accent);
@@ -2038,7 +2066,7 @@
   }
 
   function hideOverlays() {
-    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps]) show(el, false);
+    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps, $('auth')]) if (el) show(el, false);
     show(ui.mapIntro, false);
   }
 
@@ -2506,7 +2534,7 @@
     show(ui.loading, true);
     show(ui.standings, true);
     show(ui.mpbar, true);
-    net.connect(id, playerName, settings.outfit | 0);
+    net.connect(id, playerName, settings.outfit | 0, SS.Account ? SS.Account.token : null);
   }
 
   // the photo on the season pass, drawn in the chosen outfit
@@ -2545,6 +2573,7 @@
         myColor = i;
         store.set(SET_KEY, settings);
         buildSwatches();
+        accountChanged();
       });
       ui.swatches.appendChild(b);
     });
@@ -2580,9 +2609,64 @@
   });
   ui.nameInput.addEventListener('change', saveName);
   function saveName() {
+    if (ui.nameInput.readOnly) return;
     const v = ui.nameInput.value.replace(/[^\p{L}\p{N} _.\-]/gu, '').trim().slice(0, 16);
     if (v) { playerName = v; store.set(NAME_KEY, v); }
     ui.nameInput.value = playerName;
+  }
+
+  // ------------------------------------------------------------------ accounts (account.js does the talking)
+  let applyingSave = false;
+  function accountChanged() { if (!applyingSave && SS.Account) SS.Account.push(); }
+  const accountSave = () => ({
+    best: Math.round(best) || 0,
+    progress: Object.fromEntries(Object.entries(progress).map(([id, p]) => [id, { best: Math.round(p.best) || 0, stars: [0, 1, 2].map((i) => !!(p.stars && p.stars[i])) }])),
+    outfit: settings.outfit | 0,
+    prefs: { camera: settings.camera, autoRail: settings.autoRail },
+  });
+  function applyAccountSave(sv, replace) {
+    applyingSave = true;
+    if (replace) for (const k of Object.keys(progress)) delete progress[k];
+    for (const [id, p] of Object.entries(sv.progress || {})) {
+      if (!SS.MAPS[id]) continue;
+      const o = replace ? { best: 0, stars: [false, false, false] } : prog(id);
+      progress[id] = { best: Math.max(o.best, p.best || 0), stars: o.stars.map((v, i) => v || !!(p.stars && p.stars[i])) };
+    }
+    best = replace ? sv.best || 0 : Math.max(best, sv.best || 0);
+    store.set(BEST_KEY, best);
+    store.set(PROG_KEY, progress);
+    ui.bestScore.textContent = fmt(best);
+    updateStars();
+    if (sv.outfit != null && SS.PALETTE[sv.outfit]) { settings.outfit = sv.outfit; myColor = sv.outfit; }
+    if (sv.prefs) {
+      if (sv.prefs.camera === 'close' || sv.prefs.camera === 'far') settings.camera = sv.prefs.camera;
+      if (sv.prefs.autoRail === 'on' || sv.prefs.autoRail === 'off') settings.autoRail = sv.prefs.autoRail;
+    }
+    applySettings();
+    buildSwatches();
+    applyingSave = false;
+  }
+  function setAccountName(name, locked) {
+    ui.nameInput.readOnly = !!locked;
+    ui.nameInput.classList.toggle('locked', !!locked);
+    ui.nameInput.title = locked ? 'Your account name' : '';
+    if (locked) playerName = name;
+    else {
+      playerName = String(store.get(NAME_KEY, '') || '').slice(0, 16) || 'Rider' + Math.floor(100 + Math.random() * 900);
+    }
+    ui.nameInput.value = playerName;
+  }
+  let toastT = null;
+  function toast(msg) {
+    const el = $('toast');
+    if (!el) return;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    el.classList.remove('on');
+    void el.offsetWidth;
+    el.classList.add('on');
+    clearTimeout(toastT);
+    toastT = setTimeout(() => el.classList.remove('on'), 3200);
   }
 
   // ------------------------------------------------------------------ HUD helpers
@@ -3023,7 +3107,7 @@
       engine.shadowDark = [0.45, 0.53, 0.78];
       engine.cold = [0.85, 0.92, 1.09];
       engine.haze = [col[0] * 0.22, col[1] * 0.2, col[2] * 0.16];
-      engine.mist = [40, 170, 0.55];
+      engine.mist = [40, 190, 0.34];
       engine.glare = [m.light.sun[0] * 0.4, m.light.sun[1] * 0.4, m.light.sun[2] * 0.38];
     } else {
       // night: lights bloom, moonlight shadows are soft and blue
@@ -3037,6 +3121,12 @@
     }
   }
 
+  // the far view needs the background worker (it's a lot of ground to build) and a map with open air
+  function farView() {
+    if (!q.far || !useWorker() || !world) return false;
+    world.initChunks();
+    return world.farOK && !(world.map.fogFar && world.map.fogFar < q.draw + 60);
+  }
   function applyEnv() {
     const e = world.env(cam.z);
     envK = e.k;
@@ -3045,7 +3135,9 @@
     engine.rim = e.rim;
     engine.fogCol = e.fog;
     const mf = world.map;
-    engine.fog = [lerp(mf.fogNear || 60, 14, e.k), lerp(Math.min(q.fog, mf.fogFar || q.fog), 250, e.k)];
+    // with the far view the air is as clear as the day is (snowy maps keep their own murk)
+    const far = world.farOn ? Math.min(q.far, mf.fogFar || q.far) : Math.min(q.fog, mf.fogFar || q.fog);
+    engine.fog = [lerp(mf.fogNear || 80, 14, e.k), lerp(far, 250, e.k)];
   }
 
   function myState() {
@@ -3103,6 +3195,7 @@
     engine.beginBaked();
     engine.setDetail(q.detail > 0);
     world.draw(engine, cam.z);
+    if (world.farOn) world.drawFar(engine, cam.z, q.far);
     engine.setDetail(false);
 
     drawTrails();
@@ -3232,6 +3325,7 @@
   // ------------------------------------------------------------------ boot
   buildSwatches();
   applySettings();
+  if (SS.Account) SS.Account.init({ save: accountSave, apply: applyAccountSave, setName: setAccountName, toast });
   useWorld(20261117, spMap);
   startAttract();
   for (let i = 0; i < FLAKES; i++) resetFlake(i, true);

@@ -190,8 +190,15 @@ vec3 vnoiseD(vec2 p) {
 varying vec3 vCol; varying float vFog; varying vec3 vW; varying vec4 vSh;
 uniform vec3 uFogCol; uniform float uAlpha; uniform float uBright; uniform float uDetail; uniform vec3 uEye;
 uniform vec3 uShadowDark; uniform vec3 uSunDirF; uniform vec3 uHaze; uniform vec3 uCold; uniform vec3 uMist;
-uniform vec4 uCurve; uniform vec4 uCurveP; uniform vec3 uGlare;
+uniform vec4 uCurve; uniform vec4 uCurveP; uniform vec3 uGlare; uniform vec3 uCut;
 void main() {
+  // the far view only fills in beyond the detailed ground: nothing in front of the cut
+  // (mode 1, ground: only across the course's width; mode 2, trees: nothing at all)
+  if (uCut.z > 0.5 && vW.z < uCut.x) {
+    if (uCut.z > 1.5) discard;
+    float cc = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
+    if (abs(vW.x - cc) < uCut.y) discard;
+  }
   vec3 c = vCol * uBright;
   // riders' shadows, tinted by the sky
   float sh = shadowAt(vSh);
@@ -234,13 +241,37 @@ void main() {
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
       c *= mix(1.0, 0.92 + n * 0.13, snow);
       float d = dCam;
-      // ripples in the snow: their sunny sides light up, their lee sides fall into shade
-      // (soft, round and only up close: long thin ripples turned into streaks at speed)
-      if (d < 45.0) {
-        vec2 rp = vec2(vW.x * 0.6 + vW.z * 0.12, vW.z * 0.55 - vW.x * 0.12);
-        vec2 gr = vnoiseD(rp).yz * 0.8 + vnoiseD(rp * 2.3 + 5.0).yz * 0.46;
-        float bump = -dot(gr, normalize(uSunDirF.xz + vec2(0.0001))) * 0.04 * smoothstep(45.0, 8.0, d);
-        c *= 1.0 + bump * snow * (1.0 - sh * 0.8) * uDetail;
+      // the snow's own relief, lit per pixel: wind drifts a few metres across (deeper off the groomed
+      // piste), ripples and then grain up close. Faces turned to the sun light up; the lee sides fall
+      // into cold, sky-blue shade, which is what makes real snow read as snow and not white paint.
+      if (d < 170.0) {
+        vec2 sd = normalize(uSunDirF.xz + vec2(0.0001));
+        float sunY = max(uSunDirF.y, 0.18);
+        float off = 1.0;
+        if (uCurve.x > -0.5) {
+          float cx2 = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
+          off = mix(0.45, 1.7, smoothstep(uCurveP.w - 2.0, uCurveP.w + 4.0, abs(vW.x - cx2)));
+        }
+        // drifts: stretched across the fall line, about 9 x 16 m
+        vec2 a1 = vec2(0.105, 0.035), b1 = vec2(-0.02, 0.062);
+        vec3 n1 = vnoiseD(vec2(dot(vW.xz, a1), dot(vW.xz, b1)) + 3.7);
+        vec2 g = (n1.y * a1 + n1.z * b1) * 0.55 * off * smoothstep(170.0, 90.0, d);
+        // ripples, about 1.5 m
+        if (d < 60.0) {
+          vec2 a2 = vec2(0.62, 0.14), b2 = vec2(-0.16, 0.7);
+          vec3 n2 = vnoiseD(vec2(dot(vW.xz, a2), dot(vW.xz, b2)) + 9.1);
+          g += (n2.y * a2 + n2.z * b2) * 0.05 * (0.6 + 0.6 * off) * smoothstep(60.0, 25.0, d);
+        }
+        // grain, a hand's width, only right under you
+        if (d < 14.0) {
+          vec3 n3 = vnoiseD(vW.xz * 3.3 + 1.3);
+          g += n3.yz * 3.3 * 0.008 * smoothstep(14.0, 5.0, d);
+        }
+        float lit = -dot(g, sd) / sunY;
+        float sunPart = (1.0 - sh) * smoothstep(0.35, 0.7, lum);
+        c *= 1.0 + clamp(lit, -0.6, 0.6) * 0.32 * snow * sunPart * uDetail;
+        // the shaded sides pick up the blue of the sky
+        c *= mix(vec3(1.0), uCold, clamp(-lit * 1.6, 0.0, 1.0) * 0.55 * snow * uDetail);
       }
       // glitter that flickers as the camera moves, like real snow under lights
       if (d < 40.0) {
@@ -802,8 +833,14 @@ void main() {
       if (cv) { gl.uniform4f(u.uCurve, cv.a1, cv.p1, cv.a2, cv.p2); gl.uniform4f(u.uCurveP, cv.ph1, cv.ph2, cv.c0, cv.half); }
       else gl.uniform4f(u.uCurve, -1, 1, 0, 1);
       gl.uniform3fv(u.uGlare, this.glare);
+      gl.uniform3f(u.uCut, 0, 0, 0);
       this.attribs([0, 1]);
       return u;
+    }
+
+    // the far view's cut (see FS_BAKED): z where the detailed ground ends, half-width of it, mode
+    setCut(z, half, mode) {
+      this.gl.uniform3f(this.baked.u.uCut, z, half, mode);
     }
 
     // turn the piste grooming on or off for what's drawn next (off for far mountains etc.)
