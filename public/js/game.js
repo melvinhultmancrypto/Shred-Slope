@@ -142,6 +142,9 @@
   let countdownT = 0;
   let finishedAt = 0;
   let myColor = settings.outfit | 0;
+  // what you wear: your locker (signed in, see shop.js) or the free outfit you picked
+  const myLook = () => (SS.Shop && SS.Shop.look()) || (settings.outfit | 0);
+  let shotLook = null; // the look being tried on in the shop's preview
   let shake = 0;
   let lastSend = 0;
   let zoneName = '';
@@ -1818,6 +1821,9 @@
       case 'votes':
         onVotes(m);
         break;
+      case 'coins':
+        if (SS.Shop) SS.Shop.onRaceCoins(m);
+        break;
       case 'needAccount':
         mpError('Create an account to play multiplayer.');
         if (SS.Account && SS.Account.online) SS.Account.open('up', ui.servers);
@@ -1943,7 +1949,7 @@
     tag.style.setProperty('--c', SS.PALETTE[p.color % 10].css);
     tag.style.display = 'none';
     ui.tags.appendChild(tag);
-    remotes.set(p.id, { id: p.id, name: p.name, color: p.color, buf: [], tag, st: null });
+    remotes.set(p.id, { id: p.id, name: p.name, color: p.color, look: p.look || null, buf: [], tag, st: null });
     trails.set(p.id, new Trail());
   }
 
@@ -2107,6 +2113,16 @@
     Sfx.init();
   }
 
+  // a cup: its mountain and its course (the same seed for everyone)
+  let cupRun = null;
+  function startCup(c) {
+    cupRun = c;
+    lastSpSeed = c.seed;
+    previewLock = false;
+    startSingle(true, c.map);
+    setTimeout(() => feed(c.name + ': your best score counts'), 1800);
+  }
+
   function startSingle(sameMountain, mapId) {
     if (mapId) { spMap = mapId; settings.map = mapId; store.set(SET_KEY, settings); }
     const reuse = !sameMountain && mode === 'menu' && world && world.mapId === spMap ? world.seed : null;
@@ -2163,6 +2179,8 @@
   function showSpResults() {
     phase = 'results';
     const map = world.map, pr = prog(map.id);
+    // a cup run: the cup's mountain and course, ridden from the cups screen
+    const isCup = !!(cupRun && world.mapId === cupRun.map && world.seed === cupRun.seed);
     const mapBest = run.score > pr.best;
     if (mapBest) pr.best = Math.round(run.score);
     const got = map.goals.map((g) => goalMet(g, true));
@@ -2192,7 +2210,9 @@
       <div><span>Biggest air</span><b>${run.bigAir.toFixed(1)} s</b></div>
       <div><span>Bails</span><b>${run.bails}</b></div>
       <div><span>Best here</span><b>${fmt(pr.best)}</b></div>
-    </div>`;
+    </div>
+    <div id="resCoins" class="res-coins">${isCup ? `<b class="cup-tag">${esc(cupRun.name)}</b> ` : ''}<span class="dim">${SS.Shop && SS.Shop.signedIn ? 'Counting your coins…' : SS.Account && SS.Account.online ? 'Create an account to earn coins for your runs and spend them in the shop.' : ''}</span></div>`;
+    reportRun(isCup);
     show(ui.againBtn, true);
     show(ui.newBtn, true);
     show(ui.resMapsBtn, true);
@@ -2202,11 +2222,27 @@
     show(ui.results, true);
   }
 
+  // coins for the run (and the cup leaderboard), filled in when the server answers
+  async function reportRun(isCup) {
+    if (!SS.Shop || !SS.Shop.signedIn) return;
+    const r = await SS.Shop.reportRun({ map: world.mapId, score: Math.round(run.score), time: Math.round(run.finalTime), seed: world.seed, cup: isCup ? cupRun.kind : undefined });
+    const el = $('resCoins');
+    if (!el || phase !== 'results') return;
+    const parts = [];
+    if (isCup) parts.push(`<b class="cup-tag">${esc(cupRun.name)}</b>`);
+    if (r.status === 200) {
+      parts.push(`<span class="got"><i class="coin"></i>+${fmt(r.earned)} coins</span>`);
+      if (r.cup && r.cup.me) parts.push(`<span>Your best <b>${fmt(r.cup.me.best)}</b>, <b>#${r.cup.me.rank}</b> of ${r.cup.n}</span>`);
+      parts.push(`<span class="dim">You have ${fmt(r.coins)}</span>`);
+    } else parts.push(`<span class="dim">${esc(r.error || 'Couldn’t reach the server for your coins.')}</span>`);
+    el.innerHTML = parts.join(' ');
+  }
+
   function showMpResults(rows) {
     ui.resTitle.innerHTML = `ROUND RESULTS<small>${esc(world.map.name)}</small>`;
     ui.results.style.setProperty('--acc', world.map.accent);
     ui.resBody.innerHTML = rows.length
-      ? `<table class="rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'Didn\'t finish (' + fmt(r.dist) + ' m)'}</td><td class="n"><b>${fmt(r.score)}</b></td></tr>`).join('')}</table>`
+      ? `<table class="rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'Didn\'t finish (' + fmt(r.dist) + ' m)'}</td><td class="n"><b>${fmt(r.score)}</b>${r.coins ? `<span class="res-coin"><i class="coin"></i>+${r.coins}</span>` : ''}</td></tr>`).join('')}</table>`
       : '<p class="small">Nobody finished this round.</p>';
     show(ui.againBtn, false);
     show(ui.newBtn, false);
@@ -2217,7 +2253,8 @@
   }
 
   function hideOverlays() {
-    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps, $('auth')]) if (el) show(el, false);
+    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps, $('auth'), $('store'), $('cups')]) if (el) show(el, false);
+    setPreview(null);
     show(ui.mapIntro, false);
   }
 
@@ -2727,28 +2764,42 @@
   portraitCv.width = 184; portraitCv.height = 224;
   portraitCv.className = 'shot';
   let portraitWant = true, portraitAt = performance.now() + 1200;
-  function takePortrait() {
-    portraitWant = false;
+  // a photo of your rider standing on the snow, taken by rendering the title-screen mountain once
+  // with the camera in front of them, before the frame you see (so it never shows on screen)
+  // o: { look, yaw (around the rider), d (distance), cy / ty (camera and aim height), w, h (crop of the screen) }
+  function shoot(cv, o) {
     const keepP = {}, keepC = Object.assign({}, cam);
     const fields = ['x', 'y', 'z', 'heading', 'spin', 'flip', 'grounded', 'crouch', 'lean', 'comp', 'slide', 'yawOff', 'stance', 'bailT', 'grabAmt', 'airT', 'tumble', 'tumbleRoll', 'wind', 'steerS', 'spinVel', 'flipVel', 'wallRoll'];
     for (const k of fields) keepP[k] = P[k];
     // stand still on the snow and look into the lens
     Object.assign(P, { y: world.H(P.x, P.z), grounded: true, spin: 0, flip: 0, crouch: 0.1, lean: 0, comp: 0, slide: 0, yawOff: 0, stance: 0, bailT: 0, grabAmt: 0, airT: 0, tumble: 0, tumbleRoll: 0, wind: 0, steerS: 0, spinVel: 0, flipVel: 0, wallRoll: 0 });
-    const yaw = P.heading + 0.62, d = 1.6;
-    Object.assign(cam, { x: P.x + Math.sin(yaw) * d, z: P.z + Math.cos(yaw) * d, y: P.y + 1.66, tx: P.x, tz: P.z, ty: P.y + 1.56, fov: 0.6, roll: 0, bump: 0 });
+    const yaw = P.heading + o.yaw;
+    Object.assign(cam, { x: P.x + Math.sin(yaw) * o.d, z: P.z + Math.cos(yaw) * o.d, y: P.y + o.cy, tx: P.x, tz: P.z, ty: P.y + o.ty, fov: 0.6, roll: 0, bump: 0 });
     const sk = shake;
     shake = 0;
+    shotLook = o.look || null;
     try {
       render(null);
       const c = engine.canvas, W = c.width, H = c.height;
-      const ch = H * 0.7, cw = (ch * 92) / 112;
-      const pc = portraitCv.getContext('2d');
-      pc.drawImage(c, (W - cw) / 2, (H - ch) / 2, cw, ch, 0, 0, portraitCv.width, portraitCv.height);
-      if (portraitCv.parentNode !== ui.avatar) { ui.avatar.innerHTML = ''; ui.avatar.appendChild(portraitCv); }
-    } catch (e) { /* keep the drawn one */ }
+      const ch = H * o.h, cw = Math.min(W, ch * (cv.width / cv.height));
+      cv.getContext('2d').drawImage(c, (W - cw) / 2, (H - ch) / 2, cw, ch, 0, 0, cv.width, cv.height);
+    } catch (e) { /* keep the old picture */ }
+    shotLook = null;
     shake = sk;
     Object.assign(P, keepP);
     Object.assign(cam, keepC);
+  }
+  function takePortrait() {
+    portraitWant = false;
+    shoot(portraitCv, { yaw: 0.62, d: 1.6, cy: 1.66, ty: 1.56, h: 0.7 });
+    if (portraitCv.parentNode !== ui.avatar) { ui.avatar.innerHTML = ''; ui.avatar.appendChild(portraitCv); }
+  }
+  // the shop's try-on: the whole rider, slowly turning
+  let preview = null;
+  function setPreview(cv, look) {
+    if (!cv) { preview = null; return; }
+    const t = preview ? preview.t : 0;
+    preview = { cv, look, t };
   }
   function drawAvatar() {
     portraitWant = true;
@@ -2774,6 +2825,13 @@
   }
 
   // outfit picker
+  function setOutfit(i) {
+    settings.outfit = i;
+    myColor = i;
+    store.set(SET_KEY, settings);
+    buildSwatches();
+    accountChanged();
+  }
   function buildSwatches() {
     ui.swatches.innerHTML = '';
     SS.PALETTE.forEach((p, i) => {
@@ -2781,18 +2839,18 @@
       b.type = 'button';
       b.title = p.name;
       b.style.background = `linear-gradient(135deg, ${p.css} 0 60%, rgb(${p.board.map((v) => Math.round(v * 255)).join(',')}) 60%)`;
-      b.classList.toggle('sel', i === (settings.outfit | 0));
+      const lk = myLook();
+      b.classList.toggle('sel', typeof lk === 'object' ? lk.suit === SS.ITEMS.FREE_SUITS[i] : i === (settings.outfit | 0));
       b.addEventListener('click', (e) => {
         e.currentTarget.blur();
-        settings.outfit = i;
-        myColor = i;
-        store.set(SET_KEY, settings);
-        buildSwatches();
-        accountChanged();
+        setOutfit(i);
+        if (SS.Shop) SS.Shop.wearFree(i);
       });
       ui.swatches.appendChild(b);
     });
-    ui.outfitName.textContent = SS.PALETTE[settings.outfit | 0].name;
+    const lk = myLook();
+    const suit = typeof lk === 'object' ? SS.ITEMS.get('suit', lk.suit) : null;
+    ui.outfitName.textContent = suit ? suit.name : SS.PALETTE[settings.outfit | 0].name;
     drawAvatar();
   }
 
@@ -3400,7 +3458,7 @@
       SS.drawRider(engine, world, shadowList[0], 0);
       const near = [];
       if (rivals.length) { const o = []; rivalStates(o); for (const r of o) if (Math.abs(r.st.z - P.z) < 12 && Math.abs(r.st.x - P.x) < 12) near.push(r); }
-      for (const r of remotes.values()) if (r.st && racers.has(r.id) && Math.abs(r.st.z - P.z) < 12 && Math.abs(r.st.x - P.x) < 12) near.push({ st: r.st, color: r.color });
+      for (const r of remotes.values()) if (r.st && racers.has(r.id) && Math.abs(r.st.z - P.z) < 12 && Math.abs(r.st.x - P.x) < 12) near.push({ st: r.st, color: r.look || r.color });
       for (const r of near) { SS.drawRider(engine, world, r.st, r.color); shadowList.push(r.st); }
       engine.endShadow();
     }
@@ -3439,10 +3497,10 @@
     riderList.length = 0;
     const showMe = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
     if (showMe && P.x !== undefined) {
-      riderList.push({ st: shadowList[0] || myState(), color: mode === 'mp' ? myColor : settings.outfit | 0, alpha: 1 });
+      riderList.push({ st: shadowList[0] || myState(), color: shotLook || myLook(), alpha: 1 });
     }
     for (const r of remotes.values()) {
-      if (r.st && racers.has(r.id) && Math.hypot(r.st.x - eyeV[0], r.st.y + 1 - eyeV[1], r.st.z - eyeV[2]) > 3.2) riderList.push({ st: r.st, color: r.color, alpha: 1 });
+      if (r.st && racers.has(r.id) && Math.hypot(r.st.x - eyeV[0], r.st.y + 1 - eyeV[1], r.st.z - eyeV[2]) > 3.2) riderList.push({ st: r.st, color: r.look || r.color, alpha: 1 });
     }
     if (g && Math.hypot(g.x - eyeV[0], g.y + 1 - eyeV[1], g.z - eyeV[2]) > 3.2) riderList.push({ st: g, color: 8, alpha: 0.35 });
     if (rivals.length && showMe) rivalStates(riderList);
@@ -3551,6 +3609,10 @@
     update(dt);
     // a fresh season-pass photo, taken before the frame you see so it never shows on screen
     if (portraitWant && world && mode === 'menu' && phase === 'attract' && P.x !== undefined && P.bailT <= 0 && !hidden(ui.title) && now > portraitAt) takePortrait();
+    if (preview && world && mode === 'menu' && phase === 'attract' && P.x !== undefined) {
+      preview.t += dt;
+      if ((preview.n = (preview.n || 0) + 1) % 2 === 0 || preview.t < 0.2) shoot(preview.cv, { look: preview.look, yaw: 0.62 + preview.t * 0.55, d: 3.7, cy: 1.25, ty: 0.92, h: 0.92 });
+    }
     const g = ghostState();
     render(g);
     updateTags(g);
@@ -3562,6 +3624,16 @@
   // ------------------------------------------------------------------ boot
   buildSwatches();
   applySettings();
+  if (SS.Shop) {
+    SS.Shop.init({
+      preview: (cv, look) => setPreview(cv, look),
+      lookChanged: () => buildSwatches(),
+      outfit: () => settings.outfit | 0,
+      setOutfit: (i) => setOutfit(i),
+      startCup,
+      toast,
+    });
+  }
   if (SS.Account) SS.Account.init({ save: accountSave, apply: applyAccountSave, setName: setAccountName, toast });
   useWorld(20261117, spMap);
   startAttract();

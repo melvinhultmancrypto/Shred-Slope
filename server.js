@@ -58,7 +58,8 @@ const MAPS = [
   { id: 'yog24', name: 'Gangwon 2024 Youth Park' },
 ];
 
-accounts.init(MAPS.map((m) => m.id));
+accounts.init(MAPS);
+const ITEMS = require('./public/js/items.js');
 
 const SERVER_DEFS = [
   { id: 1, name: 'Server 1 · Avalanche' },
@@ -378,6 +379,17 @@ class Room {
       rows.push({ id: p.id, name: p.name, color: p.color, score: Math.round(p.score), time: p.time, fin: p.fin, dist: Math.round(p.dist) });
     }
     rows.sort((a, b) => (b.fin - a.fin) || (b.score - a.score) || (b.dist - a.dist));
+    // coins for the podium (and a little for everyone who finished) when at least two rode it
+    if (rows.length >= 2) {
+      rows.forEach((r, i) => {
+        const p = this.players.get(r.id) || this.gone.get(r.id);
+        if (!p || !p.account || !r.fin) return;
+        const n = i < ITEMS.RACE_PRIZES.length ? ITEMS.RACE_PRIZES[i] : ITEMS.RACE_FINISH;
+        const total = accounts.award(p.account, n);
+        r.coins = n;
+        if (total != null && this.players.has(p.id)) this.send(p, { t: 'coins', earned: n, coins: total, place: i + 1 });
+      });
+    }
     this.results = rows;
     this.gone.clear();
     this.setPhase('results', RESULTS_MS);
@@ -415,7 +427,7 @@ class Room {
     if (!account && accounts.nameTaken(n)) n = cleanName(name).slice(0, 10) + ' guest';
     const names = new Set([...this.players.values()].map((p) => p.name.toLowerCase()));
     for (let k = 2; names.has(n.toLowerCase()); k++) n = cleanName(name).slice(0, 13) + ' ' + k;
-    const p = { id: nextId++, name: n, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0, voice: false };
+    const p = { id: nextId++, name: n, account: account || null, look: account ? accounts.lookFor(account) : null, color: this.freeColor(pref), conn, state: null, score: 0, dist: 0, fin: false, time: 0, voice: false };
     this.players.set(p.id, p);
     // join the current round during the countdown, or in the first 30 s of a race (you start at the top)
     const joinsRound = this.phase === 'countdown' || (this.phase === 'racing' && Date.now() - this.raceStart < LATE_JOIN_MS);
@@ -426,11 +438,11 @@ class Room {
       name: p.name,
       color: p.color,
       server: { id: this.id, name: this.name, max: MAX_PLAYERS },
-      players: [...this.players.values()].map((q) => ({ id: q.id, name: q.name, color: q.color, voice: q.voice })),
+      players: [...this.players.values()].map((q) => ({ id: q.id, name: q.name, color: q.color, look: q.look, voice: q.voice })),
       ice: ICE_SERVERS,
       votes: this.votesMsg(),
     }));
-    this.broadcast({ t: 'join', p: { id: p.id, name: p.name, color: p.color }, racers: [...this.racers] }, p);
+    this.broadcast({ t: 'join', p: { id: p.id, name: p.name, color: p.color, look: p.look }, racers: [...this.racers] }, p);
     log(`[${this.name}] + ${p.name} (${this.players.size}/${MAX_PLAYERS})`);
     if (this.phase === 'idle') this.startCountdown();
     return p;
@@ -543,7 +555,7 @@ const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
     return res.end(JSON.stringify({ servers: [...rooms.values()].map((r) => r.info()) }));
   }
-  if (url.startsWith('/api/auth/') || url === '/api/me' || url === '/api/save') return accounts.handle(req, res, url);
+  if (url.startsWith('/api/auth/') || ['/api/me', '/api/save', '/api/wallet', '/api/run', '/api/cups', '/api/shop/buy', '/api/locker/equip', '/api/inbox/seen'].includes(url)) return accounts.handle(req, res, url);
   if (req.method !== 'GET' && req.method !== 'HEAD') {
     res.writeHead(405);
     return res.end();

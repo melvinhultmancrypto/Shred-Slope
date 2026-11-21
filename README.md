@@ -9,6 +9,7 @@ A 3D snowboarding game that runs in the browser. Pick one of twenty-three mounta
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds. You need an account to join (guests can still ride singleplayer).
 - **Voice chat:** talk to the other riders on your server. When you join, the game asks whether to turn your mic on (open mic, push-to-talk on `V`, or no voice), with a "don't ask again" box. You can change it any time in Settings, mute anyone in the voice list, and riders without a mic still hear everyone.
 - **Map votes:** in multiplayer, tap the **NEXT: … · VOTE** chip at the top of the screen (or **VOTE FOR A MAP** in the menu) and pick a mountain. The next round goes to the mountain with the most votes; if more than half the server votes for one during the countdown, the round switches to it straight away.
+- **Coins, shop, locker and cups:** with an account you earn coins (play money, no real money involved) for every run, every new star, multiplayer podiums and the Daily and Weekly Cups, and spend them in the **Shop** on suits, boards, helmets and goggles, which you try on a turning 3D rider before you buy. The **Locker** puts on what you own, and other riders see your look in multiplayer. See [Coins, the shop and the cups](#coins-the-shop-and-the-cups).
 - **Map pictures:** every mountain's card shows a real shot from the game: a rider over one of its jumps, on its longest rail, above the superpipe's lip or off a cliff.
 - **Looks:** a detailed rider in a puffer jacket with a broad band across the chest and sleeves, a neck warmer pulled up to the nose, a hard-shell helmet and big framed goggles with mirrored lenses, straight pants, mittens and strap bindings. The season pass shows a real photo of your rider in the outfit you pick, taken on the mountain behind the title screen, board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
 - **Far view:** past the detailed course, a lighter version of the whole valley (ground, trees and the valley walls) runs on for another 1.2 to 1.7 km, built in the background, so you look down the mountain instead of into fog. On High and Medium; Low keeps the fog.
@@ -143,19 +144,44 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 - **Voice chat** goes straight between the riders' browsers (WebRTC, peer to peer); the server only passes along the messages that set up each connection, and only between riders who have voice on. The first time you join, the game asks whether to use your mic. Choose open mic, push-to-talk (hold `V`), or no voice, and tick "don't ask again" to skip the question next time. Settings → Voice chat changes it later (Ask / Off / Push / Open). The voice panel at the bottom left lists who's on voice; a ring lights up while someone talks, and you can mute anyone. The browser asks for mic permission the first time. Voice needs the page on `https` (Render gives you that) or `localhost`.
 - **Voice on strict networks:** voice finds a route between riders with a public STUN server. On some school or office networks that isn't enough, and those riders hear nothing. A TURN relay fixes that: set `ICE_SERVERS` (see Settings below) to your TURN server's details.
 
+## Coins, the shop and the cups
+
+Coins are play money that lives with your account on the server. They can't be bought with real money or cashed out; you earn them by riding and spend them on gear.
+
+**Earning coins** (you need an account; guests can still look around the shop and wear the ten free outfits)
+
+| What | Coins |
+| --- | --- |
+| A new account | 500 to start, plus 25 for every star you already have |
+| Finishing a singleplayer run | 10 + 1 for every 150 points, up to 150 a run |
+| Each new star (the first time you earn it) | 25 |
+| Multiplayer race (at least 2 riders) | 1st 150, 2nd 100, 3rd 60, everyone else who finishes 25 |
+| Daily Cup | 1st 1,000, 2nd 600, 3rd 400, 4th–10th 150, everyone who rode it 50 |
+| Weekly Cup | 1st 5,000, 2nd 3,000, 3rd 2,000, 4th–10th 600, everyone who rode it 150 |
+
+**The shop** (SHOP on the season pass) sells 10 suits (Candy Cane, Lumberjack plaid, Lava Flow, Arctic Camo, Retro '92, Tiger Stripe, Aurora, Stealth, Midnight Gold, Gold Medal), 7 boards, 7 helmets (including chrome and gold chrome) and 7 goggle lenses, from 250 to 3,000 coins. Tap anything to try it on the 3D rider, then BUY and CONFIRM.
+
+**The locker** (LOCKER) shows everything you own plus the ten free outfits; tap one to wear it. "Suit colours" in the board, helmet and goggles slots means whatever comes with your suit. The outfit dots on the season pass still pick the free suits.
+
+**The cups** (CUPS) are one mountain and one course (the same seed) for everyone: the **Daily Cup** runs from midnight to midnight UTC and the **Weekly Cup** from Monday to Monday. Enter as often as you like; your best score counts on the leaderboard. When a cup closes, the server pays the prizes into everyone's account and tells them their place the next time they open the game.
+
+Scores come from the players' browsers, so a determined cheater could fake one; the server checks that runs are real mountains, last at least 15 seconds, come no faster than one every 12 seconds and stay under a sane score.
+
 ## Project layout
 
 | File | What it does |
 | --- | --- |
 | `server.js` | Node server: serves the game, `/api/servers`, `/health`, and the WebSocket rooms |
-| `accounts.js` | Accounts: sign up, sign in, sign out, delete, and the saved game per account (`/api/auth/*`, `/api/me`, `/api/save`). Passwords are hashed with scrypt; sign-in attempts are rate limited per IP |
+| `accounts.js` | Accounts: sign up, sign in, sign out, delete, and the saved game per account (`/api/auth/*`, `/api/me`, `/api/save`). Passwords are hashed with scrypt; sign-in attempts are rate limited per IP. Also the coins: the wallet (`/api/wallet`), coins for runs (`/api/run`), buying and wearing gear (`/api/shop/buy`, `/api/locker/equip`), the cups and their payouts (`/api/cups`) |
 | `render.yaml` | Render Blueprint (one Starter web service with a 1 GB disk for accounts) |
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
 | `public/js/world.js` | The twenty-three mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
 | `public/js/chunks.js` | The background worker that bakes the course's 50 m chunks off the main thread (it loads `engine.js` and `world.js`) |
-| `public/js/rider.js` | The 3D snowboarder and its poses |
+| `public/js/rider.js` | The 3D snowboarder and its poses, dressed in a free outfit or a look from the locker |
+| `public/js/items.js` | Everything you can buy or wear and what it costs (shared by the browser and the server) |
+| `public/js/shop.js` | Coins on the season pass, the shop with its 3D try-on, the locker, the cups and the coins line on the results |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |
 | `public/js/account.js` | The sign in / create account screen, the account strip on the season pass, and syncing your save |

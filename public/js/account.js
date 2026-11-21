@@ -63,6 +63,7 @@
     set(OWNER_KEY, acc.name.toLowerCase());
     hooks.apply(data.save || emptySave(), true);
     hooks.setName(acc.name, true);
+    if (SS.Shop && data.wallet) SS.Shop.setWallet(data.wallet);
     render();
   }
   function signedOut(keepProgress) {
@@ -73,6 +74,7 @@
     // the progress on this computer belonged to that account, so a guest starts fresh
     if (!keepProgress) hooks.apply(emptySave(), true);
     hooks.setName(null, false);
+    if (SS.Shop) SS.Shop.setWallet(null);
     render();
   }
 
@@ -90,6 +92,7 @@
     pushing = false;
     if (r.status === 401) { signedOut(true); return; }
     if (r.status !== 200) { pushTimer = setTimeout(doPush, 15000); return; } // try again later
+    if (r.data.starCoins && SS.Shop) SS.Shop.onStarCoins(r.data.starCoins, r.data.coins); // coins for new stars
     if (pushAgain) { pushAgain = false; push(); }
   }
 
@@ -268,7 +271,7 @@
         // what this browser has (from offline play) plus what the account has
         const local = get(OWNER_KEY, '') === acc.name.toLowerCase() ? hooks.save() : emptySave();
         const both = merge(r.data.save || emptySave(), local);
-        signedIn({ token: acc.token, user: r.data.user, save: both });
+        signedIn({ token: acc.token, user: r.data.user, save: both, wallet: r.data.wallet });
         if (hasProgress(local)) push(true);
       } else if (r.status === 401) {
         signedOut(true);

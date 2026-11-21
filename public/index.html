@@ -68,7 +68,7 @@
       <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
       <p class="tag">Twenty-three mountains, from rail parks to a halfpipe and a big air final.</p>
       <div class="pass">
-        <div class="pass-head"><span class="brush">Season pass</span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></div>
+        <div class="pass-head"><span class="brush">Season pass</span><span class="pass-tally"><span id="passCoins" class="pass-coins hidden" title="Your coins (play money for the shop)"><i class="coin" aria-hidden="true"></i><b id="coinsTotal">0</b></span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></span></div>
         <div id="passAcct" class="pass-acct hidden"></div>
         <div class="pass-body">
           <div id="avatar" class="avatar" aria-hidden="true"></div>
@@ -82,6 +82,11 @@
           <button id="spBtn" class="btn" type="button">SINGLEPLAYER</button>
           <button id="mpBtn" class="btn alt" type="button">MULTIPLAYER</button>
           <button id="settingsBtn" class="btn ghost icon" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.2 0 1.8l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.8l-2-1.8 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9z" fill="currentColor"/><circle cx="12" cy="11" r="3" fill="#fff"/></svg></button>
+        </div>
+        <div class="pass-more">
+          <button id="shopBtn" class="chipbtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16l-1.5 12h-13z" fill="currentColor"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8" stroke="currentColor" stroke-width="2" fill="none"/></svg>SHOP</button>
+          <button id="lockerBtn" class="chipbtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" fill="currentColor"/><path d="M9 7h6M9 10h6" stroke="#fff" stroke-width="1.6"/><circle cx="15" cy="15" r="1.4" fill="#fff"/></svg>LOCKER</button>
+          <button id="cupsBtn" class="chipbtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v5a5 5 0 0 1-10 0z" fill="currentColor"/><path d="M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10M17 5h3v1.5A3.5 3.5 0 0 1 16.5 10" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 13v4M8 21h8l-1-4H9z" fill="currentColor" stroke="currentColor" stroke-width="1.2"/></svg>CUPS</button>
         </div>
         <div class="barcode" aria-hidden="true"></div>
       </div>
@@ -111,6 +116,41 @@
         <button id="mapNext" class="btn ghost icon arrow" type="button" aria-label="More mountains" title="More">&#9654;</button>
       </div>
       <div id="mapDots" aria-hidden="true"></div>
+    </div>
+  </section>
+
+  <!-- Shop and locker -->
+  <section id="store" class="overlay hidden" data-mode="shop">
+    <div class="panel wide store">
+      <h2 class="brush"><span class="store-tabs"><button type="button" data-mode="shop">SHOP</button><button type="button" data-mode="locker">LOCKER</button></span></h2>
+      <div id="storeCoinChip" class="coinchip hidden" title="Your coins"><i class="coin" aria-hidden="true"></i><b id="storeCoins">0</b></div>
+      <div class="store-body">
+        <div class="store-left">
+          <div class="store-preview"><canvas id="storeCv" width="440" height="560" aria-label="Your rider"></canvas></div>
+          <div id="storeAct" class="store-act"></div>
+        </div>
+        <div class="store-right">
+          <div class="store-slots" role="tablist"><button type="button" data-slot="suit">SUITS</button><button type="button" data-slot="board">BOARDS</button><button type="button" data-slot="helmet">HELMETS</button><button type="button" data-slot="goggles">GOGGLES</button></div>
+          <div id="storeGrid" class="store-grid"></div>
+          <p id="storeHint" class="small dim store-hint"></p>
+        </div>
+      </div>
+      <button id="storeBack" class="btn ghost" type="button">BACK</button>
+    </div>
+  </section>
+
+  <!-- Cups -->
+  <section id="cups" class="overlay hidden">
+    <div class="panel wide cups">
+      <h2 class="brush">CUPS</h2>
+      <p class="lead">One mountain and one course for everyone. Your best score counts, and when the cup closes the top riders win coins (everyone who rode it gets some).</p>
+      <div id="cupAcct" class="mp-acct hidden">
+        <div class="mp-acct-txt"><b>Create an account to enter the cups</b><span>Cup prizes are paid in coins, which you spend in the shop.</span></div>
+        <div class="mp-acct-btns"><button id="cupSignUp" class="btn" type="button">CREATE ACCOUNT</button><button id="cupSignIn" class="btn ghost" type="button">SIGN IN</button></div>
+      </div>
+      <div id="cupList" class="cup-list"></div>
+      <div id="cupPast" class="cup-past"></div>
+      <button id="cupsBack" class="btn ghost" type="button">BACK</button>
     </div>
   </section>
 
@@ -197,8 +237,9 @@
         <ul class="auth-perks">
           <li><i>&#9733;</i><span>Stars and best scores on all 23 mountains</span></li>
           <li><i>&#8635;</i><span>Pick up where you left off, anywhere</span></li>
-          <li><i>&#9673;</i><span>Your outfit and riding settings</span></li>
+          <li><i>&#9673;</i><span>Your outfit, gear and riding settings</span></li>
           <li><i>@</i><span>Your name, saved for multiplayer</span></li>
+          <li><i>&#9673;</i><span>Coins for every run, the shop and the cups</span></li>
         </ul>
         <svg class="auth-art" viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
           <defs><linearGradient id="aaSnow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f8ff"/><stop offset="1" stop-color="#c9d8f0"/></linearGradient></defs>
@@ -265,11 +306,13 @@
 
   <script src="js/engine.js"></script>
   <script src="js/world.js"></script>
+  <script src="js/items.js"></script>
   <script src="js/rider.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/net.js"></script>
   <script src="js/account.js"></script>
   <script src="js/voice.js"></script>
+  <script src="js/shop.js"></script>
   <script src="js/game.js"></script>
 </body>
 </html>

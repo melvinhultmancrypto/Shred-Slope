@@ -36,9 +36,10 @@
   const SKINS = ['#f0c4a0', '#8d5a3b', '#e3a982', '#c98e66', '#5c3a26', '#f5cfb3', '#b07a52', '#f2c9a8', '#6e4630', '#deaa85'];
   const HAIRS = ['#2b1d14', '#1a1a1a', '#d8b06a', '#6b3a1f', '#111111', '#a0522d', '#2b1d14', '#e0c27a', '#1a1a1a', '#4a2c1a'];
   PALETTE.forEach((p, i) => { p.skin = SKINS[i % SKINS.length]; p.hair = HAIRS[i % HAIRS.length]; Object.assign(p, STYLES[i % STYLES.length]); });
-  for (const p of PALETTE) {
-    for (const k of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'skin', 'hair']) p[k] = hex(p[k]);
-    p.patCol = p.patCol ? hex(p.patCol) : p.trim;
+  // turn a palette of #hex colours into the ready-to-draw one (done once per outfit or look)
+  function prep(p) {
+    for (const k of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'skin', 'hair']) if (typeof p[k] === 'string') p[k] = hex(p[k]);
+    p.patCol = typeof p.patCol === 'string' ? hex(p.patCol) : p.patCol || p.trim;
     // knit beanie in the jacket's accent colour
     p.beanieCol = shade(p.trim[0] + p.trim[1] + p.trim[2] > 1.5 ? p.trim : p.jacket, 0.95);
     p.yoke = [p.jacket[0] * 0.68 + p.trim[0] * 0.32, p.jacket[1] * 0.68 + p.trim[1] * 0.32, p.jacket[2] * 0.68 + p.trim[2] * 0.32];
@@ -47,9 +48,38 @@
     p.helmetDark = shade(p.helmet, p.helmet[0] > 0.6 ? 0.7 : 1.6);
     p.glove = [0.075, 0.078, 0.088];
     // goggle frame: white on a dark helmet, dark on a light one
-    p.frameCol = p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? [0.93, 0.94, 0.96] : [0.1, 0.1, 0.12];
+    p.frameCol = typeof p.frame === 'string' ? hex(p.frame) : p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? [0.93, 0.94, 0.96] : [0.1, 0.1, 0.12];
+    return p;
   }
+  const RAW = PALETTE.map((p) => Object.assign({}, p)); // the free outfits as #hex, for building looks
+  PALETTE.forEach(prep);
   SS.PALETTE = PALETTE;
+
+  // a look from the locker: a suit, plus a board, helmet and goggles that can each be "stock"
+  // (whatever comes with the suit). Built once per combination.
+  const looks = new Map();
+  function lookPalette(look) {
+    const I = SS.ITEMS;
+    const key = look.suit + '|' + look.board + '|' + look.helmet + '|' + look.goggles;
+    let p = looks.get(key);
+    if (p) return p;
+    const suit = (I && I.get('suit', look.suit)) || null;
+    let raw;
+    if (!suit || suit.pal !== undefined) raw = Object.assign({}, RAW[suit ? suit.pal : 0]);
+    else {
+      const k = I.suits.indexOf(suit);
+      raw = { name: suit.name, skin: SKINS[k % SKINS.length], hair: HAIRS[k % HAIRS.length], pat: suit.pat || 3 };
+      for (const f of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'patCol']) if (suit[f]) raw[f] = suit[f];
+    }
+    const b = I && I.get('board', look.board), h = I && I.get('helmet', look.helmet), g = I && I.get('goggles', look.goggles);
+    if (b && b.board) { raw.board = b.board; raw.stripe = b.stripe; raw.boardSh = b.shine; }
+    if (h && h.helmet) { raw.helmet = h.helmet; raw.helmetSh = h.shine; }
+    if (g && g.lens) { raw.lens = g.lens; if (g.frame) raw.frame = g.frame; }
+    p = prep(raw);
+    looks.set(key, p);
+    return p;
+  }
+  SS.lookPalette = lookPalette;
 
   const DARK = [0.06, 0.06, 0.07];
   const BIND = [0.13, 0.135, 0.15];
@@ -527,7 +557,8 @@
    */
   SS.drawRider = function (engine, world, st, colorIdx, alpha) {
     if (!meshes) build(engine);
-    const pal = PALETTE[((colorIdx % PALETTE.length) + PALETTE.length) % PALETTE.length];
+    // colorIdx: one of the free outfits (a number), or a look from the locker
+    const pal = colorIdx && typeof colorIdx === 'object' ? lookPalette(colorIdx) : PALETTE[(((colorIdx | 0) % PALETTE.length) + PALETTE.length) % PALETTE.length];
     const a = alpha === undefined ? 1 : alpha;
     engine.setLights(world.nearLamps(st.x, st.z, nearL));
     engine.setLitAlpha(a);
@@ -588,8 +619,8 @@
     M4.mul(BM, M, BT);
 
     // ---- board ----
-    engine.drawLit(meshes.top, BM, pal.board, 0, SH_BOARD);
-    engine.drawLit(meshes.gfx, BM, pal.stripe, 0, SH_BOARD);
+    engine.drawLit(meshes.top, BM, pal.board, 0, pal.boardSh || SH_BOARD);
+    engine.drawLit(meshes.gfx, BM, pal.stripe, 0, pal.boardSh || SH_BOARD);
     engine.drawLit(meshes.base, BM, BASE);
     engine.drawLit(meshes.baseGfx, BM, pal.board);
     engine.drawLit(meshes.side, BM, DARK);
@@ -696,7 +727,7 @@
       engine.cloth(0, null, 0.6, 0, 2);
       engine.drawLit(meshes.pom, HF, PATCH, 0, SH_PANTS);
       engine.cloth(0);
-    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, SH_HELMET);
+    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, pal.helmetSh || SH_HELMET);
     engine.drawLit(meshes.strap, HF, pal.frameCol, 0, SH_JACKET);
     engine.drawLit(meshes.frame, HF, pal.frameCol, 0, SH_HELMET);
     engine.drawLit(meshes.lens, HF, pal.lens, 0, SH_LENS, 3);
