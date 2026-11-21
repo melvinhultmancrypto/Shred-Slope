@@ -2,6 +2,8 @@
 
 A 3D snowboarding game that runs in the browser. Pick one of twenty-three mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, or three tight Youth Olympic parks, hit kickers and rails, land spins and flips, and race up to 9 friends online.
 
+Join the community on Discord: **[discord.gg/eW5FGXt4pj](https://discord.gg/eW5FGXt4pj)** (there's a **JOIN OUR DISCORD** button on the title screen and a link in the pause menu).
+
 - **Twenty-three mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
 - **Star challenges:** 3 stars to earn on every mountain (69 in total), saved together with your best score per mountain.
 - **Accounts:** create an account with a username and password and your stars, best runs, outfit and settings are saved on the server, so they follow you to any computer. Playing as a guest still works and keeps progress in that browser; whatever you earned as a guest joins your account when you sign up. Signed-in riders race under their account name in multiplayer.
@@ -187,6 +189,7 @@ Scores come from the players' browsers, so a determined cheater could fake one; 
 | `public/js/account.js` | The sign in / create account screen, the account strip on the season pass, and syncing your save |
 | `public/js/voice.js` | Voice chat: the mic, a WebRTC connection to each rider on voice, push-to-talk, mute and the talking rings |
 | `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id) |
+| `public/img/logo.png` | The snowboarder logo (on the title screen and the sign-in screen); `icon-64.png` and `icon-180.png` are the browser tab and home-screen icons |
 | `public/js/audio.js` | Synthesised sound effects |
 
 ## Settings

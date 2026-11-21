@@ -8,7 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230a1226'/%3E%3Cpath d='M10 44 L54 20' stroke='%23ff7a1f' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E">
+  <link rel="icon" type="image/png" href="img/icon-64.png">
+  <link rel="apple-touch-icon" href="img/icon-180.png">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -64,8 +65,9 @@
 
   <!-- Title -->
   <section id="title" class="overlay">
+    <a id="discordBtn" class="discord" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer" title="Join the Shred Slope Discord server"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor"/><circle cx="8.5" cy="11" r="1.5" fill="#5865f2"/><circle cx="15.5" cy="11" r="1.5" fill="#5865f2"/></svg><span>JOIN OUR DISCORD</span></a>
     <div class="title-wrap">
-      <h1 class="logo brush"><span>SHRED</span><span>SLOPE</span></h1>
+      <h1 class="logo brush"><span class="logo-mark" aria-hidden="true"><img src="img/logo.png" alt=""></span><span class="logo-words"><span>SHRED</span><span>SLOPE</span></span></h1>
       <p class="tag">Twenty-three mountains, from rail parks to a halfpipe and a big air final.</p>
       <div class="pass">
         <div class="pass-head"><span class="brush">Season pass</span><span class="pass-tally"><span id="passCoins" class="pass-coins hidden" title="Your coins (play money for the shop)"><i class="coin" aria-hidden="true"></i><b id="coinsTotal">0</b></span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></span></div>
@@ -178,6 +180,7 @@
       <button id="voteBtn" class="btn alt hidden" type="button">VOTE FOR A MAP</button>
       <button id="pauseSettingsBtn" class="btn ghost" type="button">SETTINGS</button>
       <button id="quitBtn" class="btn ghost" type="button">QUIT TO MENU</button>
+      <a class="discord-link" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer">Join our Discord server</a>
     </div>
   </section>
 
@@ -232,7 +235,7 @@
     <div class="authcard" role="dialog" aria-modal="true">
       <button id="authClose" class="auth-x" type="button" aria-label="Close">&times;</button>
       <div class="auth-side">
-        <div class="auth-logo brush"><span>SHRED</span><span>SLOPE</span></div>
+        <div class="auth-logo brush"><img class="auth-mark" src="img/logo.png" alt=""><span>SHRED</span><span>SLOPE</span></div>
         <p class="auth-pitch">Your season pass, on every computer.</p>
         <ul class="auth-perks">
           <li><i>&#9733;</i><span>Stars and best scores on all 23 mountains</span></li>

@@ -394,10 +394,17 @@ body.touch #boostKey { display: none; }
 /* ============================================================ title: logo + season pass */
 #title { place-items: center start; padding-left: max(5vw, 24px); background: linear-gradient(90deg, rgba(4, 9, 24, 0.8) 0%, rgba(4, 9, 24, 0.5) 38%, rgba(4, 9, 24, 0) 70%); }
 .title-wrap { width: min(560px, 92vw); text-align: left; }
-.logo { margin: 0; line-height: 0.82; transform: rotate(-3deg); transform-origin: left; }
-.logo span { display: block; font-size: clamp(56px, min(13vw, 17vh), 150px); }
-.logo span:first-child { color: #fff; text-shadow: 0 6px 0 #1b3f86, 0 18px 40px rgba(0, 0, 0, 0.5); }
-.logo span:last-child { color: var(--bib); text-shadow: 0 6px 0 #8f2a00, 0 18px 40px rgba(0, 0, 0, 0.5); }
+.logo { --lf: clamp(50px, min(11vw, 15vh), 128px); display: flex; align-items: center; gap: calc(var(--lf) * 0.16); margin: 0; line-height: 0.82; transform: rotate(-3deg); transform-origin: left; }
+.logo-words span { display: block; font-size: var(--lf); }
+.logo-words span:first-child { color: #fff; text-shadow: 0 6px 0 #1b3f86, 0 18px 40px rgba(0, 0, 0, 0.5); }
+.logo-words span:last-child { color: var(--bib); text-shadow: 0 6px 0 #8f2a00, 0 18px 40px rgba(0, 0, 0, 0.5); }
+/* the snowboarder on a white sticker */
+.logo-mark {
+  flex: none; display: grid; place-items: center; width: calc(var(--lf) * 1.45); height: calc(var(--lf) * 1.45);
+  border: 3px solid var(--ink); border-radius: 24%; background: #fff; transform: rotate(-4deg);
+  box-shadow: 5px 6px 0 #1b3f86, 0 18px 40px rgba(0, 0, 0, 0.45);
+}
+.logo-mark img { display: block; width: 86%; height: 86%; object-fit: contain; }
 .tag { font-size: 19px; font-weight: 700; margin: 14px 0 18px; text-shadow: 0 2px 6px rgba(0, 0, 0, 0.6); }
 
 .pass {
@@ -728,7 +735,7 @@ body.touch .controls { display: none; }
   .stats b { font-size: 19px; }
   #results .buttons { margin-top: 14px; }
   #resNote { display: none; }
-  .logo span { font-size: clamp(50px, 12vh, 110px); }
+  .logo { --lf: clamp(44px, 10.5vh, 96px); }
   .tag { margin: 10px 0 12px; }
   .controls { margin-top: 12px; }
 }
@@ -772,7 +779,7 @@ body.touch .controls { display: none; }
   #title { place-items: center; padding: 10px 20px; }
   .title-wrap { display: grid; grid-template-columns: auto 1fr; gap: 0 24px; align-items: center; width: min(820px, 96vw); }
   .logo { grid-row: span 2; }
-  .logo span { font-size: 64px; }
+  .logo { --lf: 56px; }
   .tag { display: none; }
   .pass-body { padding-top: 16px; }
   .avatar { width: 72px; height: 88px; }
@@ -937,6 +944,7 @@ body.touch .controls { display: none; }
     linear-gradient(165deg, #1b3f86 0%, #10204a 70%);
 }
 .auth-logo { line-height: 0.84; transform: rotate(-3deg); transform-origin: left; }
+.auth-mark { display: block; width: 74px; height: 74px; margin-bottom: 10px; padding: 7px; border: 2.5px solid #0a1840; border-radius: 18px; background: #fff; box-shadow: 4px 4px 0 #0a1840; }
 .auth-logo span { display: block; font-size: 64px; }
 .auth-logo span:first-child { color: #fff; text-shadow: 0 5px 0 #0a1840; }
 .auth-logo span:last-child { color: var(--bib); text-shadow: 0 5px 0 #8f2a00; }
@@ -1280,3 +1288,22 @@ button.vb-row:hover { background: rgba(255, 255, 255, 0.12); }
 }
 #store, #cups { overflow-y: auto; align-items: start; }
 #store .panel, #cups .panel { margin: auto 0; }
+
+/* Discord */
+.discord {
+  position: absolute; top: max(16px, env(safe-area-inset-top)); right: max(16px, env(safe-area-inset-right)); z-index: 3;
+  display: inline-flex; align-items: center; gap: 8px; padding: 9px 16px 9px 12px;
+  border: 2.5px solid var(--ink); border-radius: 14px; background: #5865f2; color: #fff; text-decoration: none;
+  font: italic 900 18px var(--brush); letter-spacing: 0.02em; box-shadow: 4px 4px 0 var(--ink);
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.discord svg { width: 24px; height: 24px; color: #fff; }
+.discord:hover { transform: translate(-1px, -1px); box-shadow: 5px 5px 0 var(--ink); }
+.discord:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+.discord:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+.discord-link { display: block; margin: 14px auto 0; font: 700 16px var(--ui); color: #4752c4; text-underline-offset: 3px; }
+.discord-link:hover { color: #5865f2; }
+@media (max-width: 700px) {
+  .discord { padding: 6px 10px 6px 8px; font-size: 14px; gap: 6px; }
+  .discord svg { width: 20px; height: 20px; }
+}
