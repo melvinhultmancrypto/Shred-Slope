@@ -22,8 +22,9 @@
   const BOOST_ACC = 7;       // extra m/s^2 while boosting
   // the snow and the air
   const MU_SNOW = 0.035;     // waxed base on packed snow
-  const DRAG_UP = 0.0016;    // air drag per m of speed², standing up
-  const DRAG_TUCK = 0.0008;  // tucked: half the frontal area
+  // standing up you settle at about 80 km/h on a park slope; tuck (W) to go well past 100
+  const DRAG_UP = 0.0034;    // air drag per m of speed², standing up (a rider in baggy outerwear)
+  const DRAG_TUCK = 0.0016;  // tucked: half the frontal area
   const DRAG_AIR = 0.0012;   // in the air, between the two
   const GRIP = 19;           // m/s²: the sideways pull an edge holds before the board skids (about 2 g)
   const BOOST_TIME = 2.8;    // seconds a full boost meter lasts
@@ -739,19 +740,29 @@
     const gk = giantAhead();
     if (gk) {
       const k = clamp((P.z - (gk.z0 - 45)) / 25, 0, 1);
-      if (v < GIANT_SPEED) v = Math.min(GIANT_SPEED, v + 7 * k * dt);
+      if (v > GIANT_SPEED) v = Math.max(GIANT_SPEED, v - 4 * k * dt);
+      else v = Math.min(GIANT_SPEED, v + 12 * k * dt); // the steep drop-in carries you up to speed
     }
     // speed check for the kicker ahead (not while boosting, and not on the snowboard cross)
     P.check = Math.max(0, (P.check || 0) - dt * 3);
     if (!gk && !boosting && !grinding && !world.map.racers) {
       const kf = kickerAhead();
       if (kf) {
-        // you never lose speed riding at a jump: coming in too fast just gives a flatter take-off (absorbLip).
-        // Too slow: tuck and pump up toward it (the small ones are fine a bit slow; the big gaps and
-        // step-ups have to be cleared, and on the tight park courses you often come in slow off the last one)
+        // ease off over the whole in-run, never more than a gentle 3.5 m/s² (no sudden braking): the
+        // jumps are built for this speed, so you get a full arc that lands in the sweet spot. Whatever
+        // is left over gives a slightly flatter take-off (absorbLip).
         const vt = Math.max(idealSpeed(kf) + 0.6, SPEED_CHECK[kf.size] || 0), d = Math.max(1, kf.z0 + kf.Lu - 3 - P.z);
-        const lo = vt - (kf.size === 'S' || kf.size === 'M' ? 2 : 0.6);
-        if (v < lo) v = Math.min(lo, v + Math.min(6, (lo * lo - v * v) / (2 * d)) * dt);
+        if (v > vt) {
+          const dec = Math.min(3.5, (v * v - vt * vt) / (2 * d));
+          v = Math.max(vt, v - dec * dt);
+          P.check = Math.max(P.check, clamp(dec / 14, 0, 0.25)); // the board turns across a touch
+        }
+        // too slow: tuck and pump up toward it (the small ones are fine a bit slow; the big gaps and
+        // step-ups have to be cleared, and on the tight park courses you often come in slow off the last one)
+        else {
+          const lo = vt - (kf.size === 'S' || kf.size === 'M' ? 2 : 0.6);
+          if (v < lo) v = Math.min(lo, v + Math.min(6, (lo * lo - v * v) / (2 * d)) * dt);
+        }
       }
     }
     P.speed = Math.max(v, P.finished || P.slide > 0.5 ? 0 : 1.2);
@@ -906,13 +917,13 @@
   function kickerAhead() {
     let best = null, bestD = 1e9;
     const tn = Math.tan(clamp(P.heading, -1.2, 1.2));
-    for (let bz = P.z - 10; bz <= P.z + 50; bz += 10) {
+    for (let bz = P.z - 10; bz <= P.z + 80; bz += 10) {
       const list = world.fb[((bz - C.Z0) / 10) | 0];
       if (!list) continue;
       for (const f of list) {
         if (f.kind !== 'kicker' || f.fn || !(SPEED_CHECK[f.size] || f.tu)) continue;
         const lip = f.z0 + f.Lu;
-        if (P.z < lip - 42 || P.z > lip - 1) continue;
+        if (P.z < lip - 70 || P.z > lip - 1) continue;
         const px = P.x + tn * (lip - P.z) * 0.6, kx = world.center(lip) + f.off;
         const dx = Math.abs(px - kx);
         if (dx > f.w + 2 || dx >= bestD) continue;
@@ -1090,7 +1101,8 @@
   }
   function absorbLip() {
     const kf = P.toRef;
-    if (!kf || P.boosting || P.pipeAir || world.map.racers || P.vz < 4 || P.vy <= 0) return 1;
+    // (not the giants: their in-run sets the speed their own landing hill is drawn for)
+    if (!kf || P.giant || P.boosting || P.pipeAir || world.map.racers || P.vz < 4 || P.vy <= 0) return 1;
     const gp = kf.gap;
     let end, aim;
     if (gp) { end = gp.az + gp.dz * gp.len * 0.85; aim = gp.az + gp.dz * gp.len * 0.4; } // onto the rail, not past it
