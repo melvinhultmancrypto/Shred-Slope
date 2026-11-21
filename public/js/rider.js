@@ -163,33 +163,31 @@
     const mk = (d) => engine.mesh(new Float32Array(d), 6);
 
     // ---- basic shapes (unit sized) ----
-    // low poly: every shape gets just a handful of sides, and the engine lights each face flat
-    const cyl = loft([{ y: -0.5, rx: 0.5, rz: 0.5 }, { y: 0.5, rx: 0.5, rz: 0.5 }], 8, { capTop: true, capBottom: true });
-    const sph = sphere(5, 8, 0.5, 0.5, 0.5);
-    const band = loft([{ y: -0.5, rx: 0.5, rz: 0.5 }, { y: 0.5, rx: 0.5, rz: 0.5 }], 10);
+    const cyl = loft([{ y: -0.5, rx: 0.5, rz: 0.5 }, { y: 0.5, rx: 0.5, rz: 0.5 }], 14, { capTop: true, capBottom: true });
+    const sph = sphere(12, 18, 0.5, 0.5, 0.5);
+    const band = loft([{ y: -0.5, rx: 0.5, rz: 0.5 }, { y: 0.5, rx: 0.5, rz: 0.5 }], 22);
 
     // ---- clothing: limbs with real radii (metres), length 1 along y ----
     // baggy fit: roomy sleeves, wide pants that stack over the boots
-    const sleeveUp = loft([{ y: 0, rx: 0.086, rz: 0.086 }, { y: 0.3, rx: 0.094, rz: 0.092 }, { y: 0.75, rx: 0.087, rz: 0.085 }, { y: 1, rx: 0.078, rz: 0.077 }], 7);
-    const sleeveLo = loft([{ y: 0, rx: 0.078, rz: 0.077 }, { y: 0.45, rx: 0.081, rz: 0.078 }, { y: 0.85, rx: 0.074, rz: 0.072 }, { y: 1, rx: 0.077, rz: 0.075 }], 7);
-    const thigh = loft([{ y: 0, rx: 0.094, rz: 0.094 }, { y: 0.35, rx: 0.104, rz: 0.102 }, { y: 0.8, rx: 0.11, rz: 0.108 }, { y: 1, rx: 0.106, rz: 0.106 }], 7);
-    const shin = loft([{ y: 0, rx: 0.118, rz: 0.108 }, { y: 0.08, rx: 0.114, rz: 0.104 }, { y: 0.3, rx: 0.102, rz: 0.097 }, { y: 0.6, rx: 0.096, rz: 0.093 }, { y: 1, rx: 0.094, rz: 0.092 }], 8, { capBottom: true });
+    const sleeveUp = loft([{ y: 0, rx: 0.086, rz: 0.086 }, { y: 0.3, rx: 0.094, rz: 0.092 }, { y: 0.75, rx: 0.087, rz: 0.085 }, { y: 1, rx: 0.078, rz: 0.077 }], 18);
+    const sleeveLo = loft([{ y: 0, rx: 0.078, rz: 0.077 }, { y: 0.45, rx: 0.081, rz: 0.078 }, { y: 0.85, rx: 0.074, rz: 0.072 }, { y: 1, rx: 0.077, rz: 0.075 }], 18);
+    const thigh = loft([{ y: 0, rx: 0.094, rz: 0.094 }, { y: 0.35, rx: 0.104, rz: 0.102 }, { y: 0.8, rx: 0.11, rz: 0.108 }, { y: 1, rx: 0.106, rz: 0.106 }], 18);
+    const shin = loft([{ y: 0, rx: 0.118, rz: 0.108 }, { y: 0.08, rx: 0.114, rz: 0.104 }, { y: 0.3, rx: 0.102, rz: 0.097 }, { y: 0.6, rx: 0.096, rz: 0.093 }, { y: 1, rx: 0.094, rz: 0.092 }], 20, { capBottom: true });
 
     // ---- jacket, in torso space: x across the shoulders, y up the spine (0..1), z toward the back ----
     const TP = 2.6;
     const tr = (y, rx, rz, oz) => ({ y, rx, rz, oz: oz || 0 });
-    const body = loft([tr(0.04, 0.186, 0.146), tr(0.2, 0.19, 0.149), tr(0.42, 0.197, 0.152, -0.004), tr(0.6, 0.206, 0.151, -0.008)], 10, { p: TP });
-    const yoke = loft([tr(0.6, 0.206, 0.151, -0.008), tr(0.72, 0.214, 0.145, -0.006), tr(0.84, 0.212, 0.131), tr(0.92, 0.176, 0.114), tr(0.97, 0.12, 0.096), tr(1.0, 0.07, 0.076)], 10, { p: TP, capTop: true });
-    const hem = loft([tr(-0.04, 0.19, 0.15), tr(0.06, 0.192, 0.152)], 10, { p: TP, capBottom: true });
+    const body = loft([tr(0.04, 0.186, 0.146), tr(0.2, 0.19, 0.149), tr(0.42, 0.197, 0.152, -0.004), tr(0.6, 0.206, 0.151, -0.008)], 26, { p: TP });
+    const yoke = loft([tr(0.6, 0.206, 0.151, -0.008), tr(0.72, 0.214, 0.145, -0.006), tr(0.84, 0.212, 0.131), tr(0.92, 0.176, 0.114), tr(0.97, 0.12, 0.096), tr(1.0, 0.07, 0.076)], 26, { p: TP, capTop: true });
+    const hem = loft([tr(-0.04, 0.19, 0.15), tr(0.06, 0.192, 0.152)], 26, { p: TP, capBottom: true });
     // hood bunched at the back of the neck, and a stand-up collar
-    const hood = sphere(4, 7, 0.125, 0.11, 0.085, 0, 0.92, 0.1);
+    const hood = sphere(8, 12, 0.125, 0.11, 0.085, 0, 0.92, 0.1);
     // a stand-up collar round the neck (with a lining, so the inside shows)
     const collarRings = [{ y: 0.86, rx: 0.125, rz: 0.112, oz: -0.004 }, { y: 0.97, rx: 0.112, rz: 0.104, oz: -0.012 }, { y: 1.06, rx: 0.108, rz: 0.102, oz: -0.016 }];
-    const CS = 9;
-    const collar = [...loft(collarRings, CS), ...loft(collarRings.map((r) => ({ ...r, rx: r.rx - 0.012, rz: r.rz - 0.012 })), CS, { inside: true })];
-    for (let j = 0; j < CS; j++) {
+    const collar = [...loft(collarRings, 22), ...loft(collarRings.map((r) => ({ ...r, rx: r.rx - 0.012, rz: r.rz - 0.012 })), 22, { inside: true })];
+    for (let j = 0; j < 22; j++) {
       // rolled top edge between the shell and the lining
-      const a0 = (j / CS) * Math.PI * 2, a1 = ((j + 1) / CS) * Math.PI * 2, r = collarRings[collarRings.length - 1];
+      const a0 = (j / 22) * Math.PI * 2, a1 = ((j + 1) / 22) * Math.PI * 2, r = collarRings[collarRings.length - 1];
       const P = (k, a) => [Math.cos(a) * (r.rx - k), r.y, Math.sin(a) * (r.rz - k) + r.oz];
       quad(collar, P(0.012, a0), P(0, a0), P(0, a1), P(0.012, a1), [0, 1, 0]);
     }
@@ -244,17 +242,17 @@
     const packLid = loft([tr(0.62, 0.121, 0.063, 0.205), tr(0.78, 0.108, 0.055, 0.2)], 18, { p: 3, capTop: true });
 
     // ---- head, in head space: +x is where the rider looks ----
-    const helmet = sphere(6, 11, 0.148, 0.14, 0.135, -0.006, 0.018, 0);
+    const helmet = sphere(12, 20, 0.145, 0.1375, 0.1325, -0.006, 0.018, 0);
     const peak = sphere(6, 12, 0.04, 0.012, 0.09, 0.118, 0.085, 0);
     const vents = [];
     for (const z of [-0.042, 0, 0.042]) vents.push(...sphere(5, 10, 0.05, 0.006, 0.011, -0.004, 0.152 - Math.abs(z) * 0.35, z));
-    const ears = [...sphere(3, 6, 0.05, 0.055, 0.016, -0.012, -0.022, 0.126), ...sphere(3, 6, 0.05, 0.055, 0.016, -0.012, -0.022, -0.126)];
+    const ears = [...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, 0.126), ...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, -0.126)];
     // face below the goggles: cheeks, nose, lips and chin; a neck gaiter pulled down; hair out the back
-    const face = sphere(5, 9, 0.1, 0.084, 0.09, 0.03, -0.075, 0);
-    const nose = sphere(3, 5, 0.022, 0.02, 0.014, 0.127, -0.07, 0);
-    const lips = sphere(3, 6, 0.008, 0.0068, 0.026, 0.118, -0.104, 0);
+    const face = sphere(12, 18, 0.098, 0.082, 0.088, 0.03, -0.075, 0);
+    const nose = sphere(8, 10, 0.021, 0.02, 0.014, 0.127, -0.07, 0);
+    const lips = sphere(6, 10, 0.008, 0.0068, 0.026, 0.118, -0.104, 0);
     // a neck warmer pulled up over the chin and mouth, to just under the nose
-    const gaiter = loft([{ y: -0.225, rx: 0.094, rz: 0.094, ox: -0.004 }, { y: -0.17, rx: 0.112, rz: 0.104, ox: 0.01 }, { y: -0.125, rx: 0.118, rz: 0.104, ox: 0.024 }, { y: -0.098, rx: 0.112, rz: 0.1, ox: 0.028 }], 9);
+    const gaiter = loft([{ y: -0.225, rx: 0.094, rz: 0.094, ox: -0.004 }, { y: -0.17, rx: 0.112, rz: 0.104, ox: 0.01 }, { y: -0.125, rx: 0.118, rz: 0.104, ox: 0.024 }, { y: -0.098, rx: 0.112, rz: 0.1, ox: 0.028 }, { y: -0.09, rx: 0.106, rz: 0.096, ox: 0.028 }], 20);
     // knit beanie: a slouchy cap, a folded cuff and a pom-pom
     const beanie = sphere(12, 20, 0.143, 0.15, 0.135, -0.014, 0.03, 0);
     const beanieCuff = loft([{ y: -0.035, rx: 0.15, rz: 0.142, ox: -0.004 }, { y: 0.02, rx: 0.152, rz: 0.144, ox: -0.006 }, { y: 0.03, rx: 0.147, rz: 0.139, ox: -0.006 }], 20);
@@ -265,15 +263,15 @@
     const goggleArc = (r, h0, h1, aMax, inset) => {
       const rows = [];
       for (const y of [h0, (h0 + h1) / 2, h1]) rows.push({ y, rx: r + (y === (h0 + h1) / 2 ? 0.004 : 0), rz: (r + (y === (h0 + h1) / 2 ? 0.004 : 0)) * 1.04 });
-      return loft(rows, 8, { a0: -aMax, a1: aMax, inside: inset });
+      return loft(rows, 16, { a0: -aMax, a1: aMax, inside: inset });
     };
     // big frameless-look goggles: a chunky frame round a wide mirrored lens
     const GY0 = -0.066, GY1 = 0.052, GA = 1.32, GT = 0.017;
     const frame = [...goggleArc(R + GT, GY0, GY1, GA), ...goggleArc(R, GY0, GY1, GA, true)];
     // top and bottom rims of the frame, and its two ends
     for (const y of [GY0, GY1]) {
-      for (let j = 0; j < 8; j++) {
-        const a = -GA + (2 * GA * j) / 8, b = -GA + (2 * GA * (j + 1)) / 8;
+      for (let j = 0; j < 16; j++) {
+        const a = -GA + (2 * GA * j) / 16, b = -GA + (2 * GA * (j + 1)) / 16;
         const P = (r, ang) => [Math.cos(ang) * r, y, Math.sin(ang) * r * 1.04];
         quad(frame, P(R, a), P(R + GT, a), P(R + GT, b), P(R, b), [0, y > 0 ? 1 : -1, 0]);
       }
@@ -283,11 +281,11 @@
       quad(frame, P(R, GY0), P(R + GT, GY0), P(R + GT, GY1), P(R, GY1), [-Math.sin(a), 0, Math.cos(a) * Math.sign(a)]);
     }
     const lens = goggleArc(R + GT + 0.0015, GY0 + 0.012, GY1 - 0.01, GA - 0.12);
-    const strap = loft([{ y: -0.024, rx: 0.152, rz: 0.142 }, { y: 0.024, rx: 0.152, rz: 0.142 }], 11);
+    const strap = loft([{ y: -0.024, rx: 0.152, rz: 0.142 }, { y: 0.024, rx: 0.152, rz: 0.142 }], 24);
 
     // ---- hands: mitt with a thumb and a gauntlet cuff (mitt points along +y) ----
     // glove: padded back of the hand, four curled fingers and a thumb (hand space: y 0..1 = wrist..fingertips)
-    const mitt = [...sphere(4, 7, 0.05, 0.5, 0.036, 0, 0.42, 0)];
+    const mitt = [...sphere(9, 14, 0.05, 0.5, 0.036, 0, 0.42, 0)];
     for (let i = 0; i < 0; i++) {
       const x = -0.03 + i * 0.02, lenK = [0.9, 1, 0.96, 0.82][i];
       const rows = [];
@@ -297,16 +295,16 @@
       }
       mitt.push(...loft(rows, 8, { capTop: true }));
     }
-    mitt.push(...loft([{ y: 0.18, rx: 0.016, rz: 0.016, ox: 0.04, oz: -0.012 }, { y: 0.42, rx: 0.015, rz: 0.015, ox: 0.054, oz: -0.024 }, { y: 0.6, rx: 0.012, rz: 0.012, ox: 0.052, oz: -0.03 }], 5, { capTop: true }));
-    const cuff = loft([{ y: 0, rx: 0.08, rz: 0.076 }, { y: 1, rx: 0.076, rz: 0.072 }], 7, { capTop: true, capBottom: true });
+    mitt.push(...loft([{ y: 0.18, rx: 0.016, rz: 0.016, ox: 0.04, oz: -0.012 }, { y: 0.42, rx: 0.015, rz: 0.015, ox: 0.054, oz: -0.024 }, { y: 0.6, rx: 0.012, rz: 0.012, ox: 0.052, oz: -0.03 }], 10, { capTop: true }));
+    const cuff = loft([{ y: 0, rx: 0.074, rz: 0.07 }, { y: 1, rx: 0.07, rz: 0.066 }], 14, { capTop: true, capBottom: true });
 
     // ---- feet: boot (toe toward +x), sole, binding plate, highback, straps ----
     const boot = loft([
       { y: 0.0, rx: 0.155, rz: 0.062, ox: 0.02 }, { y: 0.05, rx: 0.162, rz: 0.066, ox: 0.02 }, { y: 0.1, rx: 0.15, rz: 0.064, ox: 0.01 },
       { y: 0.14, rx: 0.11, rz: 0.062, ox: -0.025 }, { y: 0.22, rx: 0.088, rz: 0.06, ox: -0.035 }, { y: 0.28, rx: 0.084, rz: 0.06, ox: -0.035 },
-    ], 10, { p: 3, capTop: true });
-    const sole = loft([{ y: -0.01, rx: 0.165, rz: 0.069, ox: 0.02 }, { y: 0.025, rx: 0.166, rz: 0.07, ox: 0.02 }], 10, { p: 4, capBottom: true, capTop: true });
-    const plate = loft([{ y: 0, rx: 0.15, rz: 0.085, ox: -0.005 }, { y: 0.022, rx: 0.15, rz: 0.085, ox: -0.005 }], 8, { p: 5, capTop: true, capBottom: true });
+    ], 18, { p: 3, capTop: true });
+    const sole = loft([{ y: -0.01, rx: 0.165, rz: 0.069, ox: 0.02 }, { y: 0.025, rx: 0.166, rz: 0.07, ox: 0.02 }], 18, { p: 4, capBottom: true, capTop: true });
+    const plate = loft([{ y: 0, rx: 0.15, rz: 0.085, ox: -0.005 }, { y: 0.022, rx: 0.15, rz: 0.085, ox: -0.005 }], 16, { p: 5, capTop: true, capBottom: true });
     const highback = [
       ...loft([{ y: 0.02, rx: 0.1, rz: 0.08, ox: -0.02 }, { y: 0.18, rx: 0.106, rz: 0.084, ox: -0.03 }, { y: 0.34, rx: 0.1, rz: 0.08, ox: -0.05 }], 12, { a0: Math.PI * 0.62, a1: Math.PI * 1.38 }),
       ...loft([{ y: 0.02, rx: 0.088, rz: 0.07, ox: -0.02 }, { y: 0.18, rx: 0.094, rz: 0.074, ox: -0.03 }, { y: 0.34, rx: 0.088, rz: 0.07, ox: -0.05 }], 12, { a0: Math.PI * 0.62, a1: Math.PI * 1.38, inside: true }),
@@ -683,7 +681,7 @@
     M4.translate(L, head[0], head[1], head[2]);
     M4.rotY(L, twist + spinV * 0.55);
     M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
-    M4.scale(L, 1.02, 1.02, 1.02); // a slightly big head reads well in the low-poly style
+    M4.scale(L, 0.98, 0.98, 0.98);
     M4.mul(HF, M, L);
     engine.drawLit(meshes.face, HF, pal.skin, 0, null, 2);
     engine.drawLit(meshes.gaiter, HF, pal.patCol, 0, SH_PANTS);

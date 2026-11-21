@@ -1926,7 +1926,7 @@
         const gh = i < 9 ? this.Hk(px, pz) : this.ground(px, pz);
         const d = y + 0.12 + t * tanE - gh;
         if (d < 0) return 0;
-        s = Math.min(s, d / (t * 0.07));
+        s = Math.min(s, d / (t * 0.12)); // a soft edge, so long shadows don't break into stripes along the rows
         t *= 1.24;
       }
       return clamp(s, 0, 1);
@@ -2259,9 +2259,8 @@
         }
       }
       // layered ranges, far to near; smooth per-vertex shading: snow on gentle faces, rock on steep ones
-      // low poly: fewer, bigger faces, each one flat-shaded
-      const ranges = this.map.city ? [{ dist: 1750, depth: 260, h: 300, N: 110, rows: 5 }]
-        : [{ dist: 1780, depth: 320, h: 430, N: 120, rows: 5 }, { dist: 1400, depth: 290, h: 330, N: 150, rows: 6 }, { dist: 1060, depth: 250, h: 215, N: 180, rows: 6 }];
+      const ranges = this.map.city ? [{ dist: 1750, depth: 260, h: 300, N: 240, rows: 8 }]
+        : [{ dist: 1780, depth: 320, h: 430, N: 260, rows: 9 }, { dist: 1400, depth: 290, h: 330, N: 340, rows: 10 }, { dist: 1060, depth: 250, h: 215, N: 420, rows: 11 }];
       const sdx = sd[0], sdy = sd[1], sdz = sd[2];
       for (const R of ranges) {
         const n1 = noise(7), n2 = noise(19), n3 = noise(47), n4 = noise(130), n5 = noise(90), n6 = noise(260);
@@ -2301,25 +2300,15 @@
             const rk = 0.85 + n6(p[3] * 2.3 + p[4]) * 0.3;
             const alb = [lerp(rock[0] * rk, snow[0], sn), lerp(rock[1] * rk, snow[1], sn), lerp(rock[2] * rk, snow[2], sn)];
             const k = P0k[0] + Math.max(0, nx * sdx + ny * sdy + nz * sdz) * P0k[1];
-            vcol.push([alb[0] * k, alb[1] * k, alb[2] * k, alb[0], alb[1], alb[2]]);
+            vcol.push([alb[0] * k, alb[1] * k, alb[2] * k]);
           }
         }
         const C = (i, j) => vcol[i * (ROWS + 1) + j];
-        // each face: the snow/rock colour of its corners, lit by its own (flat) normal
-        const face = (a, b, c, ca, cb, cc) => {
-          const ux = b[0] - a[0], uy = b[1] - a[1], uz = b[2] - a[2], vx = c[0] - a[0], vy = c[1] - a[1], vz = c[2] - a[2];
-          let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-          if (nx * -a[0] + nz * -a[2] < 0) { nx = -nx; ny = -ny; nz = -nz; }
-          const l = Math.hypot(nx, ny, nz) || 1;
-          nx /= l; ny /= l; nz /= l;
-          const k = P0k[0] + Math.max(0, nx * sdx + ny * sdy + nz * sdz) * P0k[1];
-          const r = ((ca[3] + cb[3] + cc[3]) / 3) * k, g = ((ca[4] + cb[4] + cc[4]) / 3) * k, bl = ((ca[5] + cb[5] + cc[5]) / 3) * k;
-          mtn.v(a[0], a[1], a[2], r, g, bl); mtn.v(b[0], b[1], b[2], r, g, bl); mtn.v(c[0], c[1], c[2], r, g, bl);
-        };
+        const put = (i, j) => { const p = P(i, j), c = C(i, j); mtn.v(p[0], p[1], p[2], c[0], c[1], c[2]); };
         for (let i = 0; i < R.N; i++) {
           for (let j = 0; j < ROWS; j++) {
-            face(P(i, j), P(i + 1, j), P(i + 1, j + 1), C(i, j), C(i + 1, j), C(i + 1, j + 1));
-            face(P(i, j), P(i + 1, j + 1), P(i, j + 1), C(i, j), C(i + 1, j + 1), C(i, j + 1));
+            put(i, j); put(i + 1, j); put(i + 1, j + 1);
+            put(i, j); put(i + 1, j + 1); put(i, j + 1);
           }
         }
       }
@@ -2483,9 +2472,7 @@
       const rows = [];
       for (let z = z0; z <= z1 + 0.001; z += step || 2) rows.push(z);
       const nr = rows.length;
-      // per vertex: position, snow/rock colour, sun (tree and terrain shadow) and ambient occlusion;
-      // the light is worked out per triangle below, so every face is one flat colour (low poly)
-      const P = new Float32Array(nr * nc * 8);
+      const P = new Float32Array(nr * nc * 6);
       for (let i = 0; i < nr; i++) {
         const z = rows[i];
         const c = w.center(z);
@@ -2497,8 +2484,11 @@
           const e = 0.8;
           const gx = (w.ground(x + e, z) - w.ground(x - e, z)) / (2 * e);
           const gz = (w.ground(x, z + e) - w.ground(x, z - e)) / (2 * e);
+          let nx = -gx, ny = 1, nz = -gz;
+          const l = Math.hypot(nx, ny, nz);
+          nx /= l; ny /= l; nz /= l;
           const sun = M.shadows && !(w.cave && ck > 0.3) ? w.treeShadow(x, z) * w.terrainShadow(x, y, z) : 1;
-          const occ = w.groundAO(x, y, z, gx, gz);
+          w.light(nx, ny, nz, x, y, z, L3, sun, w.groundAO(x, y, z, gx, gz));
           const ao = Math.abs(off);
           let ar, ag, ab;
           if (ao < C.HALF) { ar = LT.snow[0]; ag = LT.snow[1]; ab = LT.snow[2]; }
@@ -2509,7 +2499,9 @@
             ar = lerp(ar, ice[0], ck * 0.7); ag = lerp(ag, ice[1], ck * 0.7); ab = lerp(ab, ice[2], ck * 0.7);
           }
           const steep = Math.hypot(gx, gz);
-          const rockAt = ck > 0.5 ? 0.6 : 0.95;
+          // high up the valley walls, rock bands break through the snow
+          const hi = ck < 0.5 ? clamp((ao - C.HALF - 26) / 40, 0, 1) : 0;
+          const rockAt = (ck > 0.5 ? 0.6 : 0.95) - 0.22 * hi;
           const pipeK = w.pipeArr ? w.sample(w.pipeArr, z) : 0;
           if (pipeK > 0.3 && ao >= SS.PIPE.LIP - 0.02 && ao < SS.PIPE.LIP + 0.52) { ar = 0.22; ag = 0.42; ab = 0.95; } // blue line along the coping
           else if (w.towerArr && w.sample(w.towerArr, z) > 0.5 && Math.abs(ao - M.towerHalf + 0.25) < 0.3) { ar = 0.22; ag = 0.42; ab = 0.95; }
@@ -2523,41 +2515,29 @@
             ar = lerp(ar, rock[0], kk); ag = lerp(ag, rock[1], kk); ab = lerp(ab, rock[2], kk);
           }
           let v = 0.97 + hash(x * 0.37, z * 0.29) * 0.05;
+          if (ao > C.HALF + 4 && ck < 0.5) {
+            // wind-packed patches and sun crust: snow on the slopes isn't one flat white
+            const pz = 0.5 + 0.5 * Math.sin(x * 0.043 + z * 0.021) * Math.sin(z * 0.057 - x * 0.031 + 1.7);
+            v *= 0.94 + 0.08 * pz;
+          }
           if (pipeK > 0.3 && ao < SS.PIPE.LIP - 0.3) {
             // pipe walls: cooler and darker as they steepen, with cutter lines running down the pipe
             const tw = clamp(SS.PIPE.y(ao) / SS.PIPE.H, 0, 1) * pipeK;
             ar *= 1 - 0.3 * tw; ag *= 1 - 0.2 * tw; ab *= 1 - 0.05 * tw;
             if (ao > SS.PIPE.W0) v *= (j >> 1) & 1 ? 0.95 : 1.02;
           } else if (pipeK > 0.3 && ao > SS.PIPE.LIP + 0.3 && ao < C.HALF) { ar *= 0.93; ag *= 0.95; }
-          // well off the piste the snow is crumpled into facets (it only ever rises, so nothing standing
-          // on the slope floats above it)
-          const jit = ao > C.HALF + 9 && !ck ? Math.min(1.1, (ao - C.HALF - 9) * 0.035) * hash(x * 0.71 + 3.3, z * 0.53 + 1.9) : 0;
-          const k8 = (i * nc + j) * 8;
-          P[k8] = x; P[k8 + 1] = y + jit; P[k8 + 2] = z;
-          P[k8 + 3] = ar * v; P[k8 + 4] = ag * v; P[k8 + 5] = ab * v; P[k8 + 6] = sun; P[k8 + 7] = occ;
+          const k6 = (i * nc + j) * 6;
+          P[k6] = x; P[k6 + 1] = y; P[k6 + 2] = z;
+          P[k6 + 3] = ar * L3[0] * v; P[k6 + 4] = ag * L3[1] * v; P[k6 + 5] = ab * L3[2] * v;
         }
       }
       const t = this.t;
-      const face = (a, b, c) => {
-        const A = a * 8, B = b * 8, Cc = c * 8;
-        const ux = P[B] - P[A], uy = P[B + 1] - P[A + 1], uz = P[B + 2] - P[A + 2];
-        const vx = P[Cc] - P[A], vy = P[Cc + 1] - P[A + 1], vz = P[Cc + 2] - P[A + 2];
-        let nx = uy * vz - uz * vy, ny = uz * vx - ux * vz, nz = ux * vy - uy * vx;
-        const l = Math.hypot(nx, ny, nz) || 1;
-        if (ny < 0) { nx = -nx; ny = -ny; nz = -nz; }
-        nx /= l; ny /= l; nz /= l;
-        const mx = (P[A] + P[B] + P[Cc]) / 3, my = (P[A + 1] + P[B + 1] + P[Cc + 1]) / 3, mz = (P[A + 2] + P[B + 2] + P[Cc + 2]) / 3;
-        w.light(nx, ny, nz, mx, my, mz, L3, (P[A + 6] + P[B + 6] + P[Cc + 6]) / 3, (P[A + 7] + P[B + 7] + P[Cc + 7]) / 3);
-        const r = ((P[A + 3] + P[B + 3] + P[Cc + 3]) / 3) * L3[0], g = ((P[A + 4] + P[B + 4] + P[Cc + 4]) / 3) * L3[1], bl = ((P[A + 5] + P[B + 5] + P[Cc + 5]) / 3) * L3[2];
-        t.v(P[A], P[A + 1], P[A + 2], r, g, bl);
-        t.v(P[B], P[B + 1], P[B + 2], r, g, bl);
-        t.v(P[Cc], P[Cc + 1], P[Cc + 2], r, g, bl);
-      };
+      const put = (k) => { const q = k * 6; t.v(P[q], P[q + 1], P[q + 2], P[q + 3], P[q + 4], P[q + 5]); };
       for (let i = 0; i < nr - 1; i++) {
         for (let j = 0; j < nc - 1; j++) {
           const a = i * nc + j, b = a + 1, c2 = a + nc, d = c2 + 1;
-          face(a, b, d);
-          face(a, d, c2);
+          put(a); put(b); put(d);
+          put(a); put(d); put(c2);
         }
       }
     }
@@ -2997,14 +2977,14 @@
         return;
       }
       // fir: the classic; spruce: tall and narrow; pine: tall bare trunk with a crown up top
-      const shape = kind === 'spruce' ? { trunk: 1.2, tiers: 4, rb: 1.45, step: 1.3, hh: 2.3, taper: 0.3 }
-        : kind === 'pine' ? { trunk: 4.2, tiers: 3, rb: 1.65, step: 0.9, hh: 2, taper: 0.3 }
-        : { trunk: 1.4, tiers: 3, rb: 1.95, step: 1.5, hh: 2.6, taper: 0.48 };
+      const shape = kind === 'spruce' ? { trunk: 1.2, tiers: t.near ? 8 : 4, rb: 1.4, step: t.near ? 0.78 : 1.3, hh: 1.9, taper: t.near ? 0.17 : 0.3 }
+        : kind === 'pine' ? { trunk: 4.2, tiers: t.near ? 4 : 3, rb: 1.6, step: 0.8, hh: 1.8, taper: 0.3 }
+        : { trunk: 1.4, tiers: t.near ? 6 : 3, rb: 1.85, step: t.near ? 0.88 : 1.5, hh: 2.2, taper: t.near ? 0.28 : 0.48 };
       const dark = kind === 'spruce' ? 0.8 : kind === 'pine' ? 1.12 : 1;
       green[0] *= dark; green[1] *= dark; green[2] *= dark;
       this.cyl(t.x, y, t.z, 0.2 * s, 0.14 * s, (shape.trunk + 0.3) * s, 5, BARK);
       const tiers = shape.tiers;
-      const sides = t.near ? 7 : 6; // low poly: a handful of big facets per tier
+      const sides = t.near ? 7 : 6;
       const base = shape.trunk - 0.4;
       // no tree grows perfectly straight or evenly: a slight lean, and tiers that don't quite match
       const lean = (hash(t.x * 3.1, t.z * 0.7) - 0.5) * 0.07, la = h2 * TAU;
@@ -3045,13 +3025,13 @@
     // one tier of a conifer: branch tips poking out and drooping, snow lying on the upper boughs,
     // a dark underside, and a lighter green toward the tips
     bough(x, y0, z, rb, hh, sides, green, snow, sn, seed, near) {
-      const n = sides;
+      const n = sides * 2;
       const tip = [], mid = [];
       for (let k = 0; k < n; k++) {
-        const out = k % 2 === 0; // which facets catch the snow
+        const out = k % 2 === 0;
         const a = (k / n) * TAU + seed + (hash(seed + k, 3.1) - 0.5) * 0.25;
-        const r = rb * (0.92 + hash(seed, k) * 0.16);
-        const dy = -0.2 * rb; // the bough droops at its rim
+        const r = rb * (out ? 0.95 + hash(seed, k) * 0.15 : 0.62);
+        const dy = out ? -0.22 * rb : -0.05 * rb; // tips droop
         tip.push([x + Math.cos(a) * r, y0 + dy, z + Math.sin(a) * r]);
         const rm = r * 0.5;
         mid.push([x + Math.cos(a) * rm, y0 + hh * 0.42 + dy * 0.3, z + Math.sin(a) * rm]);
@@ -3470,7 +3450,9 @@
     const o = [];
     const st = C.FINE ? 0.5 : 1.75;
     for (let v = -(C.HALF + 4); v <= C.HALF + 4 + 0.01; v += st) o.push(+v.toFixed(2));
-    for (const d of [6.5, 9.5, 13.5, 18.5, 25, 33, 43, 56, 72, 92, 118]) { o.push(C.HALF + d); o.unshift(-(C.HALF + d)); }
+    // the banks and valley walls: close enough columns that their ridges, gullies and rock bands
+    // come out sharp instead of smeared across a few huge triangles
+    for (const d of [6.5, 8, 9.5, 11.5, 13.5, 16, 18.5, 21.5, 25, 29, 33, 38, 43, 49, 56, 64, 72, 82, 92, 104, 118]) { o.push(C.HALF + d); o.unshift(-(C.HALF + d)); }
     Builder._half = C.HALF;
     Builder._fine = C.FINE;
     Builder._offs = o;
