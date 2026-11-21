@@ -559,9 +559,9 @@
       const vx = sh * P.speed + ch * P.slip, vz = ch * P.speed - sh * P.slip;
       takeoff(vx, vz);
       P.coyote = 0;
-      P.vy = railPop(P.vy, P.vy + 2.3 + 2.9 * c);
+      P.vy = railPop(P.vy, P.vy + (2.3 + 2.9 * c) * (P.absorb || 1));
     } else {
-      P.vy = railPop(P.vy, P.vy + 1.9 + 2.3 * c); // late pop off a lip
+      P.vy = railPop(P.vy, P.vy + (1.9 + 2.3 * c) * (P.absorb || 1)); // late pop off a lip
       P.coyote = 0;
     }
     P.compV -= 2.5;
@@ -593,8 +593,6 @@
   function takeoff(vx, vz) {
     if (P.surf === 2) endGrind();
     P.grounded = false;
-    P.fitDone = false;
-    P.carry = 1;
     P.vx = vx;
     P.vz = vz;
     P.airT = 0;
@@ -611,6 +609,9 @@
     P.giant = P.surf === 1 && !!P.ref && P.ref.size === 'G';
     P.toRef = P.surf === 1 && P.ref && P.ref.kind === 'kicker' && !P.ref.fn && Math.abs(P.z - (P.ref.z0 + P.ref.Lu)) < 2.5 ? P.ref : null;
     P.toV = Math.hypot(vx, vz);
+    // off a kicker faster than it's built for: a flatter take-off (the pop is soaked up the same way)
+    P.absorb = absorbLip();
+    P.vy *= P.absorb;
     P.surf = 0;
     P.coyote = 0.14;
   }
@@ -745,7 +746,7 @@
     if (!gk && !boosting && !grinding && !world.map.racers) {
       const kf = kickerAhead();
       if (kf) {
-        // you never lose speed riding at a jump: coming in too fast is sorted out in the air (fitFlight).
+        // you never lose speed riding at a jump: coming in too fast just gives a flatter take-off (absorbLip).
         // Too slow: tuck and pump up toward it (the small ones are fine a bit slow; the big gaps and
         // step-ups have to be cleared, and on the tight park courses you often come in slow off the last one)
         const vt = Math.max(idealSpeed(kf) + 0.6, SPEED_CHECK[kf.size] || 0), d = Math.max(1, kf.z0 + kf.Lu - 3 - P.z);
@@ -1065,12 +1066,14 @@
     if (P.speed > 2 && Math.random() < 0.4) emit(P.x, P.y + 0.1, P.z, rand(-1, 1), rand(0.5, 1.5), rand(-1, 1), 0.5, 0.25, 0.92, 0.95, 1, 0.6, false);
   }
 
-  // keep your speed into a jump: come in faster than a kicker is built for and, once you're off the lip
-  // (after the late-pop window), the flight is eased just enough that you still come down on its
-  // landing instead of flying onto the flat. The speed comes back when you land, so the in-run never
-  // brakes you and you ride away as fast as you came in. Boosting skips it: then the big send is yours.
+  // keep your speed into a jump: come in faster than a kicker is built for and you leave its lip on a
+  // flatter line, like a rider soaking up the lip with their knees. Your speed is never touched (no
+  // braking on the in-run, no slowing down in the air); the lower arc just brings you down on the
+  // landing instead of sailing past it. Boosting skips it: then the big send is yours.
+  const OLLIE = 2.3 + 2.9 * POP;
   function flightEnd(k, gp) {
-    let x = P.x, y = P.y, z = P.z, vx = P.vx * k, vy = P.vy * k, vz = P.vz * k;
+    // the flight off the lip with its upward speed (and a normal ollie) scaled by k
+    let x = P.x, y = P.y, z = P.z, vx = P.vx, vy = (P.vy + OLLIE) * k, vz = P.vz;
     const g = P.giant ? GIANT_G : G, dt = 1 / 60;
     for (let i = 0; i < 600; i++) {
       vy -= g * dt;
@@ -1085,30 +1088,26 @@
     }
     return z;
   }
-  function fitFlight() {
-    P.fitDone = true;
+  function absorbLip() {
     const kf = P.toRef;
-    if (!kf || P.boosting || P.pipeAir || world.map.racers || P.vz < 4) return;
+    if (!kf || P.boosting || P.pipeAir || world.map.racers || P.vz < 4 || P.vy <= 0) return 1;
     const gp = kf.gap;
     let end, aim;
     if (gp) { end = gp.az + gp.dz * gp.len * 0.85; aim = gp.az + gp.dz * gp.len * 0.4; } // onto the rail, not past it
     else if (kf.tu !== undefined) { end = kf.z0 + kf.tu + 6; aim = kf.z0 + kf.tu + 1; }
-    else { end = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.85; aim = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.55; }
-    if (!(end > 0) || flightEnd(1, gp) <= end) return;
-    let lo = 0.3, hi = 1;
+    else { end = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.85; aim = kf.z0 + kf.Lu + kf.Lt + kf.Ll * 0.5; }
+    if (!(end > 0) || flightEnd(1, gp) <= end) return 1;
+    let lo = 0.08, hi = 1;
     for (let i = 0; i < 16; i++) {
       const mid = (lo + hi) / 2;
       if (flightEnd(mid, gp) > aim) hi = mid; else lo = mid;
     }
-    const k = (lo + hi) / 2;
-    P.vx *= k; P.vy *= k; P.vz *= k;
-    P.carry = 1 / k;
+    return (lo + hi) / 2;
   }
 
   function airStep(dt, steer) {
     P.airT += dt;
     if (P.coyote > 0) P.coyote -= dt;
-    if (!P.fitDone && P.airT >= 0.15) fitFlight();
     P.vy -= (P.giant ? GIANT_G : G) * dt;
     // air drag slows the flight a little (none off the giants, whose landing hills are drawn for a clean arc)
     if (!P.giant && !P.pipeAir) {
@@ -1226,7 +1225,6 @@
       if (vn < 0) ts = Math.hypot(P.vx - vn * nx, P.vz - vn * nz);
     }
     P.speed = ts * clamp(1 - Math.max(0, impact - 7 * soft) * 0.02, 0.65, 1);
-    if (P.carry > 1) { P.speed = Math.min(MAX_SPEED, Math.max(P.speed, (P.toV || 0) * 0.97)); P.carry = 1; } // you ride away with the speed you came in with
     P.vy = groundVy;
     P.slip = 0;
     P.grounded = true;
@@ -2968,7 +2966,7 @@
     }
     setText(ui.score, 'score', fmt(mine ? run.score : (focus.score || 0)));
     setText(ui.tokenCount, 'tok', mine ? run.tokens + '/' + world.tokens.length : '-');
-    const sp = mine ? (P.grounded ? P.speed : Math.hypot(P.vx, P.vz) * (P.carry || 1)) : focus.speed || 0;
+    const sp = mine ? (P.grounded ? P.speed : Math.hypot(P.vx, P.vz)) : focus.speed || 0;
     const air = mine && !P.grounded && P.airT > 0.3 && P.bailT <= 0;
     if (air) {
       setText(ui.speedLbl, 'lbl', 'AIR TIME');
