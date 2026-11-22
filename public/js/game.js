@@ -144,7 +144,6 @@
   let myColor = settings.outfit | 0;
   // what you wear: your locker (signed in, see shop.js) or the free outfit you picked
   const myLook = () => (SS.Shop && SS.Shop.look()) || (settings.outfit | 0);
-  let shotLook = null; // the look being tried on in the shop's preview
   let shake = 0;
   let lastSend = 0;
   let zoneName = '';
@@ -2764,42 +2763,100 @@
   portraitCv.width = 184; portraitCv.height = 224;
   portraitCv.className = 'shot';
   let portraitWant = true, portraitAt = performance.now() + 1200;
-  // a photo of your rider standing on the snow, taken by rendering the title-screen mountain once
-  // with the camera in front of them, before the frame you see (so it never shows on screen)
-  // o: { look, yaw (around the rider), d (distance), cy / ty (camera and aim height), w, h (crop of the screen) }
-  function shoot(cv, o) {
-    const keepP = {}, keepC = Object.assign({}, cam);
-    const fields = ['x', 'y', 'z', 'heading', 'spin', 'flip', 'grounded', 'crouch', 'lean', 'comp', 'slide', 'yawOff', 'stance', 'bailT', 'grabAmt', 'airT', 'tumble', 'tumbleRoll', 'wind', 'steerS', 'spinVel', 'flipVel', 'wallRoll'];
-    for (const k of fields) keepP[k] = P[k];
-    // stand still on the snow and look into the lens
-    Object.assign(P, { y: world.H(P.x, P.z), grounded: true, spin: 0, flip: 0, crouch: 0.1, lean: 0, comp: 0, slide: 0, yawOff: 0, stance: 0, bailT: 0, grabAmt: 0, airT: 0, tumble: 0, tumbleRoll: 0, wind: 0, steerS: 0, spinVel: 0, flipVel: 0, wallRoll: 0 });
-    const yaw = P.heading + o.yaw;
-    Object.assign(cam, { x: P.x + Math.sin(yaw) * o.d, z: P.z + Math.cos(yaw) * o.d, y: P.y + o.cy, tx: P.x, tz: P.z, ty: P.y + o.ty, fov: 0.6, roll: 0, bump: 0 });
-    const sk = shake;
-    shake = 0;
-    shotLook = o.look || null;
+  // ---- studio shots: your rider alone on a clean backdrop with soft, even light (the season-pass
+  // photo and the shop's try-on). Drawn into a small offscreen target, read back, and laid over a
+  // painted backdrop, so they never depend on which mountain, light or slope is behind the menu.
+  const studio = { t: null, w: 0, h: 0 };
+  const STUDIO_WORLD = { nearLamps: () => null, Hk: () => 0, H: () => 0 };
+  const STAND = { x: 0, y: 0, z: 0, heading: 0, spin: 0, stance: 0, flip: 0, lean: 0, crouch: 0.12, comp: 0, grab: false, air: false, tuck: false, slide: 0, wind: 0, bail: false, tumble: 0, tumbleRoll: 0, t: 0, wallRoll: 0, bailAge: 0, bailUp: 0, bailK: 0, spinV: 0, flipV: 0, grabType: 0, grabK: 0, airT: 0 };
+  function studioShot(cv, o) {
+    const W = cv.width, H = cv.height;
+    if (!studio.t || studio.w !== W || studio.h !== H) {
+      if (studio.t) engine.freeTarget(studio.t);
+      studio.t = engine.makeTarget(W, H, true);
+      studio.w = W; studio.h = H;
+      studio.px = new Uint8Array(W * H * 4);
+      studio.cv = document.createElement('canvas');
+      studio.cv.width = W; studio.cv.height = H;
+      studio.img = studio.cv.getContext('2d').createImageData(W, H);
+    }
+    if (!studio.t.ok) return false;
+    const L = engine.light;
+    const keep = { sky: L.sky, ground: L.ground, moonDir: L.moonDir, moonCol: L.moonCol, rim: engine.rim, fog: engine.fog, fogCol: engine.fogCol, w: engine.w, h: engine.h, shadowOn: engine.shadowOn };
+    const eye = [Math.sin(o.yaw) * o.d, o.cy, Math.cos(o.yaw) * o.d], tgt = [0, o.ty, 0];
+    // a soft key light from above the camera's left shoulder, sky fill and a cool rim
+    const kx = Math.sin(o.yaw - 0.75) * 0.62, kz = Math.cos(o.yaw - 0.75) * 0.62, kl = Math.hypot(kx, 0.78, kz);
+    L.sky = [0.6, 0.64, 0.74]; L.ground = [0.34, 0.33, 0.33];
+    L.moonDir = [kx / kl, 0.78 / kl, kz / kl]; L.moonCol = [0.98, 0.95, 0.9];
+    engine.rim = [0.3, 0.38, 0.5]; engine.fog = [5000, 9000]; engine.fogCol = [0.85, 0.9, 0.96];
+    engine.shadowOn = false;
+    engine.w = W; engine.h = H;
+    STAND.t = time;
     try {
-      render(null);
-      const c = engine.canvas, W = c.width, H = c.height;
-      const ch = H * o.h, cw = Math.min(W, ch * (cv.width / cv.height));
-      cv.getContext('2d').drawImage(c, (W - cw) / 2, (H - ch) / 2, cw, ch, 0, 0, cv.width, cv.height);
-    } catch (e) { /* keep the old picture */ }
-    shotLook = null;
-    shake = sk;
-    Object.assign(P, keepP);
-    Object.assign(cam, keepC);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, studio.t.fb);
+      gl.viewport(0, 0, W, H);
+      gl.clearColor(0, 0, 0, 0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+      engine.setCamera(eye, tgt, o.fov || 0.6, 0);
+      engine.beginLit();
+      SS.drawRider(engine, STUDIO_WORLD, STAND, o.look);
+      gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, studio.px);
+    } finally {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+      Object.assign(L, { sky: keep.sky, ground: keep.ground, moonDir: keep.moonDir, moonCol: keep.moonCol });
+      Object.assign(engine, { rim: keep.rim, fog: keep.fog, fogCol: keep.fogCol, w: keep.w, h: keep.h, shadowOn: keep.shadowOn });
+      gl.viewport(0, 0, engine.w, engine.h);
+    }
+    // the rows come back bottom-up
+    const d = studio.img.data, row = W * 4;
+    for (let y = 0; y < H; y++) d.set(studio.px.subarray((H - 1 - y) * row, (H - y) * row), y * row);
+    studio.cv.getContext('2d').putImageData(studio.img, 0, 0);
+    // backdrop, a soft shadow on the floor, then the rider
+    const c2 = cv.getContext('2d');
+    const g = c2.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, o.top || '#a9cdf2'); g.addColorStop(0.6, o.mid || '#e4effc'); g.addColorStop(1, o.bottom || '#f4f8fd');
+    c2.fillStyle = g;
+    c2.fillRect(0, 0, W, H);
+    if (o.floor) {
+      const fy = H * o.floor, rx = W * 0.4;
+      c2.save();
+      c2.translate(W / 2, fy);
+      c2.scale(1, 0.2);
+      const r = c2.createRadialGradient(0, 0, 4, 0, 0, rx);
+      r.addColorStop(0, 'rgba(16, 32, 74, 0.38)');
+      r.addColorStop(1, 'rgba(16, 32, 74, 0)');
+      c2.fillStyle = r;
+      c2.beginPath(); c2.arc(0, 0, rx, 0, Math.PI * 2); c2.fill();
+      c2.restore();
+    }
+    c2.drawImage(studio.cv, 0, 0);
+    return true;
   }
   function takePortrait() {
     portraitWant = false;
-    shoot(portraitCv, { yaw: 0.62, d: 1.6, cy: 1.66, ty: 1.56, h: 0.7 });
+    if (!studioShot(portraitCv, { look: myLook(), yaw: 0.62, d: 1.55, cy: 1.66, ty: 1.52, fov: 0.6, top: '#8fbbe8', mid: '#cfe2f8', bottom: '#e6f0fb' })) return;
     if (portraitCv.parentNode !== ui.avatar) { ui.avatar.innerHTML = ''; ui.avatar.appendChild(portraitCv); }
   }
-  // the shop's try-on: the whole rider, slowly turning
+  // the shop's try-on: the whole rider, swaying gently (drag it to turn them round)
   let preview = null;
   function setPreview(cv, look) {
     if (!cv) { preview = null; return; }
-    const t = preview ? preview.t : 0;
-    preview = { cv, look, t };
+    const keep = preview && preview.cv === cv ? preview : null;
+    preview = { cv, look, t: keep ? keep.t : 0, last: keep ? keep.last : 0, drag: keep ? keep.drag : 0, held: keep ? keep.held : 0, dirty: true };
+    if (!cv.dataset.drag) {
+      cv.dataset.drag = '1';
+      let x0 = null;
+      cv.addEventListener('pointerdown', (e) => { x0 = e.clientX; cv.setPointerCapture(e.pointerId); });
+      cv.addEventListener('pointermove', (e) => {
+        if (x0 === null || !preview) return;
+        preview.drag += (e.clientX - x0) * 0.012;
+        preview.held = preview.t;
+        x0 = e.clientX;
+      });
+      const up = () => { x0 = null; };
+      cv.addEventListener('pointerup', up);
+      cv.addEventListener('pointercancel', up);
+    }
   }
   function drawAvatar() {
     portraitWant = true;
@@ -3497,7 +3554,7 @@
     riderList.length = 0;
     const showMe = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
     if (showMe && P.x !== undefined) {
-      riderList.push({ st: shadowList[0] || myState(), color: shotLook || myLook(), alpha: 1 });
+      riderList.push({ st: shadowList[0] || myState(), color: myLook(), alpha: 1 });
     }
     for (const r of remotes.values()) {
       if (r.st && racers.has(r.id) && Math.hypot(r.st.x - eyeV[0], r.st.y + 1 - eyeV[1], r.st.z - eyeV[2]) > 3.2) riderList.push({ st: r.st, color: r.look || r.color, alpha: 1 });
@@ -3608,10 +3665,25 @@
     if (world) world.ensureChunks(engine, P.z || 0, 1);
     update(dt);
     // a fresh season-pass photo, taken before the frame you see so it never shows on screen
-    if (portraitWant && world && mode === 'menu' && phase === 'attract' && P.x !== undefined && P.bailT <= 0 && !hidden(ui.title) && now > portraitAt) takePortrait();
-    if (preview && world && mode === 'menu' && phase === 'attract' && P.x !== undefined) {
-      preview.t += dt;
-      if ((preview.n = (preview.n || 0) + 1) % 2 === 0 || preview.t < 0.2) shoot(preview.cv, { look: preview.look, yaw: 0.62 + preview.t * 0.55, d: 3.7, cy: 1.25, ty: 0.92, h: 0.92 });
+    if (portraitWant && mode === 'menu' && now > portraitAt) takePortrait();
+    if (preview && mode === 'menu') {
+      // real seconds, so slow frames don't slow the turn down
+      const rdt = Math.min(0.1, Math.max(0, (now - (preview.last || now)) / 1000));
+      preview.last = now;
+      preview.t += rdt;
+      // sway gently, unless you've just turned the rider yourself; a few seconds after you let go
+      // they turn back to face you
+      const idle = preview.t - preview.held;
+      if (idle > 2.5 && preview.drag) {
+        const turns = Math.round(preview.drag / (Math.PI * 2)) * Math.PI * 2;
+        preview.drag = turns + (preview.drag - turns) * Math.exp(-rdt * 2.2);
+        if (Math.abs(preview.drag - turns) < 0.002) preview.drag = 0;
+      }
+      const sway = idle > 2.5 ? Math.sin((idle - 2.5) * 0.6) * 0.4 * Math.min(1, (idle - 2.5) / 2) : 0;
+      if ((preview.n = (preview.n || 0) + 1) % 2 === 0 || preview.dirty) {
+        preview.dirty = false;
+        studioShot(preview.cv, { look: preview.look, yaw: 0.62 + preview.drag + sway, d: 4.1, cy: 1.15, ty: 0.83, fov: 0.6, floor: 0.905 });
+      }
     }
     const g = ghostState();
     render(g);

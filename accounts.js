@@ -263,10 +263,19 @@ function cupView(c, key) {
   };
 }
 function cupsView(key) {
+  if (!ITEMS.CUPS_OPEN) return { soon: true, cups: [], past: [] };
   return { cups: ['daily', 'weekly'].map((k) => cupView(cupFor(k), key)), past: db.cups.past.slice(0, 4).map((p) => Object.assign({ mapName: mapNames[p.map] || p.map }, p)) };
 }
-// close finished cups even when nobody is asking
-setInterval(() => { for (const k of ['daily', 'weekly']) if (db.cups.live[k] && Date.now() >= db.cups.live[k].ends) cupFor(k); }, 60 * 1000).unref();
+// close finished cups even when nobody is asking. While the cups are switched off, a cup that was
+// already running still pays out when it ends, but no new one starts.
+setInterval(() => {
+  for (const k of ['daily', 'weekly']) {
+    const c = db.cups.live[k];
+    if (!c || Date.now() < c.ends) continue;
+    if (ITEMS.CUPS_OPEN) cupFor(k);
+    else { payout(c); delete db.cups.live[k]; persist(); }
+  }
+}, 60 * 1000).unref();
 
 // ---- rate limits per IP, so nobody can hammer sign-in guessing passwords
 const hits = new Map();
@@ -376,7 +385,7 @@ async function handle(req, res, url) {
       const earned = ITEMS.runCoins(score);
       addCoins(u, earned);
       let cup = null;
-      if (b.cup && ITEMS.CUPS[b.cup]) {
+      if (ITEMS.CUPS_OPEN && b.cup && ITEMS.CUPS[b.cup]) {
         const c = cupFor(b.cup);
         if (c.map === b.map && (b.seed | 0) === c.seed) {
           const e = c.scores[key];

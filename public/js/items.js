@@ -84,6 +84,7 @@
     runCoins(score) { return Math.max(0, Math.min(150, 10 + Math.floor((score || 0) / 150))); },
     RACE_PRIZES: [150, 100, 60],
     RACE_FINISH: 25,
+    CUPS_OPEN: false, // the cups are coming soon: no new cups start and runs aren't entered in one
     CUPS: {
       daily: { name: 'Daily Cup', prizes: [1000, 600, 400], top10: 150, entry: 50 },
       weekly: { name: 'Weekly Cup', prizes: [5000, 3000, 2000], top10: 600, entry: 150 },

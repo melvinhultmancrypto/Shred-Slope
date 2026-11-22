@@ -199,8 +199,8 @@
     const hint = $('storeHint');
     if (!signedIn()) hint.innerHTML = 'Create an account to earn coins and buy gear. <button type="button" class="linkbtn" data-a="up">Create one</button> or <button type="button" class="linkbtn" data-a="in">sign in</button>.';
     else hint.textContent = mode === 'shop'
-      ? `Earn coins: ${I.runCoins(0)}–150 a run, ${I.STAR_COINS} a new star, ${I.RACE_PRIZES[0]} for winning a multiplayer race, and up to ${fmt(I.CUPS.weekly.prizes[0])} in the cups.`
-      : 'Tap anything you own to wear it. Your look shows in multiplayer too.';
+      ? `Earn coins: ${I.runCoins(0)}–150 for every run, ${I.STAR_COINS} for each new star and ${I.RACE_PRIZES[0]} for winning a multiplayer race.`
+      : 'Tap anything you own to wear it. Drag the rider to turn them round. Your look shows in multiplayer too.';
   }
   function renderAct() {
     const act = $('storeAct');
@@ -409,7 +409,9 @@
     });
     $('cupSignUp').addEventListener('click', () => SS.Account && SS.Account.open('up', $('cups')));
     $('cupSignIn').addEventListener('click', () => SS.Account && SS.Account.open('in', $('cups')));
-    for (const [id, fn] of [['shopBtn', () => openStore('shop', $('title'))], ['lockerBtn', () => openStore('locker', $('title'))], ['cupsBtn', () => openCups($('title'))]]) {
+    // the cups are switched off until they're ready (CUPS_OPEN brings the screen back)
+    const cupsBtnFn = () => (I.CUPS_OPEN ? openCups($('title')) : hooks.toast('Cups are coming soon: one course for everyone, with coin prizes for the top riders'));
+    for (const [id, fn] of [['shopBtn', () => openStore('shop', $('title'))], ['lockerBtn', () => openStore('locker', $('title'))], ['cupsBtn', cupsBtnFn]]) {
       const b = $(id);
       if (b) b.addEventListener('click', (e) => { e.currentTarget.blur(); fn(); });
     }

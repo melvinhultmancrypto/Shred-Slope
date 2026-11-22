@@ -1307,3 +1307,10 @@ button.vb-row:hover { background: rgba(255, 255, 255, 0.12); }
   .discord { padding: 6px 10px 6px 8px; font-size: 14px; gap: 6px; }
   .discord svg { width: 20px; height: 20px; }
 }
+
+.chipbtn.soon { position: relative; color: #6b7894; background: #f1f4f9; }
+.chipbtn.soon svg { color: #9aa6bd; }
+.chipbtn.soon em {
+  position: absolute; top: -9px; right: -6px; padding: 1px 7px; border: 2px solid var(--ink); border-radius: 99px;
+  background: #ffd23f; color: var(--ink); font: 800 11px var(--ui); font-style: normal; letter-spacing: 0.06em; transform: rotate(6deg);
+}
