@@ -42,7 +42,7 @@
     kai: { helmet: 'vent', mask: 'gaiter', maskCol: '#2a2d33', size: 1.0 },
     mia: { helmet: 'vent', mask: 'gaiter', maskCol: '#d8d1c4', hairStyle: 'pony', hair: '#8a4a22', size: 0.95 },
     dre: { helmet: 'vent', mask: 'gaiter', maskCol: '#111214', size: 1.05 },
-    yuki: { helmet: 'peak', mask: 'balaclava', maskCol: '#34404f', size: 0.98 },
+    yuki: { helmet: 'vent', mask: 'balaclava', maskCol: '#34404f', size: 0.98 },
     rio: { helmet: 'pads', mask: 'gaiter', maskCol: '#5b3d2b', size: 1.02 },
   };
   const RIDER_IDS = Object.keys(RIDER_LOOKS);
@@ -1020,7 +1020,6 @@
       box([-0.024, 1.105, 0], [0.176, 0.335, 0.232], 0.1, { mat: BM_JACKET, paint: hoodiePaint }),
       tube([-0.012, 1.4, -0.168], [-0.012, 1.4, 0.168], 0.07, 0.07, { k: 0.07, mat: BM_JACKET, paint: hoodiePaint }),
       tube([0.0, 1.4, 0], [0.022, 1.69, 0], 0.104, 0.098, { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.1, 1.55, 0], [0.05, 0.125, 0.115], { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET }));
     // ---- neck (inside the collar)
@@ -1051,8 +1050,8 @@
       L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.064, 0.066, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
     }
     // ---- straight, wide pants down over the boots
-    L.push(ell([-0.05, 0.865, 0], [0.152, 0.14, 0.218], { bone: BN.pelvis, mat: BM_PANTS }));
-    L.push(ell([0.03, 0.85, 0], [0.12, 0.12, 0.2], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([-0.035, 0.84, 0], [0.13, 0.12, 0.2], { bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([0.03, 0.84, 0], [0.11, 0.11, 0.19], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
     for (const k of ['F', 'B']) {
       const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
       const dl = vn(vsub(an, kn));
@@ -1086,9 +1085,9 @@
     // ---- the face mask: a knit gaiter pulled up over the nose, tucked down into the collar
     const knit = (x, y, z) => 0.0011 * Math.sin(Math.atan2(z, x) * 40);
     L.push(group([
-      ell([0.018, -0.084, 0], [0.118, 0.098, 0.116], { mat: HM_MASK }),
-      tube([-0.01, -0.08, 0], [-0.022, -0.2, 0], 0.096, 0.1, { k: 0.03, mat: HM_MASK }),
-      plane([0, -0.046, 0], vn([0.12, 1, 0]), { op: 'int', k: 0.008 }),
+      ell([0.018, -0.084, 0], [0.105, 0.09, 0.1], { mat: HM_MASK }),
+      tube([-0.01, -0.08, 0], [-0.022, -0.2, 0], 0.084, 0.085, { k: 0.03, mat: HM_MASK }),
+      plane([0, -0.03, 0], vn([0.05, 1, 0]), { op: 'int', k: 0.008 }),
     ], { k: 0.006, mat: HM_MASK, bias: 0.004, disp: knit }));
     // ---- a ponytail out the back, under the helmet
     if (r.hairStyle === 'pony') {
@@ -1097,12 +1096,10 @@
       L.push(tube([-0.158, -0.1, 0], [-0.168, -0.245, 0], 0.027, 0.009, { k: 0.02, mat: HM_HAIR, disp: strand }));
       L.push(torus([-0.13, -0.07, 0], vn([-0.7, -0.7, 0]), 0.028, 0.008, { k: 0.004, mat: HM_TIE }));
     }
-    // ---- the helmet: a hard shell with a rim, four vent slots across the top
-    const shellPaint = (x, y, z, m) => (rimF(x, y, z) > -0.009 ? HM_VENT : ventF(x, y, z) < 0 ? HM_VENT : m);
-    const shell = [ell(SHELL_C, SHELL_R, { mat: HM_HAT, paint: shellPaint }), plane([0, -0.02, 0], RIM_N, { op: 'int', k: 0.008 })];
-    for (const zc of VENTS) shell.push(ell([-0.004, 0.03 + SHELL_R[1] * Math.sqrt(1 - (zc / SHELL_R[2]) ** 2), zc], [0.056, 0.01, 0.0068], { op: 'sub', k: 0.003 }));
-    L.push(group(shell, { k: 0.004, mat: HM_HAT, paint: shellPaint }));
-    cuts.push((x, y, z) => rimF(x, y, z) + 0.009, ventF);
+    // ---- the helmet: a smooth hard shell with a dark rim trim
+    const shellPaint = (x, y, z, m) => (rimF(x, y, z) > -0.009 ? HM_VENT : m);
+    L.push(group([ell(SHELL_C, SHELL_R, { mat: HM_HAT, paint: shellPaint }), plane([0, -0.02, 0], RIM_N, { op: 'int', k: 0.008 })], { k: 0.004, mat: HM_HAT, paint: shellPaint }));
+    cuts.push((x, y, z) => rimF(x, y, z) + 0.009);
     if (r.helmet === 'peak') {
       // a short visor over the goggles
       L.push(group([
@@ -1125,25 +1122,31 @@
       cuts.push((x, y, z) => ((x - HOOD_C[0]) / HOOD_R[0]) ** 2 + ((y - HOOD_C[1]) / HOOD_R[1]) ** 2 + ((z - HOOD_C[2]) / HOOD_R[2]) ** 2 - 0.86);
     }
     // ---- goggles: a big frame and lens over the eyes, the strap round the helmet
-    const gog = [];
-    gog.push(group([
-      ell([0.012, -0.01, 0], [0.122, 0.052, 0.128], { mat: HM_FRAME }),
-      plane([0.035, 0, 0], [-1, 0, 0], { op: 'int', k: 0.01 }),
-      ell([-0.004, -0.01, 0], [0.104, 0.072, 0.114], { op: 'sub', k: 0.004 }),
-      ell([0.04, -0.01, 0], [0.1, 0.038, 0.112], { op: 'sub', k: 0.005 }),
-    ], { k: 0.003, mat: HM_FRAME }));
-    gog.push(group([
-      ell([0.012, -0.01, 0], [0.1185, 0.043, 0.124], { mat: HM_LENS }),
-      ell([0.0, -0.01, 0], [0.104, 0.062, 0.108], { op: 'sub', k: 0.004 }),
-      plane([0.05, 0, 0], [-1, 0, 0], { op: 'int', k: 0.006 }),
-    ], { k: 0.002, mat: HM_LENS }));
-    for (const g of gog) L.push(S3.moved(g, 0, [0.006, 0.004, 0], 1.1));
+    // ---- ski goggles: a wide frame, a rounded rectangle curved round the face with a cut-out for
+    // the nose, a domed lens standing proud of it, and a wide strap round the back of the helmet
+    const GX = -0.02, GY = 0.002, GR = 0.14, GT = 0.011, GW = 0.152, GH = 0.043;
+    const rrect = (u, v, w, h, rc) => { const qx = Math.abs(u) - w + rc, qy = Math.abs(v) - h + rc; return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc; };
+    const gcyl = (x, y, z) => { const dx = x - GX, r = Math.hypot(dx, z); return [Math.atan2(z, dx) * GR, y - GY, r]; };
+    const gbb = [GX, GY - GH - 0.01, -0.16, 0.18, GY + GH + 0.01, 0.16];
+    L.push(S3.custom((x, y, z) => {
+      const [u, v, r] = gcyl(x, y, z);
+      const face = Math.max(rrect(u, v, GW, GH, 0.032), -(Math.hypot(u, v + GH + 0.004) - 0.027));
+      return Math.max(face, Math.abs(r - GR) - GT);
+    }, gbb, { mat: HM_FRAME }));
+    L.push(S3.custom((x, y, z) => {
+      const [u, v, r] = gcyl(x, y, z);
+      const face = Math.max(rrect(u, v, GW - 0.008, GH - 0.008, 0.025), -(Math.hypot(u, v + GH + 0.004) - 0.035));
+      const dome = 0.008 * Math.max(0, 1 - (u / GW) ** 2) * Math.max(0, 1 - (v / GH) ** 2);
+      return Math.max(face, Math.max(GR - r, r - (GR + GT + 0.004 + dome)));
+    }, gbb, { mat: HM_LENS }));
+    // a crisp edge where the lens meets the frame
+    cuts.push((x, y, z) => { const [u, v, rr] = gcyl(x, y, z); return rr < GR ? 1 : Math.max(rrect(u, v, GW - 0.008, GH - 0.008, 0.025), -(Math.hypot(u, v + GH + 0.004) - 0.035)); });
     if (!r.hood) {
-      const sr = [0.138, 0.018, 0.125];
+      const sr = [0.137, 0.021, 0.124];
       L.push(group([
-        ell([-0.016, -0.004, 0], sr, { mat: HM_STRAP }),
-        ell([-0.016, -0.004, 0], [sr[0] - 0.007, 0.03, sr[2] - 0.007], { op: 'sub', k: 0.002 }),
-        plane([0.03, 0, 0], [1, 0, 0], { op: 'int', k: 0.004 }),
+        ell([-0.016, GY, 0], sr, { mat: HM_STRAP }),
+        ell([-0.016, GY, 0], [sr[0] - 0.008, 0.04, sr[2] - 0.008], { op: 'sub', k: 0.002 }),
+        plane([0.06, 0, 0], [1, 0, 0], { op: 'int', k: 0.004 }),
       ], { k: 0.002, mat: HM_STRAP }));
     }
     return L;
