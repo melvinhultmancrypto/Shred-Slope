@@ -31,31 +31,9 @@ let ICE_SERVERS = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google
 try { if (process.env.ICE_SERVERS) ICE_SERVERS = JSON.parse(process.env.ICE_SERVERS); } catch (e) { console.warn('ICE_SERVERS is not valid JSON, using STUN only'); }
 const LATE_JOIN_MS = 30000;
 
-// the mountains rotate every round (ids match public/js/world.js)
+// the mountains the servers ride (ids match public/js/world.js): one course for now
 const MAPS = [
-  { id: 'night', name: 'Floodlit Night' },
-  { id: 'bluebird', name: 'Bluebird Peak' },
-  { id: 'sunset', name: 'Golden Ridge' },
-  { id: 'woods', name: 'Moonlit Woods' },
-  { id: 'cave', name: 'Crystal Caverns' },
-  { id: 'bigair', name: 'Big Air Valley' },
-  { id: 'railking', name: 'Rail Kingdom' },
-  { id: 'triple', name: 'Triple Giants' },
-  { id: 'slopestyle', name: 'Gold Medal Slopestyle' },
-  { id: 'jumpline', name: 'Jump Line' },
-  { id: 'cliffs', name: 'Cliff Drops' },
-  { id: 'neon', name: 'Neon Park' },
-  { id: 'bigairfinal', name: 'Big Air Final' },
-  { id: 'superpipe', name: 'Superpipe Final' },
-  { id: 'sbx', name: 'Snowboard Cross' },
-  { id: 'slopequal', name: 'Slopestyle Qualifier' },
-  { id: 'oly14', name: 'Sochi 2014 Slopestyle' },
-  { id: 'oly18', name: 'PyeongChang 2018 Slopestyle' },
-  { id: 'oly22', name: 'Beijing 2022 Slopestyle' },
-  { id: 'oly26', name: 'Livigno 2026 Slopestyle' },
-  { id: 'yog12', name: 'Innsbruck 2012 Youth Park' },
-  { id: 'yog20', name: 'Lausanne 2020 Youth Park' },
-  { id: 'yog24', name: 'Gangwon 2024 Youth Park' },
+  { id: 'slopestyle', name: 'Sundown Park' },
 ];
 
 accounts.init(MAPS);
@@ -619,5 +597,5 @@ setInterval(() => {
 }, 20000);
 
 server.listen(PORT, '0.0.0.0', () => {
-  log(`Shred Slope running on port ${PORT} with ${rooms.size} servers (max ${MAX_PLAYERS} riders each)`);
+  log(`Sendline running on port ${PORT} with ${rooms.size} servers (max ${MAX_PLAYERS} riders each)`);
 });

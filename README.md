@@ -1,62 +1,44 @@
-# Shred Slope 🏂
+# Sendline 🏂
 
-A 3D snowboarding game that runs in the browser. Pick one of twenty-three mountains, from a sunny bluebird day to an ice cave, rail parks, cliff drops, three giant kickers in a row, Olympic-style big air, halfpipe and snowboard cross, the slopestyle courses of the 2014, 2018, 2022 and 2026 Games rebuilt section by section, or three tight Youth Olympic parks, hit kickers and rails, land spins and flips, and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Drop into **Sundown Park**, a full slopestyle park at golden hour, throw real snowboard tricks (cab 540s, backside 900s, double corks, rodeos, misty flips and grabs), and race up to 9 friends online.
 
-Join the community on Discord: **[discord.gg/eW5FGXt4pj](https://discord.gg/eW5FGXt4pj)** (there's a **Join the Discord** card in the lobby, a link at the bottom of the lobby and one in the menu).
+Join the community on Discord: **[discord.gg/eW5FGXt4pj](https://discord.gg/eW5FGXt4pj)** (there's a link under the Drop in button and one in the menu).
 
-- **The lobby:** a clean, dark menu with your rider standing in the middle, holding the board, in front of a slow drone shot down one of the mountains (it moves on to the next one every so often). Drag your rider to turn them round. Tabs along the top: **Ride** (the season pass card, news, and the game mode card with the big RIDE button; Enter works too), **Locker**, **Shop**, **Pass** (your stars on every mountain), **Cups** (coming soon) and **Updates**. Pick a mountain on the **Choose your mountain** screen (the mountain shows behind the list), and after a run the **Run complete** screen shows your rider, your score split into tricks, grabs, rails, landings and snowflakes, and your best trick. The menu while riding slides in from the right; Settings has tabs (Camera, Graphics, Sound, Controls).
-- **Twenty-three mountains:** each with its own light, sky, course shape and zones (see below). Every run builds a fresh course, or you can ride the same one again against a see-through ghost of your best run.
-- **Star challenges:** 3 stars to earn on every mountain (69 in total), saved together with your best score per mountain.
+- **The lobby:** a dark rail of tabs down the left (**Play**, **Locker**, **Shop**, **Pass**, **Cups** (coming soon), **News**, and the settings gear at the bottom), the **Sendline** wordmark and your coins and account along the top, and a slow drone shot down the course behind it all. On **Play** your rider stands on the left holding the board (drag to turn them round), and on the right sits the course card with your stars and best score, the season pass card, a big lime **DROP IN** button (Enter works too) and **Multiplayer**. On phones the rail turns into a tab bar along the bottom.
+- **The rider:** an original rider built in code: a hooded anorak with a coloured yoke across the shoulders, a kangaroo pocket and a half zip, baggy pants, mitts and strap bindings, a smooth rounded helmet with a rolled rim, and wide frameless-looking goggles with a black frame and a gradient mirror lens. In the menus they stand holding the board upright.
+- **The HUD:** zone name and a course progress bar at the top left, the timer at the top centre, score, combo multiplier and snowflakes at the top right with a feed of your last banked combos under it, and a round speed gauge at the bottom right that lights up in the air. Every trick shows its full name and a breakdown of where the points came from (spin, flip, grab, airtime, landing).
+- **The camera:** a low chase camera over your right shoulder that pulls back and up when you take off, so you see the whole jump, then drops back in when you land. Far and High (a drone view) are in Settings.
+- **Run complete:** your rider on the right, your score split into tricks, grabs, rails, landings and snowflakes, your best trick, and **Run it back**.
+- **Star challenges:** 3 stars to earn on the course, saved together with your best score.
 - **Accounts:** create an account with a username and password and your stars, best runs, outfit and settings are saved on the server, so they follow you to any computer. Playing as a guest still works and keeps progress in that browser; whatever you earned as a guest joins your account when you sign up. Signed-in riders race under their account name in multiplayer.
 - **Auto rail:** ride straight at a rail and you hop onto it by yourself (it also pops you off a gap kicker toward its rail). It's on by default and can be turned off in Settings.
 - **Multiplayer:** 3 servers with up to 10 riders each. Everyone races the same course in rounds. You need an account to join (guests can still ride singleplayer).
 - **Voice chat:** talk to the other riders on your server. When you join, the game asks whether to turn your mic on (open mic, push-to-talk on `V`, or no voice), with a "don't ask again" box. You can change it any time in Settings, mute anyone in the voice list, and riders without a mic still hear everyone.
-- **Map votes:** in multiplayer, tap the **NEXT: … · VOTE** chip at the top of the screen (or **VOTE FOR A MAP** in the menu) and pick a mountain. The next round goes to the mountain with the most votes; if more than half the server votes for one during the countdown, the round switches to it straight away.
 - **Coins, shop and locker:** with an account you earn coins (play money, no real money involved) for every run, every new star and multiplayer podiums, and spend them in the **Shop** on suits, boards, helmets and goggles, shown on big cards with 3D pictures, which you try on your rider before you buy (drag to turn them round). The **Locker** puts on what you own, and other riders see your look in multiplayer. The Daily and Weekly **Cups** are coming soon. See [Coins, the shop and the cups](#coins-the-shop-and-the-cups).
-- **Map pictures:** every mountain's card shows a real shot from the game: a rider over one of its jumps, on its longest rail, above the superpipe's lip or off a cliff.
-- **Looks:** a clean rider in a smooth puffer jacket with a broad band across the chest and sleeves and a tall funnel collar zipped up to the chin (the face shows under the goggles), a hard-shell helmet and big framed goggles with mirrored lenses, baggy pants, big mitts and strap bindings. In the menus your rider stands holding the board upright beside them. Board dents pressed into the powder, northern lights, drifting clouds, glittering snow under floodlights, carve lines in the snow, safety nets, warm-lit huts and fireworks at the finish.
-- **Far view:** past the detailed course, a lighter version of the whole valley (ground, trees and the valley walls) runs on for another 1.2 to 1.7 km, built in the background, so you look down the mountain instead of into fog. On High and Medium; Low keeps the fog.
-- **Snow and rock:** the snow has its own relief, lit per pixel: wind drifts (deeper off the groomed piste), ripples and grain, with the lee sides going cold and blue. The valley walls carry streaks down their gullies and bare rock ribs high up. Boulders and outcrops sit half buried on the banks, and no two trees grow quite straight.
-- **Graphics:** real-time sun shadows for the riders (on the snow and on themselves), terrain that shades itself (banks and kickers throw long shadows at sunset, hollows go darker), cold blue shade on the snow, wind ripples that catch the light, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading per time of day, and FXAA. Trees are snow-laden firs, spruces, pines and dead snags, each with its own shade of green and snow load. Mountain ranges stand in three layers with smooth snow and rock, rising out of valley mist. Riders wear baggy outerwear with real fabric folds, plaid flannel, camo or colour-blocked jackets, beanies or helmets, mirrored goggles, and snow stuck to their pants. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows, bloom and sun rays off for older devices (it keeps FXAA and the colour grade).
-- **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, a banking camera, and landings graded PERFECT, clean or SKETCHY.
-- **Physics:** real gravity (9.81 m/s²) on every jump, snow friction and air drag that grows with speed (tuck to cut it), carves limited by edge grip so a turn that's too sharp for your speed skids and scrubs speed, and landings that keep the part of your speed along the slope (a steep landing keeps you moving, landing flat stops you). Standing up you settle at about 80 km/h on a park slope; tuck to go well past 100. On the in-run to a jump you ease off gently over the last 70 m (never a sudden brake) to the speed the jump is built for, so you get a full arc into the sweet spot of its landing; whatever speed is left over gives a slightly flatter take-off, like soaking up the lip, and nothing ever slows you in the air. Too slow, and you tuck and pump up to the speed it needs. The giants' in-runs bring you to the speed their landing hills are drawn for. Boosting skips all of it, so a boosted send is all yours. Too slow, and you tuck and pump up to the speed it needs. Boosting skips the easing, so a boosted send is all yours. Let go of the steering and the board keeps going the way you pointed it; it doesn't swing back down the hill by itself. An ollie with a rail ahead is sized so you come down onto it.
+- **Graphics:** real-time sun shadows for the riders, terrain that shades itself (banks and kickers throw long shadows in the low sun), wind ripples and drifts in the snow, haze that glows toward the sun, bloom on lights, sun rays, filmic colour grading and FXAA. Past the course a lighter version of the whole valley runs on for another 1.2 to 1.7 km, so you look down the mountain instead of into fog. The Graphics setting scales it: High has everything, Medium drops the sun rays and uses smaller shadow maps, Low turns shadows, bloom and sun rays off for older devices.
+- **Feel:** smooth carving, powerslides, pre-spins, a boost meter you fill with tricks, rail balance, legs that soak up bumps, and landings graded PERFECT, clean or SKETCHY.
+- **Physics:** real gravity (9.81 m/s²) on every jump, snow friction and air drag that grows with speed (tuck to cut it), carves limited by edge grip, and landings that keep the part of your speed along the slope. On the in-run to a jump you ease off gently over the last 70 m to the speed the jump is built for, so you get a full arc into the sweet spot of its landing; too slow, and you tuck and pump up to the speed it needs. Boosting skips the easing, so a boosted send is all yours. An ollie with a rail ahead is sized so you come down onto it.
 - **Extras:** 10 outfits, glowing snowflake tokens to collect, a generative soundtrack, and settings for graphics, frame rate, music, sound and camera.
 - **Smooth frame rate:** the course is built 50 m at a time in a background thread (a Web Worker running the same world code with the same seed), so new parts of the mountain never hold up a frame. The frame rate is capped at 30, 60 or 90 FPS (60 to start with).
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
 
-## The mountains
+## The course: Sundown Park
 
-| Mountain | Time | What's special |
-| --- | --- | --- |
-| **Bluebird Peak** | Sunny day | Wide piste, blue sky, sun glare, long tree shadows and the biggest kickers (MEGA AIR). Easiest. |
-| **Golden Ridge** | Sunset | Low orange sun, pink snow, a winding ridge with fast rollers. |
-| **Floodlit Night** | Night | The original: floodlights, northern lights and a shuffled zone order every run. |
-| **Moonlit Woods** | Night | Full moon, heavy snowfall, a dense forest and a TREE SLALOM through red and blue gates. Hardest. |
-| **Big Air Valley** | Sunny day | Three giant kickers with huge landing hills: about 5 seconds of air, 35 m above the snow. The in-run sets your takeoff speed so you always reach the landing. |
-| **Crystal Caverns** | Underground | Ride into the mountain through an ice cave lit by glowing crystals, with icicles, ice pillars to dodge and glowing rails, then out into the night. |
-| **Rail Kingdom** | Sunny day | A rail park: long flat rails, gap rails, rainbow (arched) rails and mega rails up to 50 m long. |
-| **Triple Giants** | Golden hour | Three giant kickers back to back to back. Land all three. |
-| **Gold Medal Slopestyle** | Sunny day | A competition course built like the Olympic one: three rail sections with three lines each, then three big jumps with a small, medium and big kicker side by side, past grandstands full of fans. |
-| **Jump Line** | Night | Floodlit kicker lines, one jump straight after the other. Built for perfect landings. |
-| **Cliff Drops** | Snowstorm | Backcountry: no poles, low visibility, rock bands to drop off and pillow fields to bounce through. |
-| **Neon Park** | Night | Glowing pink and cyan boxes and rails under coloured lamps. |
-| **Big Air Final** | Night | The city big air: drop in from a 40 m scaffold tower, one giant jump, land in a stadium full of fans, with a city skyline all around. |
-| **Superpipe Final** | Night | A floodlit competition halfpipe. Ride wall to wall and fly out of the coping; steer toward the wall you're heading for to pump higher. |
-| **Snowboard Cross** | Sunny day | Race three rivals (NOVA, KAI and JUNO) through banked turns, rollers, step-ups and a final jump. First to the line wins. |
-| **Slopestyle Qualifier** | Golden hour | The second competition course: kinked rail, long box, down-rail, then three jump lines. |
-| **Sochi 2014 Slopestyle** | Sunny day | The first Olympic slopestyle: it opens with a jump onto a rail, three jib sections, then jumps of 18, 18 and 22 m, each with a smaller jump beside it, and the giant nesting doll by jump 2. |
-| **PyeongChang 2018 Slopestyle** | Cold and windy | Butter pad to down rail, trapezoid rail, rainbow to flat-down with a wallride; a high bar with three take-offs; a skate bowl with a curved rail; three butter boxes; skewed jumps; a jump with quarterpipe side hits; the cheese-wedge kicker. |
-| **Beijing 2022 Slopestyle** | Cold and clear | Rails stepped down from left to right behind a Great Wall replica: rainbow to down, tank, flat rail, down-flat-down, transfer mailbox; a watch tower with a rail on its roof; gap to flat rail, roller, cannon; the twisted sisters skew jumps, the matrix (roller to knuckle, transfer jumps, quarterpipes) and a 5 m kicker over a 21 m table. |
-| **Livigno 2026 Slopestyle** | Snowy day | Big, clean, simple modules: long box, down and kinked rails, rainbow box, gap to down rail, then jumps of 22 to 25 m with a side option each. The exact 2026 rail layout wasn't published in detail, so the rails follow the "clean features" brief. |
-| **Innsbruck 2012 Youth Park** | Sunny day | Kühtai, above the trees in the Tyrol: log slides, an A-frame box, a wave box, a stair set with a handrail, a double barrel, a step-up and a step-down, then a tight kicker line and an 18 m big line. |
-| **Lausanne 2020 Youth Park** | Windy day | Leysin Park & Pipe in red and white: gaps to rails and boxes, three step-ups side by side, a nine-stair with two handrails, twin kickers with quarterpipe side hits and a big step-down to finish. |
-| **Gangwon 2024 Youth Park** | Cold and clear | Welli Hilli Park under a low winter sun: two pyramid funboxes with a box over the top, wave boxes, stair sets, step-downs, quarterpipe side hits and an 18 m big line. |
+A whole park at golden hour, about 2.4 km long, with grandstands, lamps and banners along the way:
 
-Courses built like the ones at the Games carry an **OLYMPIC STYLE** badge in the mountain picker and on the title card. On the Olympic courses rails come in real shapes (down, flat-down, down-flat-down, rainbow, cannon, mailbox, butter pad, high bar), many start on snow decks, and an ollie with a rail just ahead is sized to land you on it.
+| Section | What's in it |
+| --- | --- |
+| **Drop-in** | A short run-in to get your speed up. |
+| **Jib garden** | A mix of boxes, rails and small kickers spread across the slope. |
+| **Rail sections 1, 2 and 3** | Three rail stations, each with several lines side by side, getting harder as you go down. |
+| **Step-ups** | A line of small jumps to pop over onto higher tables. |
+| **Jump line** | A kicker station with a small, medium and big kicker side by side. |
+| **Big line** | A bigger kicker station. |
+| **The Send** | A giant kicker with a huge landing hill straight into the finish. |
 
-The three Youth Olympic parks are short (about a minute) and packed: three lanes of features about 11 m apart, with a new one every 15 to 25 m down each lane, so there's always something to hit. They bring new features: **step-ups** (pop over a dip onto a table built higher than the lip), **step-downs** (ride up onto a deck and drop off its kick onto a long landing), **stair sets** with handrails (level treads, so you clear the stairs or grind the rail), **log slides**, **double barrels** (a high and a low rail side by side), **wave boxes**, **A-frame boxes** and **pyramid funboxes**. The Youth Games course plans weren't published feature by feature, so these are built in the style of each park rather than copied from it.
+Stars: **Finish the run**, **Score 16,000** and **Land the Send**. Every run builds a fresh course from a seed, or you can ride the same one again against a see-through ghost of your best run.
 
-Star challenges: every mountain has "Finish the run" plus two of its own, like *Score 15,000*, *Land 4 perfect landings*, *Finish under 1:50*, *Finish without bailing*, *Grind for 12 seconds* or *Land all three giants*. The mountain picker shows five mountains per page; switch pages with the arrows next to BACK (or `←` `→`).
+The other 22 mountains from Shred Slope are still in `public/js/world.js`; they're just switched off. To bring one back, add its id to `SS.MAP_IDS` in `world.js` and to `MAPS` in `server.js` (with two or more, the mountain picker and map votes come back by themselves).
 
 ## Play it
 
@@ -72,7 +54,7 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 
 1. Sign in at [render.com](https://render.com) with your GitHub account and give Render access to the `Shred-Slope` repo.
 2. Click **New → Blueprint**, pick `melvinhultmancrypto/Shred-Slope` and press **Apply**. Render reads `render.yaml` and creates the `shred-slope` web service.
-3. Wait for the deploy log to say `Shred Slope running on port 10000 with 3 servers`. The status changes to **Live**.
+3. Wait for the deploy log to say `Sendline running on port 10000 with 3 servers`. The status changes to **Live**.
 4. Open the URL at the top of the service, e.g. `https://shred-slope.onrender.com`.
 5. Every push to `main` redeploys automatically.
 
@@ -121,8 +103,10 @@ Render pulls the code straight from GitHub, so there is nothing to upload by han
 
 - **Air control:** tap A or D in the air to drift sideways and line up a rail or a landing; a ring on the snow shows where you'll come down (green when it's a rail or box). Hold A or D to spin instead.
 - **Crashes:** catch an edge and you get slammed onto your back or front; bail a landing and you cartwheel down the hill; hit a tree and you bounce off it. Then you get back up.
-- **Spins:** 180, 360, 540, 720… The more you rotate, the more points.
-- **Flips:** BACKFLIP and FRONTFLIP. Flip and spin together for a RODEO (back) or MISTY (front). Two flips make it a DOUBLE.
+- **Trick names:** every jump gets its real name, built from your stance, spin direction, flips, rotation and grab, e.g. *BS 540*, *CAB 720* (switch frontside), *SWITCH BS 900*, *BACKFLIP*.
+- **Spins:** 180, 360, 540, 720, 900, 1080… The more you rotate, the more points. Riding switch (backwards) adds 10%.
+- **Off-axis flips:** flip and spin together for a CORK (backside), RODEO (back flip spun frontside), MISTY (front flip spun frontside) or BIO (front flip spun backside), worth 30% more than a flat spin. Two flips make it a DOUBLE CORK 1080, three a TRIPLE, each extra flip worth more again.
+- **Breakdown:** under the trick name the HUD lists where the points came from (spin, flip, grab, airtime, landing), and the combo feed at the top right keeps your last few banked combos.
 - **Grabs:** hold grab in the air for METHOD, INDY, MUTE, JAPAN and friends. Which grab you get depends on how you spin or flip; tap grab again mid-air to switch, and hold two in one jump for a bigger score (METHOD TO INDY).
 - **Grinds:** ride onto a box from its ramp, or pop onto a rail, for a 50-50.
 - **Combos:** tricks chain into a combo with a growing multiplier. The combo banks after about 2 seconds of clean riding.
@@ -140,8 +124,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
 - You need an account to join a server. Without one, the servers panel shows **Create an account to play multiplayer** with buttons to create one or sign in. Your account name is your name in the race.
-- The mountain changes every round and goes through all twenty-three, then around again, unless riders vote. Tap **NEXT: … · VOTE** at the top (or **VOTE FOR A MAP** in the menu) and pick a mountain: the next round goes to the one with the most votes (a tie is picked at random). If more than half the riders vote for the same mountain during the countdown, the round switches to it right away. Tap your vote again to take it back.
-- The three servers start on different mountains, and the server list shows which one is up.
+- Every round is on Sundown Park with a fresh seed, so the course is new each round. (With more than one mountain switched on, the mountain changes every round and riders can vote for the next one.)
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
 - **Voice chat** goes straight between the riders' browsers (WebRTC, peer to peer); the server only passes along the messages that set up each connection, and only between riders who have voice on. The first time you join, the game asks whether to use your mic. Choose open mic, push-to-talk (hold `V`), or no voice, and tick "don't ask again" to skip the question next time. Settings → Voice chat changes it later (Ask / Off / Push / Open). The voice panel at the bottom left lists who's on voice; a ring lights up while someone talks, and you can mute anyone. The browser asks for mic permission the first time. Voice needs the page on `https` (Render gives you that) or `localhost`.
@@ -180,22 +163,22 @@ Scores come from the players' browsers, so a determined cheater could fake one; 
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
-| `public/js/world.js` | The twenty-three mountains and the seeded course: terrain, cave, cliffs, halfpipe, scaffold tower, banked turns, kickers, giant jumps, rails, grandstands, trees, mountain ranges, city skyline, lights, chairlift |
+| `public/js/world.js` | Sundown Park (and the 22 switched-off mountains) and the seeded course: terrain, kickers, giant jumps, rails, grandstands, trees, mountain ranges, lights, chairlift. `SS.MAP_IDS` says which mountains are on |
 | `public/js/chunks.js` | The background worker that bakes the course's 50 m chunks off the main thread (it loads `engine.js` and `world.js`) |
-| `public/js/rider.js` | The 3D snowboarder and its poses, dressed in a free outfit or a look from the locker |
+| `public/js/rider.js` | The 3D rider (anorak, helmet, goggles, board) and its poses, dressed in a free outfit or a look from the locker |
 | `public/js/items.js` | Everything you can buy or wear and what it costs (shared by the browser and the server) |
 | `public/js/shop.js` | The coins chip, the Shop page with its try-on panel, the Locker page, and the coins line on the results |
 | `public/js/game.js` | Physics, tricks, camera, HUD, menus, multiplayer flow |
 | `public/js/net.js` | Multiplayer client |
 | `public/js/account.js` | The sign in / create account screen, the account chip in the lobby's top bar, and syncing your save |
 | `public/js/voice.js` | Voice chat: the mic, a WebRTC connection to each rider on voice, push-to-talk, mute and the talking rings |
-| `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id) |
-| `public/img/logo.png` | The snowboarder logo (in the lobby, on the loading screen and the results); `icon-64.png` and `icon-180.png` are the browser tab and home-screen icons |
+| `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id; `slopestyle.jpg` is Sundown Park) |
+| `public/img/logo.svg` | The Sendline logo (in the lobby rail, on the loading screen and the results); `icon-64.png` and `icon-180.png` are the browser tab and home-screen icons |
 | `public/js/audio.js` | Synthesised sound effects |
 
 ## Settings
 
-In the game, **Settings** (the gear in the lobby, and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects, Camera (Close / Far / High: High hangs the camera up in the sky behind you, like a drone), Auto rail (On / Off) and Voice chat (Ask / Off / Push / Open). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
+In the game, **Settings** (the gear in the lobby, and in the menu) has Graphics (Low / Medium / High), Frame rate (30 / 60 / 90 FPS, 60 by default), Music, Sound effects, Camera (Chase / Far / High: Chase rides low over your shoulder and pulls back in the air, High hangs up in the sky behind you like a drone), Auto rail (On / Off) and Voice chat (Ask / Off / Push / Open). Low graphics and 30 FPS are the ones to pick on older school computers. 90 FPS needs a screen that runs at 90 Hz or more; on a 60 Hz screen it stays at 60.
 
 The server reads these environment variables (all optional):
 
@@ -210,3 +193,5 @@ The server reads these environment variables (all optional):
 | `ICE_SERVERS` | Google's public STUN | Voice chat route finders, as JSON in the WebRTC format, e.g. `[{"urls":"stun:stun.l.google.com:19302"},{"urls":"turn:turn.example.com:3478","username":"u","credential":"p"}]`. Add a TURN server if voice doesn't connect on some networks |
 
 Gameplay numbers (gravity, spin speed, top speed) are at the top of `public/js/game.js`. The course layout (length, piste width, zone list, kicker sizes) is at the top of `public/js/world.js`.
+
+The game used to be called Shred Slope. Saves, accounts and settings still use the old `shredSlope.*` keys, so nobody loses progress, and the GitHub repo and Render service keep their names.

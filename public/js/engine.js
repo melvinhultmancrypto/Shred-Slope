@@ -368,11 +368,20 @@ void main() {
       float c2 = vnoise(q * 1.3 + 17.0) + vnoise(q * 2.7 + 9.0) * 0.4;
       base = mix(base, uPatCol, smoothstep(0.76, 0.8, c1));
       base = mix(base, base * 0.62, smoothstep(0.8, 0.84, c2));
-    } else {
+    } else if (uPat < 3.5) {
       // a broad band across the chest and round the upper arms
       float yb = vObj.y;
       float band = uLimb > 0.5 ? smoothstep(0.0, 0.03, 0.22 - abs(yb - 0.5)) : smoothstep(0.0, 0.015, 0.105 - abs(yb - 0.6));
       base = mix(base, uPatCol, band);
+    } else {
+      // anorak: a two-tone yoke over the shoulders and the tops of the sleeves, edged with a
+      // thin light piping line
+      float yb = vObj.y;
+      float cut = uLimb > 0.5 ? 0.4 : 0.67 - 0.03 * cos(ang * 2.0);
+      float k = uLimb > 0.5 ? 1.0 - smoothstep(cut - 0.012, cut, yb) : smoothstep(cut, cut + 0.01, yb);
+      base = mix(base, uPatCol, k);
+      float pipe = 1.0 - smoothstep(0.004, 0.011, abs(yb - (uLimb > 0.5 ? cut + 0.008 : cut - 0.008)));
+      base = mix(base, vec3(0.93, 0.94, 0.95), pipe * 0.9);
     }
   }
   if (uDust > 0.0) {
@@ -416,11 +425,11 @@ void main() {
   vec3 c = base * light + base * uEmissive + spec * max(uSpec.x, 1.0);
   if (uMat > 2.5) {
     // mirrored goggle lens: dark at the top, bright at the bottom, sky and snow reflected across it
-    float g = smoothstep(-0.04, 0.035, vObj.y);
-    vec3 tint = mix(base * 1.3 + 0.06, base * 0.3, g);
+    float g = smoothstep(-0.05, 0.016, vObj.y);
+    vec3 tint = mix(base * 1.45 + 0.05, base * 0.35, g);
     vec3 r = reflect(-v, n);
-    vec3 env = mix(uGround * 1.7, uSky * 1.35, smoothstep(-0.2, 0.3, r.y));
-    c = tint * (0.4 + 0.3 * light) + env * (0.3 + 0.7 * fres) + spec;
+    vec3 env = mix(uGround * 1.5, uSky * 1.2, smoothstep(-0.2, 0.3, r.y));
+    c = tint * (0.55 + 0.35 * light) + env * (0.14 + 0.5 * fres) + spec * 0.8;
   }
   vec3 fc = uFogCol + uHaze * pow(max(dot(normalize(vRel), uMoonDir), 0.0), 5.0);
   gl_FragColor = vec4(mix(c, fc, vFog), uAlpha);
@@ -1199,7 +1208,7 @@ void main() {
       else gl.disable(gl.BLEND);
     }
 
-    // cloth look for the next drawLit calls: pattern (0 none, 1 plaid, 2 camo, 3 colour-block),
+    // cloth look for the next drawLit calls: pattern (0 none, 1 plaid, 2 camo, 3 chest band, 4 anorak yoke),
     // its second colour, fold strength, snow dust, and the kind of part (0 body, 1 limb, 2 knit)
     cloth(pat, col2, fold, dust, limb) {
       if (this.shadowPass) return;

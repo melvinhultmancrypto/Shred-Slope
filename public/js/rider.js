@@ -24,16 +24,16 @@
     { name: 'Bubblegum', css: '#ff4f8b', jacket: '#f2487f', trim: '#2b3138', pants: '#1f1f26', board: '#7c4dff', stripe: '#ffffff', helmet: '#f2f2f4', lens: '#a98bff', boot: '#2b2a2e' },
     { name: 'Lemon', css: '#ffd23f', jacket: '#f6c52a', trim: '#2b3138', pants: '#252a33', board: '#2f7dff', stripe: '#ffffff', helmet: '#16171b', lens: '#ff4fa0', boot: '#c99a63' },
     { name: 'Ultraviolet', css: '#a46bff', jacket: '#8d55f2', trim: '#1e1d2b', pants: '#16161b', board: '#19d3c5', stripe: '#141414', helmet: '#16171b', lens: '#4dffa6', boot: '#24262c' },
-    { name: 'Lagoon', css: '#19d3c5', jacket: '#169c9c', trim: '#2b3138', pants: '#1c2336', board: '#ff5a36', stripe: '#ffffff', helmet: '#16171b', lens: '#7f8ea8', boot: '#2b2a2e' },
+    { name: 'Lagoon', css: '#19d3c5', jacket: '#169c9c', trim: '#2b3138', pants: '#1c2336', board: '#ff5a36', stripe: '#ffffff', helmet: '#e9ecf1', lens: '#ff8a2a', boot: '#2b2a2e' },
     { name: 'Inferno', css: '#ff3b30', jacket: '#d9271f', trim: '#1c1d22', pants: '#141418', board: '#f2f2f4', stripe: '#ec2a22', helmet: '#16171b', lens: '#ffb02e', boot: '#1d1d21' },
     { name: 'Whiteout', css: '#e9eef7', jacket: '#e4e9f2', trim: '#2f7dff', pants: '#2e3646', board: '#ff7a1f', stripe: '#141414', helmet: '#2f7dff', lens: '#ff4fa0', boot: '#d9d4c7' },
     { name: 'Acid', css: '#8bd346', jacket: '#78c232', trim: '#2b3138', pants: '#26272c', board: '#a46bff', stripe: '#ffffff', helmet: '#16171b', lens: '#6f9cff', boot: '#2b2a2e' },
   ];
   const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
-  // every outfit is a quilted puffer with a broad band across the chest and sleeves (pattern 3),
-  // a hard-shell helmet and big framed goggles
+  // every outfit is a roomy anorak with a two-tone yoke over the shoulders (pattern 4), a half zip,
+  // a kangaroo pocket and the hood down behind the neck; a hard-shell helmet and big framed goggles
   const STYLES = [
-    { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 }, { pat: 3 },
+    { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 }, { pat: 4 },
   ];
   const SKINS = ['#f0c4a0', '#8d5a3b', '#e3a982', '#c98e66', '#5c3a26', '#f5cfb3', '#b07a52', '#f2c9a8', '#6e4630', '#deaa85'];
   const HAIRS = ['#2b1d14', '#1a1a1a', '#d8b06a', '#6b3a1f', '#111111', '#a0522d', '#2b1d14', '#e0c27a', '#1a1a1a', '#4a2c1a'];
@@ -46,11 +46,15 @@
     p.beanieCol = shade(p.trim[0] + p.trim[1] + p.trim[2] > 1.5 ? p.trim : p.jacket, 0.95);
     p.yoke = [p.jacket[0] * 0.68 + p.trim[0] * 0.32, p.jacket[1] * 0.68 + p.trim[1] * 0.32, p.jacket[2] * 0.68 + p.trim[2] * 0.32];
     p.lips = [p.skin[0] * 0.84, p.skin[1] * 0.64, p.skin[2] * 0.62];
+    p.pouch = shade(p.jacket, p.jacket[0] + p.jacket[1] + p.jacket[2] > 2.2 ? 0.86 : 0.8);
     p.pantsPatch = shade(p.pants, p.pants[0] > 0.6 ? 0.82 : 1.45);
     p.helmetDark = shade(p.helmet, p.helmet[0] > 0.6 ? 0.7 : 1.6);
     p.glove = [0.075, 0.078, 0.088];
     // goggle frame: white on a dark helmet, dark on a light one
-    p.frameCol = typeof p.frame === 'string' ? hex(p.frame) : p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? [0.93, 0.94, 0.96] : [0.1, 0.1, 0.12];
+    // goggle frame: black, unless the goggles bring their own colour
+    p.frameCol = typeof p.frame === 'string' ? hex(p.frame) : [0.07, 0.075, 0.085];
+    // the goggle strap: the jacket's accent, so it stands out on the helmet
+    p.strapCol = p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? (p.patCol && p.patCol[0] + p.patCol[1] + p.patCol[2] > 0.9 ? p.patCol : p.jacket) : [0.12, 0.13, 0.15];
     return p;
   }
   const RAW = PALETTE.map((p) => Object.assign({}, p)); // the free outfits as #hex, for building looks
@@ -70,7 +74,7 @@
     if (!suit || suit.pal !== undefined) raw = Object.assign({}, RAW[suit ? suit.pal : 0]);
     else {
       const k = I.suits.indexOf(suit);
-      raw = { name: suit.name, skin: SKINS[k % SKINS.length], hair: HAIRS[k % HAIRS.length], pat: suit.pat || 3 };
+      raw = { name: suit.name, skin: SKINS[k % SKINS.length], hair: HAIRS[k % HAIRS.length], pat: suit.pat || 4 };
       for (const f of ['jacket', 'trim', 'pants', 'board', 'stripe', 'helmet', 'lens', 'boot', 'patCol']) if (suit[f]) raw[f] = suit[f];
     }
     const b = I && I.get('board', look.board), h = I && I.get('helmet', look.helmet), g = I && I.get('goggles', look.goggles);
@@ -97,6 +101,8 @@
 
   // shine presets [strength, sharpness]
   const SH_HELMET = [0.55, 42];
+  const SH_SHELL = [0.07, 9]; // a matte helmet shell, not a bowling ball
+  const VENT = [0.06, 0.065, 0.075];
   const SH_LENS = [1.25, 90];
   const SH_BOARD = [0.35, 34];
   const SH_JACKET = [0.2, 14]; // nylon shell: a soft satin sheen
@@ -214,7 +220,7 @@
     const hem = loft([tr(-0.04, 0.19, 0.15), tr(0.06, 0.192, 0.152)], 26, { p: TP, capBottom: true });
     // a tall funnel collar zipped up to the chin: puffy, flaring a little at the top, lower at the
     // front so the chin shows (with a lining, so the inside shows)
-    const collarRings = [{ y: 0.84, rx: 0.15, rz: 0.13, oz: -0.004 }, { y: 0.93, rx: 0.14, rz: 0.125, oz: -0.008 }, { y: 1.01, rx: 0.132, rz: 0.12, oz: -0.012 }, { y: 1.075, rx: 0.135, rz: 0.124, oz: -0.014 }];
+    const collarRings = [{ y: 0.84, rx: 0.15, rz: 0.13, oz: -0.004 }, { y: 0.93, rx: 0.138, rz: 0.124, oz: -0.008 }, { y: 1.0, rx: 0.132, rz: 0.12, oz: -0.012 }, { y: 1.05, rx: 0.136, rz: 0.125, oz: -0.014 }];
     const CS = 30;
     const collarTop = (a) => { const f = Math.max(0, -Math.sin(a)); return -0.07 * Math.pow(f, 3); }; // front (-z) sits lower
     const collar = [];
@@ -240,7 +246,8 @@
         quad(collar, ringPt(n, a0, 0.014), ringPt(n, a0, 0), ringPt(n, a1, 0), ringPt(n, a1, 0.014), [0, 1, 0]);
       }
     }
-    const hood = [];
+    // the hood, down, bunched up behind the neck
+    const hood = [...sphere(8, 14, 0.13, 0.08, 0.075, 0, 0.93, 0.105), ...sphere(6, 10, 0.1, 0.055, 0.05, 0, 0.89, 0.15)];
     // where the jacket surface is, so the zip, pocket and pack straps sit right on it
     const TR = [[0.04, 0.186, 0.146, 0], [0.2, 0.19, 0.149, 0], [0.42, 0.197, 0.152, -0.004], [0.6, 0.206, 0.151, -0.008], [0.72, 0.214, 0.145, -0.006], [0.84, 0.212, 0.131, 0], [0.92, 0.176, 0.114, 0], [0.97, 0.12, 0.096, 0], [1.0, 0.07, 0.076, 0]];
     const ringAt = (y) => {
@@ -256,9 +263,32 @@
       return oz + sideZ * (rz * Math.pow(1 - Math.pow(u, TP), 1 / TP) + (lift || 0.003));
     };
     const zip = [], pocket = [], straps = [];
-    for (let i = 0; i < 14; i++) {
-      const y0 = 0.05 + i * 0.058, y1 = y0 + 0.058;
+    // a half zip: from the middle of the chest up (it's a pullover)
+    for (let i = 0; i < 5; i++) {
+      const y0 = 0.6 + i * 0.052, y1 = y0 + 0.052;
       quad(zip, [-0.006, y0, surfZ(0, y0, -1)], [0.006, y0, surfZ(0, y0, -1)], [0.006, y1, surfZ(0, y1, -1)], [-0.006, y1, surfZ(0, y1, -1)], [0, 0, -1]);
+    }
+    // zip pull
+    quad(zip, [-0.012, 0.56, surfZ(0, 0.56, -1, 0.006)], [0.012, 0.56, surfZ(0, 0.56, -1, 0.006)], [0.012, 0.61, surfZ(0, 0.61, -1, 0.006)], [-0.012, 0.61, surfZ(0, 0.61, -1, 0.006)], [0, 0, -1]);
+    // the big kangaroo pocket across the belly, with slanted openings at the sides and a top seam
+    const kanga = [];
+    {
+      const K = 10, lift = 0.011;
+      const edge = (t) => 0.15 - 0.035 * t; // narrower toward the top
+      for (let i = 0; i < K; i++) {
+        const t0 = i / K, t1 = (i + 1) / K, y0 = 0.13 + t0 * 0.26, y1 = 0.13 + t1 * 0.26;
+        const x00 = -edge(t0), x01 = edge(t0), x10 = -edge(t1), x11 = edge(t1);
+        for (let j = 0; j < 6; j++) {
+          const a0 = j / 6, a1 = (j + 1) / 6;
+          const P = (x0, x1, a, y) => { const x = x0 + (x1 - x0) * a; return [x, y, surfZ(x, y, -1, lift)]; };
+          quad(kanga, P(x00, x01, a0, y0), P(x00, x01, a1, y0), P(x10, x11, a1, y1), P(x10, x11, a0, y1), [0, 0, -1]);
+        }
+      }
+      // the rolled top edge of the pocket
+      for (let j = 0; j < 6; j++) {
+        const xa = -0.115 + (j / 6) * 0.23, xb = -0.115 + ((j + 1) / 6) * 0.23, y = 0.39;
+        quad(kanga, [xa, y, surfZ(xa, y, -1, lift)], [xb, y, surfZ(xb, y, -1, lift)], [xb, y + 0.012, surfZ(xb, y + 0.012, -1, 0.004)], [xa, y + 0.012, surfZ(xa, y + 0.012, -1, 0.004)], [0, 0.6, -1]);
+      }
     }
     // and on up the front of the collar to its notch
     for (let i = 0; i < 3; i++) {
@@ -292,16 +322,47 @@
     const packLid = loft([tr(0.62, 0.121, 0.063, 0.205), tr(0.78, 0.108, 0.055, 0.2)], 18, { p: 3, capTop: true });
 
     // ---- head, in head space: +x is where the rider looks ----
-    const helmet = sphere(12, 20, 0.145, 0.1375, 0.1325, -0.006, 0.018, 0);
-    const peak = sphere(6, 12, 0.04, 0.012, 0.09, 0.118, 0.085, 0);
+    // a sculpted shell: the front edge sits up over the goggles, the sides come down over the ears
+    // and the back a little lower; a rolled rim round the edge, a short brim and slotted vents on top
+    const HX = 0.148, HY = 0.142, HZ = 0.14, HCX = -0.008, HCY = 0.012;
+    const smooth = (x) => { const t = Math.min(1, Math.max(0, x)); return t * t * (3 - 2 * t); };
+    const rimPh = (th) => {
+      const f = Math.abs(Math.atan2(Math.sin(th), Math.cos(th)));
+      return 1.16 + 0.7 * smooth((f - 0.32) / 1.05) - 0.12 * smooth((f - 1.9) / 1.1);
+    };
+    const shellPt = (th, ph, k) => [Math.sin(ph) * Math.cos(th) * HX * k + HCX, Math.cos(ph) * HY * k + HCY, Math.sin(ph) * Math.sin(th) * HZ * k];
+    const shellN = (p) => nrm([(p[0] - HCX) / (HX * HX), (p[1] - HCY) / (HY * HY), p[2] / (HZ * HZ)]);
+    const helmet = [], helmetRim = [];
+    {
+      const NT = 32, NP = 11;
+      const V = (th, j) => { const p = shellPt(th, (j / NP) * rimPh(th), 1); const n = shellN(p); return [p[0], p[1], p[2], n[0], n[1], n[2]]; };
+      for (let i = 0; i < NT; i++) {
+        const t0 = (i / NT) * TAU, t1 = ((i + 1) / NT) * TAU;
+        for (let j = 0; j < NP; j++) {
+          const a = V(t0, j), b = V(t1, j), c = V(t1, j + 1), d = V(t0, j + 1);
+          helmet.push(...a, ...b, ...c, ...a, ...c, ...d);
+        }
+        // the rolled rim: out over the edge and back in underneath
+        const R = (th, dph, k) => shellPt(th, rimPh(th) + dph, k);
+        const ring = [[0, 1.0], [0.05, 1.012], [0.1, 0.99], [0.09, 0.95]];
+        for (let r = 0; r < ring.length - 1; r++) {
+          const [p0, k0] = ring[r], [p1, k1] = ring[r + 1];
+          quad(helmetRim, R(t0, p0, k0), R(t1, p0, k0), R(t1, p1, k1), R(t0, p1, k1), nrm([Math.cos((t0 + t1) / 2), -0.3, Math.sin((t0 + t1) / 2)]));
+        }
+      }
+    }
+    // a short brim over the goggles
+    const peak = sphere(6, 14, 0.032, 0.007, 0.088, 0.142, 0.07, 0);
+    // vent slots along the top, front to back
     const vents = [];
-    for (const z of [-0.042, 0, 0.042]) vents.push(...sphere(5, 10, 0.05, 0.006, 0.011, -0.004, 0.152 - Math.abs(z) * 0.35, z));
-    const ears = [...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, 0.126), ...sphere(6, 10, 0.05, 0.055, 0.016, -0.012, -0.022, -0.126)];
+    const topY = (x, z) => HCY + HY * Math.sqrt(Math.max(0, 1 - ((x - HCX) / HX) ** 2 - (z / HZ) ** 2));
+    for (const [x, z, l] of [[0.02, 0.03, 0.035], [0.02, -0.03, 0.035], [-0.03, 0.07, 0.03], [-0.03, -0.07, 0.03], [-0.07, 0, 0.03]]) vents.push(...sphere(5, 10, l, 0.006, 0.009, x, topY(x, z) - 0.002, z));
+    const ears = [];
     // face below the goggles: cheeks, nose, lips and chin; a neck gaiter pulled down; hair out the back
-    const face = sphere(12, 18, 0.098, 0.082, 0.088, 0.03, -0.075, 0);
-    const nose = sphere(8, 10, 0.021, 0.02, 0.014, 0.127, -0.07, 0);
-    const lips = sphere(6, 10, 0.009, 0.0072, 0.028, 0.117, -0.106, 0);
-    const chin = sphere(8, 12, 0.05, 0.034, 0.06, 0.085, -0.13, 0);
+    const face = sphere(14, 20, 0.1, 0.098, 0.094, 0.022, -0.066, 0);
+    const nose = sphere(8, 10, 0.018, 0.019, 0.013, 0.124, -0.064, 0);
+    const lips = sphere(6, 10, 0.006, 0.0045, 0.019, 0.117, -0.11, 0);
+    const chin = [];
     // a neck warmer pulled up over the chin and mouth, to just under the nose
     const gaiter = loft([{ y: -0.225, rx: 0.094, rz: 0.094, ox: -0.004 }, { y: -0.17, rx: 0.112, rz: 0.104, ox: 0.01 }, { y: -0.125, rx: 0.118, rz: 0.104, ox: 0.024 }, { y: -0.098, rx: 0.112, rz: 0.1, ox: 0.028 }, { y: -0.09, rx: 0.106, rz: 0.096, ox: 0.028 }], 20);
     // knit beanie: a slouchy cap, a folded cuff and a pom-pom
@@ -309,15 +370,15 @@
     const beanieCuff = loft([{ y: -0.035, rx: 0.15, rz: 0.142, ox: -0.004 }, { y: 0.02, rx: 0.152, rz: 0.144, ox: -0.006 }, { y: 0.03, rx: 0.147, rz: 0.139, ox: -0.006 }], 20);
     const pom = sphere(8, 12, 0.045, 0.042, 0.045, -0.035, 0.185, 0);
     const hair = [...sphere(8, 12, 0.055, 0.07, 0.105, -0.108, -0.07, 0), ...sphere(6, 10, 0.034, 0.075, 0.034, -0.148, -0.13, 0)];
-    // goggles wrap around the front of the helmet
-    const R = 0.142;
+    // slim goggles wrapped round the face at eye level, under the helmet's brim
+    const R = 0.133;
     const goggleArc = (r, h0, h1, aMax, inset) => {
       const rows = [];
       for (const y of [h0, (h0 + h1) / 2, h1]) rows.push({ y, rx: r + (y === (h0 + h1) / 2 ? 0.004 : 0), rz: (r + (y === (h0 + h1) / 2 ? 0.004 : 0)) * 1.04 });
       return loft(rows, 16, { a0: -aMax, a1: aMax, inside: inset });
     };
-    // big frameless-look goggles: a chunky frame round a wide mirrored lens
-    const GY0 = -0.066, GY1 = 0.052, GA = 1.32, GT = 0.017;
+    // a slim frame round a curved, mirrored lens
+    const GY0 = -0.052, GY1 = 0.018, GA = 1.12, GT = 0.01;
     const frame = [...goggleArc(R + GT, GY0, GY1, GA), ...goggleArc(R, GY0, GY1, GA, true)];
     // top and bottom rims of the frame, and its two ends
     for (const y of [GY0, GY1]) {
@@ -331,8 +392,9 @@
       const P = (r, y) => [Math.cos(a) * r, y, Math.sin(a) * r * 1.04];
       quad(frame, P(R, GY0), P(R + GT, GY0), P(R + GT, GY1), P(R, GY1), [-Math.sin(a), 0, Math.cos(a) * Math.sign(a)]);
     }
-    const lens = goggleArc(R + GT + 0.0015, GY0 + 0.012, GY1 - 0.01, GA - 0.12);
-    const strap = loft([{ y: -0.024, rx: 0.152, rz: 0.142 }, { y: 0.024, rx: 0.152, rz: 0.142 }], 24);
+    const lens = goggleArc(R + GT + 0.0015, GY0 + 0.008, GY1 - 0.007, GA - 0.09);
+    // the strap round the back of the helmet
+    const strap = loft([{ y: -0.036, rx: 0.155, rz: 0.149 }, { y: -0.006, rx: 0.155, rz: 0.149 }], 28, { a0: 1.08, a1: TAU - 1.08 });
 
     // ---- hands: mitt with a thumb and a gauntlet cuff (mitt points along +y) ----
     // glove: padded back of the hand, four curled fingers and a thumb (hand space: y 0..1 = wrist..fingertips)
@@ -430,8 +492,12 @@
       toggles.push(...sphere(5, 8, 0.008, 0.028, 0.008, x1, 0.775, surfZ(x1, 0.78, -1, 0.012)));
     }
     const logo = [], logoStripe = [];
-    quad(logo, pk(-0.145, 0.6, 0.004), pk(-0.065, 0.6, 0.004), pk(-0.065, 0.67, 0.004), pk(-0.145, 0.67, 0.004), [0, 0, -1]);
-    quad(logoStripe, pk(-0.14, 0.62, 0.006), pk(-0.07, 0.62, 0.006), pk(-0.07, 0.64, 0.006), pk(-0.14, 0.64, 0.006), [0, 0, -1]);
+    // a small woven patch on the chest, in strips so it follows the curve of the jacket
+    for (let j = 0; j < 4; j++) {
+      const xa = -0.15 + j * 0.02, xb = xa + 0.02;
+      quad(logo, pk(xa, 0.5, 0.006), pk(xb, 0.5, 0.006), pk(xb, 0.555, 0.006), pk(xa, 0.555, 0.006), [0, 0, -1]);
+    }
+    quad(logoStripe, pk(-0.145, 0.52, 0.006), pk(-0.075, 0.52, 0.006), pk(-0.075, 0.54, 0.006), pk(-0.145, 0.54, 0.006), [0, 0, -1]);
     // backpack: two compression straps, a grab loop and a shovel handle poking out of the top
     const packStraps = [
       ...loft([tr(0.4, 0.121, 0.063, 0.205), tr(0.43, 0.121, 0.063, 0.205)], 18, { p: 3 }),
@@ -466,9 +532,9 @@
       packStraps: mk(packStraps), shovel: mk(shovel), tongue: mk(tongue), laces: mk(laces), stomp: mk(stomp), ratchet: mk(ratchet), helmetStripe: mk(helmetStripe),
       cyl: mk(cyl), sph: mk(sph), band: mk(band),
       sleeveUp: mk(sleeveUp), sleeveLo: mk(sleeveLo), thigh: mk(thigh), shin: mk(shin),
-      body: mk(body), yoke: mk(yoke), hem: mk(hem), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
+      body: mk(body), yoke: mk(yoke), hem: mk(hem), collar: mk(collar), hood: mk(hood), kanga: mk(kanga), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
       pack: mk(pack), packLid: mk(packLid),
-      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), chin: mk(chin), hair: mk(hair), beanie: mk(beanie), beanieCuff: mk(beanieCuff), pom: mk(pom), frame: mk(frame), lens: mk(lens), strap: mk(strap),
+      helmet: mk(helmet), helmetRim: mk(helmetRim), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), chin: mk(chin), hair: mk(hair), beanie: mk(beanie), beanieCuff: mk(beanieCuff), pom: mk(pom), frame: mk(frame), lens: mk(lens), strap: mk(strap),
       mitt: mk(mitt), cuff: mk(cuff),
       boot: mk(boot), sole: mk(sole), plate: mk(plate), highback: mk(highback), arch: mk([...arch, ...archIn]),
       top: mk(top), side: mk(side), edge: mk(edge), base: mk(base), gfx: mk(gfx), baseGfx: mk(baseGfx),
@@ -626,8 +692,11 @@
     engine.cloth(0);
     engine.drawLit(meshes.hem, TF, pal.patCol, 0, SH_JACKET);
     engine.cloth(0, null, 0.22, 0, 0);
-    engine.drawLit(meshes.collar, TF, pal.jacket, 0, SH_JACKET);
+    engine.drawLit(meshes.collar, TF, pal.pat === 4 ? pal.patCol : pal.jacket, 0, SH_JACKET);
+    engine.cloth(0, null, 0.7, 0, 0);
+    engine.drawLit(meshes.hood, TF, pal.pat === 4 ? pal.patCol : pal.jacket, 0, SH_JACKET);
     engine.cloth(0);
+    engine.drawLit(meshes.kanga, TF, pal.pouch || pal.jacket, 0, SH_JACKET);
     if (!far) {
       engine.drawLit(meshes.zip, TF, ZIP, 0, SH_STEEL);
       engine.drawLit(meshes.logo, TF, PATCH, 0, SH_JACKET);
@@ -649,18 +718,21 @@
       engine.cloth(0, null, 0.6, 0, 2);
       engine.drawLit(meshes.pom, HF, PATCH, 0, SH_PANTS);
       engine.cloth(0);
-    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, pal.helmetSh || SH_HELMET);
-    engine.drawLit(meshes.strap, HF, pal.frameCol, 0, SH_JACKET);
-    engine.drawLit(meshes.frame, HF, pal.frameCol, 0, SH_HELMET);
+    } else {
+      engine.drawLit(meshes.helmet, HF, pal.helmet, 0, pal.helmetSh || SH_SHELL);
+      engine.drawLit(meshes.helmetRim, HF, pal.helmetDark, 0, SH_PANTS);
+
+    }
+    engine.drawLit(meshes.strap, HF, pal.strapCol, 0, SH_JACKET);
+    engine.drawLit(meshes.frame, HF, pal.frameCol, 0, SH_SHELL);
     engine.drawLit(meshes.lens, HF, pal.lens, 0, SH_LENS, 3);
-    if (!far && !pal.beanie) engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
   }
   // an arm from shoulder s0 to hand target h1, the elbow bending toward `bend` (body frame)
   function drawArm(engine, pal, base, s0, h1, bend, far) {
     const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
     const elbow = ik(s0, hand, ARM_U, ARM_F, bend);
     engine.cloth(0, null, 0.3, 0, 0);
-    ball(engine, base, s0, 0.104, pal.jacket, SH_JACKET);
+    ball(engine, base, s0, 0.09, pal.pat === 4 ? pal.patCol : pal.jacket, SH_JACKET);
     ball(engine, base, elbow, 0.084, pal.jacket, SH_JACKET);
     engine.cloth(pal.pat, pal.patCol, 0.4, 0, 1);
     limb(engine, base, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);

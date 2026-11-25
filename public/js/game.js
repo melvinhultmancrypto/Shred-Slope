@@ -151,7 +151,8 @@
   let fireworksT = 0, fireworksNext = 0;
   let tokenGot = new Set();
   let lastSpSeed = null;
-  let spMap = settings.map;
+  let spMap = SS.MAP_IDS.includes(settings.map) ? settings.map : SS.MAP_IDS[0];
+  const oneMap = SS.MAP_IDS.length === 1;
   let envK = 0;           // 0 outside, 1 deep inside the cave (for the camera)
   let glare = 0;
   let introT = 0;
@@ -159,6 +160,7 @@
 
   const P = {};
   const run = {};
+  const runFeedList = []; // the last tricks you landed, shown under the score
   let best = Number(store.get(BEST_KEY, 0)) || 0;
   ui.bestScore.textContent = fmt(best);
 
@@ -175,6 +177,8 @@
     ui.starsTotal.textContent = n + '/' + all;
     const f = $('passFill');
     if (f) f.style.width = (100 * n / all).toFixed(1) + '%';
+    const cs = $('courseStars');
+    if (cs) cs.innerHTML = prog(SS.MAP_IDS[0]).stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('');
     if (typeof renderPass === 'function' && ui.title && ui.title.dataset.page === 'pass') renderPass();
   };
   updateStars();
@@ -235,7 +239,7 @@
     }
     if (!hidden(ui.maps) && e.code === 'Enter' && mapSel) { e.preventDefault(); rideMap(mapSel); return; }
     if (e.code === 'Enter' && mode === 'menu' && !hidden(ui.title) && ui.title.dataset.page === 'ride' && document.querySelectorAll('.modal-ov:not(.hidden)').length === 0) {
-      e.preventDefault(); saveName(); Sfx.init(); openMaps(); return;
+      e.preventDefault(); rideNow(); return;
     }
     const k = KEYMAP[e.code];
     if (k) {
@@ -372,7 +376,7 @@
   // ------------------------------------------------------------------ world
   let mapBase = null;
   function useWorld(seed, mapId) {
-    mapId = SS.MAPS[mapId] ? mapId : 'night';
+    mapId = SS.MAP_IDS.includes(mapId) ? mapId : SS.MAP_IDS[0];
     if (world && world.seed === (seed >>> 0) && world.mapId === mapId) return;
     if (world) world.dispose(engine);
     world = new SS.World(seed, mapId);
@@ -412,7 +416,10 @@
     P.y = world.H(P.x, P.z);
     resetRivals(z);
     Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0, place: 0,
-      parts: { air: 0, grab: 0, rail: 0, land: 0, flakes: 0 }, potParts: {}, bestTrick: { name: '', pts: 0 }, landed: 0 });
+      parts: { air: 0, grab: 0, rail: 0, land: 0, flakes: 0 }, potParts: {}, bestTrick: { name: '', pts: 0 }, landed: 0, comboNames: [] });
+    runFeedList.length = 0;
+    const rfe = $('runFeed');
+    if (rfe) rfe.innerHTML = '';
     tokenGot = new Set();
     raceT = 0;
     zoneName = '';
@@ -1256,6 +1263,7 @@
     P.slip = 0;
     P.grounded = true;
     const half = Math.abs(Math.round(P.spin / Math.PI));
+    const wasSwitch = Math.abs(P.stance) > 1, spinDir = Math.sign(P.spin);
     P.stance = (Math.abs(n) % 2) * Math.PI;
     const air = P.airT, grabT = P.grabT;
     P.spin = 0; P.flip = 0; P.spinVel = 0; P.flipVel = 0;
@@ -1279,7 +1287,7 @@
     if (qual === 'perfect') { if (P.speed < 32) P.speed = Math.min(32, P.speed * 1.05); run.perfects++; addBoost(0.12); }
     else if (qual === 'sketchy') { P.speed *= 0.82; P.wobble = 0.7; }
     P.compV += Math.min(5, 0.6 + impact * 0.2);
-    awardAir(half, Math.abs(m), Math.sign(m), grabT, air, qual);
+    awardAir(half, Math.abs(m), Math.sign(m), grabT, air, qual, spinDir, wasSwitch);
     if (air > 0.5 && mode !== 'menu') showLand(qual);
     if (air > 0.3) {
       if (!ai.on) Sfx.land(impact > 11);
@@ -1288,20 +1296,43 @@
     }
   }
 
-  function awardAir(half, flips, dir, grabT, air, qual) {
+  // trick names the way riders call them: SWITCH / CAB (switch frontside), FS or BS for the way you
+  // spin, how many flips (DOUBLE, TRIPLE, QUAD), what kind of off-axis flip it is (a back flip with
+  // a backside spin is a CORK, with a frontside spin a RODEO; a front flip spun backside is a BIO,
+  // frontside a MISTY), the degrees, then the grabs.
+  const FLIP_N = ['', '', 'DOUBLE ', 'TRIPLE ', 'QUAD '];
+  function awardAir(half, flips, dir, grabT, air, qual, spinDir, sw) {
     if (air < 0.35) return;
     let name = '';
     let pts = 0;
+    const lines = []; // the breakdown shown under the trick: [what, points]
+    const add = (what, v) => { if (Math.round(v)) lines.push([what, Math.round(v)]); };
     const deg = half * 180;
+    const fs = spinDir > 0;
+    // riding switch into a frontside spin is a "cab"
+    const pre0 = sw ? (half && fs ? 'CAB ' : 'SWITCH ') : '';
+    const side = half ? (sw && fs ? '' : fs ? 'FS ' : 'BS ') : '';
+    const nf = FLIP_N[Math.min(4, flips)] || '';
+    if (half) { pts = SPIN_PTS[Math.min(half, 14)]; add(`${deg} SPIN`, pts); }
     if (flips) {
-      const base = dir < 0 ? (half ? 'RODEO' : 'BACKFLIP') : (half ? 'MISTY' : 'FRONTFLIP');
-      name = (flips === 2 ? 'DOUBLE ' : flips >= 3 ? 'TRIPLE ' : '') + base + (half ? ' ' + deg : '');
-      pts = flips * (dir < 0 ? 900 : 800) + SPIN_PTS[Math.min(half, 14)];
-      if (half) pts *= 1.3;
-    } else if (half) {
-      name = String(deg);
-      pts = SPIN_PTS[Math.min(half, 14)];
+      const fp = flips * (dir < 0 ? 900 : 800);
+      pts += fp;
+      add(flips > 1 ? `${flips} ${dir < 0 ? 'BACK' : 'FRONT'} FLIPS` : `${dir < 0 ? 'BACK' : 'FRONT'} FLIP`, fp);
     }
+    if (flips && half) {
+      // a back flip spun backside (or out of a cab) is a cork, spun frontside a rodeo
+      const kind = dir < 0 ? (fs && !sw ? 'RODEO' : 'CORK') : (fs ? 'MISTY' : 'BIO');
+      name = `${pre0}${side}${nf}${kind} ${deg}`;
+      const before = pts;
+      pts *= 1.3;
+      if (flips >= 2) pts *= 1 + 0.12 * (flips - 1); // stacking corks is the hardest thing there is
+      add('OFF-AXIS ' + kind, pts - before);
+    } else if (flips) {
+      name = `${pre0}${nf}${dir < 0 ? 'BACKFLIP' : 'FRONTFLIP'}`;
+    } else if (half) {
+      name = `${pre0}${side}${deg}`;
+    }
+    if (sw && (flips || half)) { const before = pts; pts *= 1.1; add(fs && half ? 'CAB' : 'SWITCH', pts - before); } // switch take-offs score a little more
     const held = (P.grabs || []).filter((g) => g.t > 0.15);
     let gp = 0;
     if (held.length) {
@@ -1310,17 +1341,19 @@
       for (const h of held) gp += 150 + Math.min(2.5, h.t) * 300;
       pts += gp;
       if (held.length > 1) { const k = 1 + 0.25 * (held.length - 1); pts *= k; gp *= k; }
+      add(g + ' GRAB', gp);
     }
     if (air > 1.1) {
       pts += (air - 1.1) * 250;
+      add(`AIRTIME ${air.toFixed(1)} S`, (air - 1.1) * 250);
       if (!name) name = 'BIG AIR';
     }
     // which part of the score each piece goes to (for the results screen)
     const pre = pts;
     let ks = 1;
-    if (qual === 'perfect') pts *= 1.15;
-    else if (qual === 'sketchy') { pts *= 0.7; ks = 0.7; }
-    if (name) addTrick(name, Math.round(pts), { air: (pre - gp) * ks, grab: gp * ks, land: qual === 'perfect' ? pre * 0.15 : 0 });
+    if (qual === 'perfect') { pts *= 1.15; add('PERFECT LANDING', pts - pre); }
+    else if (qual === 'sketchy') { pts *= 0.7; ks = 0.7; add('SKETCHY LANDING', pts - pre); }
+    if (name) addTrick(name, Math.round(pts), { air: (pre - gp) * ks, grab: gp * ks, land: qual === 'perfect' ? pre * 0.15 : 0 }, lines);
   }
 
   const mult = () => Math.min(3, 1 + 0.15 * Math.max(0, run.combo - 1));
@@ -1331,7 +1364,7 @@
     if (was < 1 && run.boost >= 1 && mode !== 'menu' && !ai.on) { Sfx.tone(660, 0.12, 'square', 0.05); Sfx.tone(990, 0.2, 'square', 0.05, 0, 0.08); }
   }
 
-  function addTrick(name, pts, parts) {
+  function addTrick(name, pts, parts, lines) {
     addBoost(Math.min(0.4, pts / 4500));
     run.combo++;
     run.pot += pts;
@@ -1339,10 +1372,11 @@
     const pp = run.potParts || (run.potParts = {});
     for (const [k, v] of Object.entries(parts || { air: pts })) pp[k] = (pp[k] || 0) + v;
     if (run.bestTrick && pts * mult() > run.bestTrick.pts) run.bestTrick = { name, pts: Math.round(pts * mult()) };
+    (run.comboNames || (run.comboNames = [])).push(name);
     run.bankT = 2.4;
     if (mode === 'menu') return;
     const m = mult();
-    setTrick(name, '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">x${m.toFixed(2)}</span>` : ''), false, 2.6);
+    setTrick(name, '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">x${m.toFixed(2)}</span>` : ''), false, 2.6, lines || [[name, pts]]);
     Sfx.trick();
     if (mode === 'mp' && pts >= 600) net.send({ t: 'ev', txt: name });
   }
@@ -1350,6 +1384,8 @@
   function bank() {
     if (run.pot <= 0) return;
     const m = mult();
+    if (mode !== 'menu') pushRunFeed(run.comboNames || [], Math.round(run.pot * m), m);
+    run.comboNames = [];
     run.score += Math.round(run.pot * m);
     if (run.parts) for (const [k, v] of Object.entries(run.potParts || {})) run.parts[k] = (run.parts[k] || 0) + Math.round(v * m);
     run.landed = (run.landed || 0) + 1;
@@ -1364,6 +1400,7 @@
     if (window.ShredSlopeDebug) (window.ShredSlopeDebug.bailLog = window.ShredSlopeDebug.bailLog || []).push(reason + '@' + Math.round(P.z) + (window.ShredSlopeDebug.verbose ? ' off=' + (P.x - world.center(P.z)).toFixed(1) + ' hd=' + P.heading.toFixed(2) + ' sp=' + P.speed.toFixed(1) + ' ref=' + (world.surfRef ? world.surfRef.type || world.surfRef.kind : '-') + ' wasSurf=' + P.surf : ''));
     const lost = Math.round(run.pot * mult());
     run.potParts = {};
+    run.comboNames = [];
     run.pot = 0;
     run.combo = 0;
     run.bails++;
@@ -1722,9 +1759,14 @@
     const sp = t.speed || 0;
     const giantAir = t === P && P.giant && !P.grounded;
     cam.big = lerp(cam.big || 0, giantAir ? 1 : 0, Math.min(1, dt * (giantAir ? 1.5 : 0.8)));
-    // HIGH hangs the camera up in the sky behind the rider, like a drone, so you see the course coming
-    let dist = (high ? 11 : far ? 8.6 : 6.4) + sp * (high ? 0.06 : 0.05) + cam.big * 6;
-    const hgt = (high ? 7.6 : far ? 3.3 : 2.3) + sp * (high ? 0.035 : 0.02) + cam.big * (high ? 3.5 : 2.5);
+    // HIGH hangs the camera up in the sky behind the rider, like a drone, so you see the course coming.
+    // CHASE (the default) rides low over your shoulder; in the air it eases back and up to frame the
+    // landing, and drops back in behind you when you touch down.
+    const chase = !far && !high;
+    const airK = t === P && !P.grounded && !P.giant && P.bailT <= 0 ? clamp((P.airT - 0.25) / 0.8, 0, 1) : 0;
+    cam.air = lerp(cam.air || 0, airK, Math.min(1, dt * (airK > (cam.air || 0) ? 2.2 : 4)));
+    let dist = (high ? 11 : far ? 8.6 : 5.5) + sp * (high ? 0.06 : chase ? 0.045 : 0.05) + cam.big * 6 + (chase ? cam.air * 2.2 : 0);
+    const hgt = (high ? 7.6 : far ? 3.3 : 1.8) + sp * (high ? 0.035 : chase ? 0.017 : 0.02) + cam.big * (high ? 3.5 : 2.5) + (chase ? cam.air * 1.3 : 0);
     const head = cam.head + (opts.orbit || 0);
     // if a bank is behind the rider, pull the camera in instead of lifting it over the rider's head
     let ex, ez;
@@ -1733,6 +1775,12 @@
       ez = t.z - Math.cos(head) * dist;
       if (world.ground(ex, ez) + 1.4 <= t.y + hgt + 0.6 || dist < 3) break;
       dist *= 0.78;
+    }
+    if (chase && !opts.far) {
+      // over the right shoulder
+      const off = 0.6 * (1 - cam.air * 0.6);
+      ex += Math.cos(head) * off;
+      ez -= Math.sin(head) * off;
     }
     if (cam.pipe > 0.01) {
       // keep the whole pipe in view: slide toward the middle and rise above the decks
@@ -1750,17 +1798,17 @@
     cam.y += (ey - cam.y) * ky;
     // look a little into the turn (and off to one side on the title screen)
     const side = (t.steerS || 0) * 1.6 + (opts.side || 0);
-    const ahead = high ? 9 : 7;
+    const ahead = (high ? 9 : 7) + (chase ? cam.air * 5 : 0);
     const tx = t.x + Math.sin(cam.head) * ahead + Math.cos(cam.head) * side;
     const tz = t.z + Math.cos(cam.head) * ahead - Math.sin(cam.head) * side;
-    const ty = t.y + (high ? -0.6 : 0.5);
+    const ty = t.y + (high ? -0.6 : chase ? 0.65 - cam.air * 1.1 : 0.5);
     cam.tx += (tx - cam.tx) * kp;
     cam.tz += (tz - cam.tz) * kp;
     cam.ty += (ty - cam.ty) * (cam.snap ? 1 : 1 - Math.exp(-dt * 6));
     const rollT = -(t.lean || 0) * 0.14;
     cam.roll += (rollT - cam.roll) * Math.min(1, dt * 4);
     const boostFov = t === P && P.boosting ? 9 : 0;
-    cam.fov = lerp(cam.fov, (62 + clamp(sp / MAX_SPEED, 0, 1) * 13 + boostFov) * (Math.PI / 180), cam.snap ? 1 : Math.min(1, dt * (boostFov ? 4 : 2)));
+    cam.fov = lerp(cam.fov, ((chase ? 64 : 62) + clamp(sp / MAX_SPEED, 0, 1) * (chase ? 15 : 13) + boostFov + (chase ? cam.air * 4 : 0)) * (Math.PI / 180), cam.snap ? 1 : Math.min(1, dt * (boostFov ? 4 : 2)));
     cam.snap = false;
   }
 
@@ -2249,7 +2297,7 @@
     show(ui.menuBtn, false);
     show(ui.againBtn, true);
     show(ui.newBtn, true);
-    show(ui.resMapsBtn, true);
+    show(ui.resMapsBtn, !oneMap);
     show(ui.touch, false);
     ui.resMenuBtn.textContent = 'LOBBY';
     ui.resNote.textContent = 'Same mountain rides this exact course again, against a ghost of your best run.';
@@ -2758,7 +2806,7 @@
     ui.restartBtn.querySelector('b').textContent = mode === 'mp' ? 'Leave server' : 'Restart run';
     $('pauseWhere').textContent = (world ? world.map.name : '') + (mode === 'mp' ? ' · MULTIPLAYER' : ' · SOLO');
     $('pauseMute').textContent = Sfx.muted ? 'Unmute audio' : 'Mute audio';
-    show($('voteBtn'), mode === 'mp');
+    show($('voteBtn'), mode === 'mp' && !oneMap);
     if (open) Sfx.silence();
   }
 
@@ -2943,7 +2991,7 @@
     $('passStars').textContent = n;
     $('passStars').nextElementSibling.textContent = '/ ' + all;
     $('passBar').style.width = (100 * n / all).toFixed(1) + '%';
-    const tiers = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(all * f));
+    const tiers = all <= 12 ? Array.from({ length: all + 1 }, (_, i) => i) : [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(all * f));
     $('passTiers').innerHTML = tiers.map((t) => `<span class="${n >= t ? 'on' : ''}">${t ? '&#9733; ' + t : 'START'}</span>`).join('');
     $('passList').innerHTML = SS.MAP_IDS.map((id) => {
       const m = SS.MAPS[id], pr = prog(id);
@@ -2970,7 +3018,7 @@
       const b = e.target.closest('[data-map]');
       if (!b) return;
       spMap = b.dataset.map;
-      saveName(); Sfx.init(); openMaps();
+      rideNow();
     });
     for (const b of document.querySelectorAll('#setTabs button')) b.addEventListener('click', () => {
       for (const x of document.querySelectorAll('#setTabs button')) x.classList.toggle('sel', x === b);
@@ -3021,7 +3069,14 @@
 
   // buttons
   const click = (el, fn) => el.addEventListener('click', (e) => { e.currentTarget.blur(); fn(); });
-  click(ui.spBtn, () => { saveName(); Sfx.init(); openMaps(); });
+  // RIDE: with one mountain it drops you straight in; with more it opens the picker
+  function rideNow() {
+    saveName();
+    Sfx.init();
+    if (oneMap) startSingle(false, SS.MAP_IDS[0]);
+    else openMaps();
+  }
+  click(ui.spBtn, () => rideNow());
   click(ui.mapsBack, () => closeMaps());
   click(ui.mapPrev, () => setMapPage(mapPage - 1, -1));
   click(ui.mapNext, () => setMapPage(mapPage + 1, 1));
@@ -3130,12 +3185,24 @@
   const cache = {};
   const setText = (el, key, v, html) => { if (cache[key] !== v) { cache[key] = v; if (html) el.innerHTML = v; else el.textContent = v; } };
   let trickT = 0;
-  function setTrick(name, sub, bad, dur) {
+  function setTrick(name, sub, bad, dur, lines) {
+    if (introT > 0.3) introT = 0.3;
     ui.trickName.textContent = name;
     ui.trickSub.innerHTML = sub;
+    const tp = $('trickParts');
+    if (tp) tp.innerHTML = (lines || []).slice(0, 6).map(([w, v], i) => `<li style="animation-delay:${(i * 0.06).toFixed(2)}s"><span>${esc(w)}</span><b>${v < 0 ? '−' : '+'}${fmt(Math.abs(v))}</b></li>`).join('');
     ui.trick.classList.toggle('bail', !!bad);
     ui.trick.classList.remove('fade');
     trickT = dur;
+  }
+  // the last few tricks you landed, under the score
+  function pushRunFeed(names, pts, m) {
+    const el = $('runFeed');
+    if (!el || !pts) return;
+    const nm = names.length ? names[names.length - 1] + (names.length > 1 ? ` +${names.length - 1}` : '') : 'COMBO';
+    runFeedList.unshift({ nm, pts, m, t: time });
+    runFeedList.length = Math.min(runFeedList.length, 4);
+    el.innerHTML = runFeedList.map((f, i) => `<div class="${i === 0 ? 'new' : ''}"><b>+${fmt(f.pts)}</b><span>${esc(f.nm)}</span>${f.m > 1 ? `<em>x${f.m.toFixed(2)}</em>` : ''}</div>`).join('');
   }
   let landT = 0;
   let flash = 0;
@@ -3215,6 +3282,19 @@
       setText(ui.subStats, 'sub', mine && run.pot > 0 && mult() > 1 ? 'COMBO x' + mult().toFixed(2) : '');
     }
     ui.speedBar.style.width = (clamp(sp / MAX_SPEED, 0, 1) * 100).toFixed(1) + '%';
+    // the round speed gauge: three quarters of a circle, full at 120 km/h (air time fills it too)
+    const gk = air ? clamp(P.airT / 4, 0, 1) : clamp(sp * 3.6 / 120, 0, 1);
+    const ga = (gk * 245).toFixed(1);
+    if (cache.ga !== ga) { cache.ga = ga; $('speedArc').style.strokeDasharray = ga + ' 400'; }
+    $('speedBox').classList.toggle('air', air);
+    // how far down the course you are
+    const pk = (clamp(focus.z / C.LENGTH, 0, 1) * 100).toFixed(1);
+    if (cache.pk !== pk) { cache.pk = pk; $('progFill').style.width = pk + '%'; }
+    const cm = mine && run.pot > 0 && P.bailT <= 0 ? mult() : 1;
+    const cc = cm > 1 ? 'x' + cm.toFixed(2) + ' COMBO' : '';
+    if (cache.cc !== cc) { cache.cc = cc; $('comboChip').textContent = cc; show($('comboChip'), !!cc); }
+    const rf = $('runFeed');
+    if (rf) for (let i = 0; i < rf.children.length; i++) rf.children[i].classList.toggle('old', !runFeedList[i] || time - runFeedList[i].t > 7);
     setText(ui.timer, 'tm', fmtTime(mine ? raceT : 0));
     setText(ui.alt, 'alt', fmt(world.altitude(focus.z)) + ' M');
     setText(ui.left, 'left', Math.max(0, (C.LENGTH - focus.z) / 1000).toFixed(1) + ' KM LEFT');
