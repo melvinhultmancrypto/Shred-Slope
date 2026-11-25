@@ -1,10 +1,10 @@
 # Shred Slope 🏂
 
-A 3D snowboarding game that runs in the browser. Ride **Pine Valley**, a sunny resort run from the top of the chairlift down into a ski village, pick one of five streetwear riders with their own stats, throw real snowboard tricks (cab 540s, backside 900s, double corks, rodeos, misty flips and grabs), and race up to 9 friends online.
+A 3D snowboarding game that runs in the browser. Drop into **Sundown Park**, a full slopestyle park at golden hour, pick one of five streetwear riders with their own stats, throw real snowboard tricks (cab 540s, backside 900s, double corks, rodeos, misty flips and grabs), and race up to 9 friends online.
 
 Join the community on Discord: **[discord.gg/eW5FGXt4pj](https://discord.gg/eW5FGXt4pj)** (there's a link under the Drop in button and one in the menu).
 
-- **The lobby:** made to look like a console snowboard game: a tab strip across the top (**Play**, **Locker**, **Shop**, **Pass**, **Cups** (coming soon), **News**, and the settings gear), the **Shred Slope** logo and your coins and account, and a slow drone shot down the course behind it all. On **Play** your rider stands on the left holding the board, with their name, style and stats (drag to turn them round); on the right sits the course title card with your stars and best score, the season pass, a big angled orange **DROP IN** (Enter works too) and **Multiplayer**. Sharp edges, heavy condensed italic type and dark glass panels; on phones the tabs move to a bar along the bottom.
+- **The lobby:** made to look like a console snowboard game: a tab strip across the top (**Play**, **Locker**, **Shop**, **Pass**, **Cups** (coming soon), **News**, and the settings gear), the **Shred Slope** logo and your coins and account, and a slow drone shot down the course behind it all. On **Play** your rider stands on the left holding the board, with their name, style and stats (drag to turn them round); on the right sits the course title card with your stars and best score, the season pass, a big angled light grey **DROP IN** (Enter works too) and **Multiplayer**. Everything is black, dark grey and grey with white type: sharp edges, heavy condensed italic type and near-black glass panels, and the HUD in the run is white and grey too; on phones the tabs move to a bar along the bottom.
 - **The riders:** five riders to pick in the Locker, sculpted in code as one smooth body each (no tubes and balls): the body is modelled like clay from soft shapes blended together, turned into a single mesh, and bent by an 11-bone skeleton, so shoulders, elbows, hips and knees flex like a real body. Each has a sculpted face (eyes with lids, nose, lips, ears), knitted hats with real ribs, hair and goggles with a frame round the lens. The cloth is matte fleece and twill with a faint grain, folds and armpits sit in baked shade, and every hoodie has a woven tag on the chest. All in baggy streetwear (an oversized hoodie with a kangaroo pocket, ribbed cuffs and hem, wide pants stacked in folds over the boots): **Kai** (all-rounder, beanie and goggles), **Mia** (spinner, pom-pom beanie, goggles up, ponytail), **Dre** (speed, hood up over a beanie, neck gaiter), **Yuki** (big air, bucket hat with the goggles round it) and **Rio** (steady, slouchy beanie, curls and a beard). Every rider has **speed**, **air**, **spin** and **balance** from 1 to 5 (they add up to 12), and they change how the board rides. The suit, hat and goggles you wear colour whoever you ride as.
 - **The HUD:** zone name and a course progress bar at the top left, the timer at the top centre, score, combo multiplier and snowflakes at the top right with a feed of your last banked combos under it, and a round speed gauge at the bottom right that lights up in the air. Every trick shows its full name and a breakdown of where the points came from (spin, flip, grab, airtime, landing).
 - **Riding:** snappier than before (faster spins, bigger pops, tighter carves), but honest: come down sideways at speed and you catch an edge, slam a flat landing and your knees buckle, hold a hard skid too long at speed and the edge digs in, and the deep snow off the piste slows you down. The rider leans into carves and trails a hand in the snow, throws their arms out on rails, windmills on a sketchy landing, pulls their knees up at the top of a jump and reaches for the landing on the way down.
@@ -23,23 +23,23 @@ Join the community on Discord: **[discord.gg/eW5FGXt4pj](https://discord.gg/eW5F
 - **Smooth frame rate:** the course is built 50 m at a time in a background thread (a Web Worker running the same world code with the same seed), so new parts of the mountain never hold up a frame. The frame rate is capped at 30, 60 or 90 FPS (60 to start with).
 - **No installs, no libraries:** a small hand-written WebGL engine and a plain Node.js server with zero dependencies.
 
-## The course: Pine Valley
+## The course: Sundown Park
 
-A sunny resort run, about 2.5 km long, from the chairlift's top station down into a ski village. The chairlift (with people riding it) runs up beside the piste and crosses right over it twice. Marker poles and the signs at the top of each run are coloured like a real piste: blue squares, red squares, black diamonds on the Traverse and the bumps, orange for the park. Snow guns line the lift side and orange nets fence off the Traverse.
+A whole park at golden hour, about 2.4 km long, with grandstands, lamps and banners along the way:
 
 | Section | What's in it |
 | --- | --- |
-| **Top station** | The run-in from the top of the chairlift. |
-| **Lynx (blue 4)** | A wide groomed run with side hits along both edges: lips that lean up toward the trees, banks to slash, and rollers in the middle. |
-| **The Traverse** | A narrow, flat track with banked walls either side. It's slow, so carry your speed in (and ride the walls). |
-| **Hut Bumps** | Steeper, with staggered bumps all the way across. The mountain restaurant with its sun terrace sits just above it. |
-| **Wolf Ridge (red 7)** | Steeper again, with more and bigger side hits and a few kickers in the middle. |
-| **Pete's Park** | The resort's little park: four kickers down the middle (small to large) with boxes and rails either side. |
-| **Main Street** | Down between rows of chalets, under strings of bunting, to the finish and the bottom lift station. |
+| **Drop-in** | A short run-in to get your speed up. |
+| **Jib garden** | A mix of boxes, rails and small kickers spread across the slope. |
+| **Rail sections 1, 2 and 3** | Three rail stations, each with several lines side by side, getting harder as you go down. |
+| **Step-ups** | A line of small jumps to pop over onto higher tables. |
+| **Jump line** | A kicker station with a small, medium and big kicker side by side. |
+| **Big line** | A bigger kicker station. |
+| **The Send** | A giant kicker with a huge landing hill straight into the finish. |
 
-Stars: **Finish the run**, **Score 10,000** and **Land 6 perfect landings**. Every run builds a fresh course from a seed, or you can ride the same one again against a see-through ghost of your best run.
+Stars: **Finish the run**, **Score 16,000** and **Land the Send**. Every run builds a fresh course from a seed, or you can ride the same one again against a see-through ghost of your best run.
 
-The other mountains from earlier versions (Gold Medal Slopestyle, the halfpipe, the big-air jumps and the rest) are still in `public/js/world.js`; they're just switched off. To bring one back, add its id to `SS.MAP_IDS` in `world.js` and to `MAPS` in `server.js` (with two or more, the mountain picker and map votes come back by themselves).
+The other mountains from earlier versions (Pine Valley, the halfpipe, the big-air jumps and the rest) are still in `public/js/world.js`; they're just switched off. To bring one back, add its id to `SS.MAP_IDS` in `world.js` and to `MAPS` in `server.js` (with two or more, the mountain picker and map votes come back by themselves).
 
 ## Play it
 
@@ -125,7 +125,7 @@ Let go of the keys before you land. The rider straightens up to the nearest clea
 - The server list shows 3 servers, each with room for 10 riders. A full server shows **FULL**.
 - A round goes **countdown (10 s) → race → results (12 s) → next round**. Everyone gets the same course, built from a seed the server picks.
 - You need an account to join a server. Without one, the servers panel shows **Create an account to play multiplayer** with buttons to create one or sign in. Your account name is your name in the race.
-- Every round is on Pine Valley with a fresh seed, so the course is new each round. (With more than one mountain switched on, the mountain changes every round and riders can vote for the next one.)
+- Every round is on Sundown Park with a fresh seed, so the course is new each round. (With more than one mountain switched on, the mountain changes every round and riders can vote for the next one.)
 - Riders who join during the countdown, or in the first 30 seconds of a race, ride the current round. Anyone later watches until the next one starts (← → switches who you watch).
 - The race ends when everyone has finished, or after 4 minutes. Highest score wins.
 - **Voice chat** goes straight between the riders' browsers (WebRTC, peer to peer); the server only passes along the messages that set up each connection, and only between riders who have voice on. The first time you join, the game asks whether to use your mic. Choose open mic, push-to-talk (hold `V`), or no voice, and tick "don't ask again" to skip the question next time. Settings → Voice chat changes it later (Ask / Off / Push / Open). The voice panel at the bottom left lists who's on voice; a ring lights up while someone talks, and you can mute anyone. The browser asks for mic permission the first time. Voice needs the page on `https` (Render gives you that) or `localhost`.
@@ -164,7 +164,7 @@ Scores come from the players' browsers, so a determined cheater could fake one; 
 | `public/index.html` | Page, HUD and menus |
 | `public/style.css` | HUD and menu styling |
 | `public/js/engine.js` | Tiny WebGL engine: matrices, shaders, drawing |
-| `public/js/world.js` | Pine Valley (and the switched-off mountains) and the seeded course: terrain, side hits, cat track, moguls, kickers, rails, chalets, chairlift, trees, mountain ranges. `SS.MAP_IDS` says which mountains are on |
+| `public/js/world.js` | Sundown Park (and the switched-off mountains, Pine Valley among them) and the seeded course: terrain, kickers, rails, boxes, the giant kicker, nets, grandstands, chairlift, trees, mountain ranges. `SS.MAP_IDS` says which mountains are on |
 | `public/js/chunks.js` | The background worker that bakes the course's 50 m chunks off the main thread (it loads `engine.js` and `world.js`) |
 | `public/js/sculpt.js` | The sculpting kit: soft shapes blended into one surface (signed distance fields), turned into a smooth mesh (surface nets), with clean colour edges and bone weights for skinning |
 | `public/js/rider.js` | The five riders (sculpted bodies and heads, the skeleton and its poses and animations, the board and boots), dressed in a free outfit or a look from the locker |
@@ -174,7 +174,7 @@ Scores come from the players' browsers, so a determined cheater could fake one; 
 | `public/js/net.js` | Multiplayer client |
 | `public/js/account.js` | The sign in / create account screen, the account chip in the lobby's top bar, and syncing your save |
 | `public/js/voice.js` | Voice chat: the mic, a WebRTC connection to each rider on voice, push-to-talk, mute and the talking rings |
-| `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id; `resort.jpg` is Pine Valley) |
+| `public/img/maps/` | The picture on each mountain's card (one JPEG per mountain, named after its id; `slopestyle.jpg` is Sundown Park) |
 | `public/img/logo.png` | The snowboarder logo (in the lobby rail, on the loading screen and the results); `icon-64.png` and `icon-180.png` are the browser tab and home-screen icons |
 | `public/js/audio.js` | Synthesised sound effects |
 

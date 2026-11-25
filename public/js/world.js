@@ -238,21 +238,23 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'giants', v: 3, t: 'Land all three giants' }, { k: 'score', v: 38000, t: 'Score 38,000' }],
       card: 'linear-gradient(180deg,#3a3c7a 0%,#d0688a 45%,#ffa45a 75%,#ffe08a 100%)', accent: '#ff8a3d',
     },
+    // the one course for now: Sundown Park, a whole park at golden hour ending on a giant kicker
     slopestyle: {
-      id: 'slopestyle', name: 'Gold Medal Slopestyle', time: 'SUNNY DAY', diff: 'HARD',
-      sub: 'A competition course like the one at the Games: three rail sections with three lines each, then three jumps.',
-      half: 24, curve: [6, 360, 3, 160], slope: 0.23, alt: 2900, length: 1900,
-      zones: [Z('RAIL SECTION 1', 'railStation', 170, { n: 0 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 1 }), Z('RAIL SECTION 3', 'railStation', 170, { n: 2 }),
-        Z('JUMP 1', 'jumpStation', 300, { n: 0 }), Z('JUMP 2', 'jumpStation', 300, { n: 1 }), Z('JUMP 3', 'jumpStation', 300, { n: 2 })],
-      first: 'START GATE', stands: true,
-      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([0.3, 0.6, 0.74]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
-      sky: { zen: [0.12, 0.36, 0.8], hor: [0.7, 0.82, 0.96], dir: norm3([0.3, 0.6, 0.74]), col: [1.0, 0.96, 0.85], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.74, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.6, stars: 0 },
-      lamps: null, banners: true,
-      trees: { near: 0.65, far: 0.85, snow: 0.6, green: [0.08, 0.2, 0.14] },
+      id: 'slopestyle', name: 'Sundown Park', time: 'GOLDEN HOUR', diff: 'HARD',
+      sub: 'A whole park at golden hour: a jib garden, three rail sections, step-ups, two jump lines, and the Send, a giant kicker into the finish.',
+      half: 26, curve: [9, 320, 4, 150], slope: 0.235, alt: 3100, length: 2360,
+      zones: [Z('JIB GARDEN', 'parkmix', 260), Z('RAIL SECTION 1', 'railStation', 170, { n: 1 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 3 }),
+        Z('STEP-UPS', 'jumpline', 330, { small: true }), Z('RAIL SECTION 3', 'railStation', 170, { n: 5 }),
+        Z('JUMP LINE', 'jumpStation', 300, { n: 1 }), Z('BIG LINE', 'jumpStation', 300, { n: 2 }), Z('THE SEND', 'giant', 300)],
+      first: 'DROP-IN', stands: true,
+      light: { sky: [0.38, 0.38, 0.48], ground: [0.18, 0.15, 0.14], sunDir: norm3([0.72, 0.3, 0.63]), sun: [1.08, 0.82, 0.55], fog: [0.88, 0.76, 0.62], rim: [0.46, 0.36, 0.3], snow: [0.97, 0.96, 0.95], powder: [0.93, 0.92, 0.94] },
+      sky: { zen: [0.16, 0.26, 0.52], hor: [1.0, 0.72, 0.46], dir: norm3([0.72, 0.24, 0.63]), col: [1.0, 0.74, 0.42], disk: 0.9992, glow: [5, 0.46, 60, 0.6], aurora: 0, cloudDark: [0.46, 0.38, 0.42], cloudLit: [1.0, 0.8, 0.58], clouds: 0.6, stars: 0 },
+      lamps: { every: 80, i: 0.75, col: [1, 0.86, 0.64] }, banners: true,
+      trees: { near: 0.7, far: 0.85, snow: 0.7, green: [0.07, 0.16, 0.12] },
       snowfall: 0, nets: true, shadows: true,
-      mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'perfects', v: 3, t: 'Land 3 perfect landings' }],
-      card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ffd23f',
+      mtn: { dark: [0.32, 0.26, 0.32], cap: [1.0, 0.84, 0.7], k: [0.42, 0.58] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 16000, t: 'Score 16,000' }, { k: 'giants', v: 1, t: 'Land the Send' }],
+      card: 'linear-gradient(180deg,#2c3470 0%,#c8688a 45%,#ffa45a 75%,#ffe08a 100%)', accent: '#c8ff3a',
     },
     jumpline: {
       id: 'jumpline', name: 'Jump Line', time: 'NIGHT', diff: 'MEDIUM',
@@ -486,7 +488,7 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'air', v: 2.5, t: 'Stay in the air for 2.5 seconds' }],
       card: 'linear-gradient(180deg,#0b3aa8 0%,#5b97ea 55%,#ffe9f1 100%)', accent: '#1fb8e0',
     },
-    // the one course for now: a sunny resort run from the top of the chairlift down into the village
+    // Pine Valley: a sunny resort run from the top of the chairlift down into the village (switched off for now)
     resort: {
       id: 'resort', name: 'Pine Valley', time: 'BLUEBIRD', diff: 'MEDIUM', resort: true,
       sub: 'Top of the chair to the bottom of the village. Side hits off Lynx, the Traverse, bumps under the hut, Wolf Ridge, Pete\'s Park and Main Street.',
@@ -507,8 +509,8 @@
   SS.MAPS = MAPS;
   // every mountain that's built (their order seeds the courses, so it never changes) ...
   SS.ALL_MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24', 'resort'];
-  // ... and the ones you can ride: just the resort run for now
-  SS.MAP_IDS = ['resort'];
+  // ... and the ones you can ride: just Sundown Park for now
+  SS.MAP_IDS = ['slopestyle'];
   // the courses built like the ones at the Games get an OLYMPIC STYLE badge
   for (const id of ['slopestyle', 'slopequal', 'bigairfinal', 'superpipe', 'sbx']) MAPS[id].oly = true;
   SS.GIANT = GIANT;

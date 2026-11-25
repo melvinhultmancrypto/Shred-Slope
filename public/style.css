@@ -1165,7 +1165,7 @@ kbd { border-radius: 2px; font-family: var(--ui); font-weight: 700; }
 }
 
 /* PLAY: the course as a title card, not a widget */
-.course-card { border: 0; border-left: 4px solid var(--cream); background: linear-gradient(180deg, rgba(8, 11, 18, 0) 0%, rgba(8, 11, 18, 0.35) 38%, rgba(8, 11, 18, 0.92) 78%), url("img/maps/resort.jpg") center 35% / cover; box-shadow: none; }
+.course-card { border: 0; border-left: 4px solid var(--cream); background: linear-gradient(180deg, rgba(8, 11, 18, 0) 0%, rgba(8, 11, 18, 0.35) 38%, rgba(8, 11, 18, 0.92) 78%), url("img/maps/slopestyle.jpg") center 35% / cover; box-shadow: none; }
 .course-card h2 { font-size: clamp(44px, 4.4vw, 64px); line-height: 0.88; text-shadow: 0 3px 14px rgba(0, 0, 0, 0.5); }
 .course-card .kicker { color: var(--cream); }
 .cc-meta { gap: 0 !important; }
@@ -1235,3 +1235,86 @@ kbd { border-radius: 2px; font-family: var(--ui); font-weight: 700; }
 #landTag.perfect { color: #6dff9e; }
 #touch button[data-k="pop"] { background: rgba(255, 90, 31, 0.9); color: #fff; }
 #touch button { border-radius: 50% !important; }
+
+/* ============================================================ dark grey
+ * Black, graphite and grey only: no colour in the menus. Light grey marks the thing to press. */
+:root {
+  --cream: #d6d8dc;
+  --ice: #8d939c;
+  --gold: #e4e6ea;
+  --green: #b9bec6;
+  --txt: #eceef1;
+  --mut: #8b9099;
+  --mut2: #5a5f67;
+  --line: rgba(255, 255, 255, 0.08);
+  --line2: rgba(255, 255, 255, 0.14);
+  --glass: rgba(13, 14, 16, 0.9);
+  --glass2: rgba(13, 14, 16, 0.74);
+}
+body { background: #0a0b0c; }
+.lobby::before { background: linear-gradient(90deg, rgba(0, 0, 0, 0.72), rgba(0, 0, 0, 0.28) 40%, rgba(0, 0, 0, 0.18) 60%, rgba(0, 0, 0, 0.45)), linear-gradient(0deg, rgba(0, 0, 0, 0.6), transparent 34%), linear-gradient(rgba(0, 0, 0, 0.7), transparent 18%); }
+.results::before { background: linear-gradient(270deg, rgba(0, 0, 0, 0.25) 25%, rgba(0, 0, 0, 0.82)); }
+/* the light grey slab is the button to press; text on it is near-black */
+.btn.primary, .acct-chip .pa-btn.go { background: #d6d8dc; color: #0c0d0f; }
+.btn.primary:hover, .acct-chip .pa-btn.go:hover { background: #f0f1f3; }
+.btn.primary kbd { border-color: rgba(0, 0, 0, 0.35); color: #0c0d0f; background: rgba(0, 0, 0, 0.06); }
+.btn, .btn.outline, .btn.mp-btn { background: var(--glass); border-color: rgba(255, 255, 255, 0.1); }
+.btn.outline, .btn.mp-btn { border-left-color: #6c727b; }
+.btn:hover, .btn.outline:hover, .btn.mp-btn:hover { background: #1d1f23; border-color: rgba(255, 255, 255, 0.24); border-left-color: #b4b9c1; }
+.rail > button.sel { box-shadow: inset 0 -4px 0 #d6d8dc; }
+.rail > button .tag, .rail > button.sel .tag, .tag.new, .sticker { background: #3a3d43; color: #e4e6ea; }
+.pills button.sel { background: #d6d8dc; color: #0c0d0f; }
+.tile { background: linear-gradient(160deg, #24262a, #141518); border-color: rgba(255, 255, 255, 0.06); }
+.tile.sel { border-color: #9ca2ab; box-shadow: inset 0 0 0 1px #9ca2ab; }
+.tile.on::after { background: #d6d8dc; color: #0c0d0f; }
+.stats i b { background: rgba(255, 255, 255, 0.1); }
+.stats i b.on { background: #a5abb3; }
+.tile.on .stats i b.on { background: #eceef1; }
+.course-card { border-left-color: #8d939c; background: linear-gradient(180deg, rgba(10, 11, 13, 0.15) 0%, rgba(10, 11, 13, 0.55) 40%, rgba(10, 11, 13, 0.95) 80%), url("img/maps/slopestyle.jpg") center 35% / cover; filter: saturate(0.55); }
+.course-card .kicker, .nameplate .rider-who { color: #a9aeb6; }
+.cc-meta span + span::before { color: #6c727b; }
+.pass-card, .pass-hero { border-left-color: #8d939c; }
+.pass-hero { background: repeating-linear-gradient(115deg, rgba(255, 255, 255, 0.03) 0 2px, transparent 2px 18px), var(--glass); }
+.nameplate .rider-stats { border-left-color: #8d939c; }
+.sitem { --t1: #2f3236; --t2: #17181b; border-color: rgba(255, 255, 255, 0.07); }
+.sitem.t-common { --t1: #2a2c30; --t2: #151618; }
+.sitem.t-rare { --t1: #34373c; --t2: #18191c; }
+.sitem.t-epic { --t1: #3d4046; --t2: #1a1b1e; }
+.sitem.t-legendary { --t1: #4a4d53; --t2: #1c1d20; }
+.sitem::after { filter: none; background: #6c727b; }
+.sitem.t-epic::after { background: #9ca2ab; }
+.sitem.t-legendary::after { background: #e4e6ea; }
+.ti-tier.t-rare, .ti-tier.t-epic, .ti-tier.t-legendary, .t-common .ti-tier { color: #a9aeb6; }
+.locker-panel, .card, .tryon, .upd, .modal, .side { background: var(--glass); border-color: rgba(255, 255, 255, 0.07); }
+.side-ov, .modal-ov { background: rgba(0, 0, 0, 0.6); }
+.field input, .af input { background: #1a1b1e; border-color: rgba(255, 255, 255, 0.1); }
+.wordmark .brush b, .brush b { color: #9ca2ab; }
+.res-total .num, .res-best b { color: #eceef1; }
+#loading { background: #0a0b0c; }
+/* HUD: white and grey type, no orange */
+.hud-prog i, .combo-chip { background: #d6d8dc; color: #0c0d0f; }
+.gauge .g-fg { stroke: #e4e6ea; }
+#speedBox.air .g-fg { stroke: #9ca2ab; }
+#trickSub, #runFeed b { color: #c3c7cd; }
+#landTag.perfect { color: #ffffff; }
+#landTag.sketchy { color: #9ca2ab; }
+#mapBox { border-left-color: #8d939c; }
+#touch button[data-k="pop"] { background: rgba(214, 216, 220, 0.9); color: #0c0d0f; }
+#touch button[data-k="boost"] { background: rgba(120, 126, 134, 0.45); }
+.pst { filter: grayscale(1) brightness(1.5); }
+.pmap { border-radius: 2px; background: var(--glass); }
+.pmap .pic, .upd-pic { border-radius: 2px; filter: saturate(0.45); }
+#mapIntro { border-left-color: #9ca2ab; }
+#miTime, .mi-tags { color: #c3c7cd; }
+#boostBox .bbar i { background: linear-gradient(90deg, #7b818a, #d6d8dc 60%, #ffffff); }
+#boostBox.full .bbar { filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.6)); }
+/* the last bits of colour: combo timer, snowflake count, star chips */
+:root { --bib: #9ca2ab; }
+#comboBar i { background: linear-gradient(90deg, #7b818a, #e4e6ea); }
+#tokens { color: #d6d8dc; }
+.res-goals span.on { border-color: rgba(255, 255, 255, 0.38); }
+.res-goals span.new { background: rgba(255, 255, 255, 0.08); }
+.res-goals span.on::before, .mi-goals li.on::before { color: #e4e6ea; }
+.flake { background: radial-gradient(circle, #ffffff 0 22%, #b4b9c1 24% 46%, transparent 48%); filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.45)); }
+.drop-btn .brush { white-space: nowrap; }
+@media (max-width: 760px), (max-height: 520px) { .drop-btn kbd { display: none; } }

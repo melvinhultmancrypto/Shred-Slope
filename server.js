@@ -33,7 +33,7 @@ const LATE_JOIN_MS = 30000;
 
 // the mountains the servers ride (ids match public/js/world.js): one course for now
 const MAPS = [
-  { id: 'resort', name: 'Pine Valley' },
+  { id: 'slopestyle', name: 'Sundown Park' },
 ];
 
 accounts.init(MAPS);
