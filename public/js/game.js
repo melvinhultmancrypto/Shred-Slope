@@ -2954,7 +2954,7 @@
     if (!studio.t.ok) return false;
     const L = engine.light;
     const keep = { sky: L.sky, ground: L.ground, moonDir: L.moonDir, moonCol: L.moonCol, rim: engine.rim, fog: engine.fog, fogCol: engine.fogCol, w: engine.w, h: engine.h, shadowOn: engine.shadowOn };
-    const eye = [Math.sin(o.yaw) * o.d, o.cy, Math.cos(o.yaw) * o.d], tgt = [0, o.ty, 0];
+    const tgt = [o.tx || 0, o.ty, o.tz || 0], eye = [tgt[0] + Math.sin(o.yaw) * o.d, o.cy, tgt[2] + Math.cos(o.yaw) * o.d];
     // a soft key light from above the camera's left shoulder, sky fill and a cool rim
     const kx = Math.sin(o.yaw - 0.75) * 0.62, kz = Math.cos(o.yaw - 0.75) * 0.62, kl = Math.hypot(kx, 0.78, kz);
     L.sky = [0.6, 0.64, 0.74]; L.ground = [0.34, 0.33, 0.33];
@@ -3111,8 +3111,8 @@
   const FRAMES = {
     suit: { pose: 'stand', yaw: Math.PI / 2 + 0.35, d: 2.7, cy: 1.32, ty: 1.12, fov: 0.6 },
     rider: { pose: 'stand', yaw: Math.PI / 2 + 0.2, d: 1.25, cy: 1.66, ty: 1.56, fov: 0.6 },
-    helmet: { pose: 'helmet', yaw: Math.PI / 2 + 0.6, d: 0.66, cy: 1.8, ty: 1.73, fov: 0.6 },
-    goggles: { pose: 'goggles', yaw: Math.PI / 2 + 0.45, d: 0.52, cy: 1.76, ty: 1.72, fov: 0.6 },
+    helmet: { pose: 'helmet', yaw: Math.PI / 2 + 1.15, d: 0.6, cy: 1.9, ty: 1.76, tx: 0.02, fov: 0.6 },
+    goggles: { pose: 'goggles', yaw: Math.PI / 2 + 0.5, d: 0.56, cy: 1.77, ty: 1.725, tx: 0.13, fov: 0.6 },
     board: { pose: 'board', yaw: Math.PI / 2 + 0.3, d: 2.3, cy: 0.05, ty: 0, fov: 0.6, roll: 0.95 },
   };
   function thumb(look, slot, cb) {

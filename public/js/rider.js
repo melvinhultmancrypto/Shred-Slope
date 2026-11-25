@@ -39,11 +39,11 @@
   // apart is the helmet, the mask, a ponytail or a hood, and their size. The suit brings the colours.
   //   helmet: vent | peak (short visor) | pads (soft ear pads);  mask: gaiter | balaclava
   const RIDER_LOOKS = {
-    kai: { helmet: 'vent', mask: 'gaiter', maskCol: '#2a2d33', size: 1.0 },
-    mia: { helmet: 'vent', mask: 'gaiter', maskCol: '#d8d1c4', hairStyle: 'pony', hair: '#8a4a22', size: 0.95 },
-    dre: { helmet: 'vent', mask: 'gaiter', maskCol: '#111214', size: 1.05 },
-    yuki: { helmet: 'vent', mask: 'balaclava', maskCol: '#34404f', size: 0.98 },
-    rio: { helmet: 'pads', mask: 'gaiter', maskCol: '#5b3d2b', size: 1.02 },
+    kai: { helmet: 'vent', skin: '#c98e66', size: 1.0 },
+    mia: { helmet: 'vent', skin: '#e2b48e', hairStyle: 'pony', hair: '#8a4a22', size: 0.95 },
+    dre: { helmet: 'vent', skin: '#7f5236', size: 1.05 },
+    yuki: { helmet: 'vent', skin: '#e8c39e', size: 0.98 },
+    rio: { helmet: 'pads', skin: '#a8714b', size: 1.02 },
   };
   const RIDER_IDS = Object.keys(RIDER_LOOKS);
   SS.RIDER_LOOKS = RIDER_LOOKS;
@@ -54,7 +54,7 @@
   function applyRider(p, id) {
     const r = RIDER_LOOKS[id] || RIDER_LOOKS.kai;
     p.riderId = RIDER_LOOKS[id] ? id : 'kai';
-    p.skin = '#c98e66'; p.hair = r.hair || '#2b1d14';
+    p.skin = r.skin || '#c98e66'; p.hair = r.hair || '#2b1d14';
     p.helmetType = r.helmet; p.mask = r.mask; p.maskCol = r.maskCol; p.hoodUp = !!r.hood; p.hairStyle = r.hairStyle || 'none';
     p.eyes = 'goggles'; p.size = r.size || 1;
     return p;
@@ -1015,14 +1015,14 @@
       if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
       return m;
     };
-    L.push(group([
+    const jk = group([
       // a real build under the jacket: chest and shoulder blades up top, a narrower waist,
       // the jacket falling over the hips; shoulders sloping down from the neck to round caps
       // a puffy jacket standing off the body: full through the chest and back, falling straight
       ell([0.0, 1.27, 0], [0.152, 0.2, 0.232], { mat: BM_JACKET, paint: hoodiePaint }),
       ell([-0.04, 1.3, 0], [0.13, 0.17, 0.222], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
       ell([-0.01, 1.04, 0], [0.155, 0.24, 0.236], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.02, 0.84, 0], [0.168, 0.23, 0.262], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.02, 0.86, 0], [0.172, 0.3, 0.272], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
       // rounded, dropped shoulders
       tube([-0.01, 1.51, -0.05], [-0.006, 1.44, -0.2], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
       tube([-0.01, 1.51, 0.05], [-0.006, 1.44, 0.2], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
@@ -1030,10 +1030,12 @@
       ell([0.0, 1.415, 0.215], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       // a tall funnel collar, zipped right up round the chin, a little wider at the top
       tube([0.004, 1.45, 0], [0.058, 1.7, 0], 0.104, 0.122, { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
-      // the hem: a firm band round the bottom that stands proud of the jacket
-      torus([-0.02, 0.738, 0], [0, 1, 0], 0.15, 0.024, { Rz: 0.234, k: 0.012, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.715, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
-    ], { bone: BN.spine, mat: BM_JACKET }));
+    ], { bone: BN.spine, mat: BM_JACKET });
+    L.push(jk);
+    // the chest band: a panel sewn on round the body, standing a few mm proud
+    L.push(S3.custom((x, y, z) => Math.max(jk.d(x, y, z) - 0.004, Math.abs(y - 1.235) - 0.055),
+      [-0.3, 1.17, -0.3, 0.3, 1.3, 0.3], { bone: BN.spine, mat: BM_BAND, bias: 0.002 }));
     // ---- neck (inside the collar)
     L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN }));
     L.push(tube([0.018, 1.6, 0], [0.032, 1.69, 0], 0.053, 0.052, { k: 0.02, bone: BN.head, mat: BM_SKIN }));
@@ -1067,7 +1069,7 @@
       const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
       const dl = vn(vsub(an, kn));
       // the leg starts a little below the hip joint, so its top stays inside the jacket
-      L.push(tube(vadd(hj, vsc(vn(vsub(kn, hj)), 0.12)), kn, 0, 0, { prof: (t) => 0.13 - 0.004 * t, k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
+      L.push(tube(vadd(hj, vsc(vn(vsub(kn, hj)), 0.12)), kn, 0, 0, { prof: (t) => { const q = Math.min(1, t / 0.4); return 0.085 + 0.045 * q * q * (3 - 2 * q); }, k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
       L.push(ell(kn, [0.124, 0.124, 0.124], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
       L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.12 + 0.022 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS, disp: (x, y, z) => (y < 0.36 ? 0.007 * Math.sin(y * 55) * (1 - y / 0.36) : 0) }));
     }
@@ -1088,7 +1090,7 @@
     const L = [];
     const cuts = [];
     L.cuts = cuts;
-    const skinMat = r.mask === 'balaclava' ? HM_MASK : HM_SKIN;
+    const skinMat = HM_SKIN;
     // r.part: none for the head itself; 'goggles' for the goggles alone (built finer, on their own);
     // 'helmet' for the shop's picture of a helmet on its own
     const onlyGog = r.part === 'goggles', onlyHelm = r.part === 'helmet';
@@ -1098,13 +1100,9 @@
     L.push(ell([0.026, -0.045, 0], [0.08, 0.075, 0.074], { k: 0.04, mat: skinMat }));
     L.push(ell([0.05, -0.088, 0], [0.054, 0.04, 0.056], { k: 0.035, mat: skinMat }));
     L.push(tube([-0.018, -0.07, 0], [-0.026, -0.16, 0], 0.05, 0.052, { k: 0.03, mat: skinMat }));
-    // ---- the face mask: a knit gaiter pulled up over the nose, tucked down into the collar
-    const knit = (x, y, z) => 0.0011 * Math.sin(Math.atan2(z, x) * 40);
-    L.push(group([
-      ell([0.018, -0.084, 0], [0.105, 0.09, 0.1], { mat: HM_MASK }),
-      tube([-0.01, -0.08, 0], [-0.022, -0.2, 0], 0.08, 0.08, { k: 0.03, mat: HM_MASK }),
-      plane([0, -0.03, 0], vn([0.05, 1, 0]), { op: 'int', k: 0.008 }),
-    ], { k: 0.006, mat: HM_MASK, bias: 0.004, disp: knit }));
+    // ---- the face below the goggles: a nose and cheeks; the collar comes up over the mouth
+    L.push(ell([0.098, -0.04, 0], [0.024, 0.032, 0.017], { k: 0.022, mat: HM_SKIN }));
+    for (const sd of [1, -1]) L.push(ell([0.07, -0.045, 0.045 * sd], [0.036, 0.032, 0.03], { k: 0.03, mat: HM_SKIN }));
     // ---- a ponytail out the back, under the helmet
     if (r.hairStyle === 'pony') {
       const strand = (x, y, z) => 0.0016 * Math.sin(Math.atan2(z, x + 0.16) * 22 + y * 30);
@@ -1180,6 +1178,27 @@
   SS.riderSculpt = { headNodes, bodyNodes };
   // ---- building and drawing
   let BODY = null;
+  // one mesh from several: vertices appended, triangles regrouped by material
+  function mergeMeshes(list) {
+    let n = 0, ni = 0;
+    for (const m of list) { n += m.n; ni += m.idx.length; }
+    const pos = new Float32Array(n * 3), nrm = new Float32Array(n * 3), b0 = new Uint8Array(n), b1 = new Uint8Array(n), w = new Float32Array(n), ao = new Float32Array(n).fill(1);
+    const byMat = {};
+    let vo = 0;
+    for (const m of list) {
+      pos.set(m.pos, vo * 3); nrm.set(m.nrm, vo * 3); b0.set(m.b0, vo); b1.set(m.b1, vo); w.set(m.w, vo);
+      if (m.ao) ao.set(m.ao, vo);
+      for (const [mat, [first, cnt]] of Object.entries(m.ranges)) {
+        const arr = byMat[mat] || (byMat[mat] = []);
+        for (let i = first; i < first + cnt; i++) arr.push(m.idx[i] + vo);
+      }
+      vo += m.n;
+    }
+    const idx = new Uint16Array(ni), ranges = {};
+    let o = 0;
+    for (const mat of Object.keys(byMat).map(Number).sort((a, b) => a - b)) { ranges[mat] = [o, byMat[mat].length]; idx.set(byMat[mat], o); o += byMat[mat].length; }
+    return { n, pos, nrm, idx, ranges, b0, b1, w, ao, h: list[0].h };
+  }
   const HEADS = {};
   function meshFrom(engine, m, dynamic) {
     const v = S3.interleave(m);
@@ -1197,7 +1216,14 @@
       cuts.push((x, y, z) => (x > 0.03 && Math.abs(z + 0.092) < 0.06 ? tagF[0](x, y, z) : 1), (x, y, z) => (x > 0.03 && Math.abs(y - 1.338) < 0.05 ? tagF[1](x, y, z) : 1));
       cuts.push((x, y, z) => (x > 0.05 && y > 0.8 && y < 1.71 ? zipF(x, y, z) : 1), (x, y, z) => (x > 0.06 ? pocketF(x, y, z) : 1));
       const box = { min: [-0.3, 0.06, -0.5], max: [0.34, 1.74, 0.5], nb: NB, sigma: 0.022, cuts, ao: 0.022 };
-      BODY = [S3.build(nodes, Object.assign({ h: 0.014 }, box)), S3.build(nodes, Object.assign({ h: 0.026 }, box))];
+      // the jacket, the pants and the gloves are separate pieces of clothing, each built on its own,
+      // so where they meet is a real overlap with a clean edge, not one surface painted two colours
+      const parts = [
+        nodes.filter((n) => n.mat !== BM_GLOVE && n.mat !== BM_PANTS && n.mat !== BM_SKIN),
+        nodes.filter((n) => n.mat === BM_PANTS || n.mat === BM_SKIN),
+        nodes.filter((n) => n.mat === BM_GLOVE),
+      ];
+      BODY = [0.014, 0.026].map((h) => mergeMeshes(parts.map((pl) => S3.build(pl, Object.assign({ h }, box)))));
       BODY.gpu = [null, null];
       BODY.pool = [];
     }
