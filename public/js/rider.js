@@ -1007,7 +1007,7 @@
     // ---- the jacket: clean and roomy, straight down to a thin dark hem; a tall funnel collar zipped
     // up under the goggles, a front zip, two pocket slits, the hood lying flat behind the collar
     const hoodiePaint = (x, y, z, m) => {
-      if (y < 0.795) return BM_POUCH;                                    // hem band
+      if (y < 0.74) return BM_POUCH;                                     // hem band
       if (x > 0.05 && y < 1.64 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
       if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket slits
       if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
@@ -1021,14 +1021,14 @@
       ell([0.01, 1.28, 0], [0.13, 0.17, 0.195], { mat: BM_JACKET, paint: hoodiePaint }),
       ell([-0.035, 1.31, 0], [0.112, 0.15, 0.185], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
       ell([-0.005, 1.04, 0], [0.122, 0.21, 0.178], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.02, 0.88, 0], [0.155, 0.2, 0.245], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.02, 0.84, 0], [0.168, 0.23, 0.262], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
       tube([-0.01, 1.5, -0.04], [-0.006, 1.435, -0.19], 0.066, 0.07, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
       tube([-0.01, 1.5, 0.04], [-0.006, 1.435, 0.19], 0.066, 0.07, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
       ell([0.0, 1.425, -0.2], [0.078, 0.08, 0.076], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       ell([0.0, 1.425, 0.2], [0.078, 0.08, 0.076], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       // the collar, zipped up
       tube([0.004, 1.46, 0], [0.02, 1.63, 0], 0.088, 0.08, { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
-      plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
+      plane([0, 0.715, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET }));
     // ---- neck (inside the collar)
     L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN }));
@@ -1047,7 +1047,6 @@
       L.push(ell(el, [0.074, 0.074, 0.074], { k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
       const wr = vadd(ha, vsc(df, -0.07));
       L.push(tube(el, wr, 0, 0, { prof: (t) => 0.072 - 0.006 * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
-      L.push(tube(vadd(ha, vsc(df, -0.085)), vadd(ha, vsc(df, -0.045)), 0.066, 0.064, { k: 0.01, bone: BN['fore' + k], mat: BM_POUCH }));
       const hinge = hingeOf(sj, ha, R0['ab' + k]);
       const v = vn(perp(hinge, df));
       let w = vx(df, v);
@@ -1063,9 +1062,10 @@
     for (const k of ['F', 'B']) {
       const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
       const dl = vn(vsub(an, kn));
-      L.push(tube(hj, kn, 0, 0, { prof: (t) => 0.106 - 0.006 * t, k: 0.06, bone: BN['thigh' + k], mat: BM_PANTS }));
-      L.push(ell(kn, [0.1, 0.1, 0.1], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
-      L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.097 + 0.014 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS }));
+      // the leg starts a little below the hip joint, so its top stays inside the jacket
+      L.push(tube(vadd(hj, vsc(vn(vsub(kn, hj)), 0.12)), kn, 0, 0, { prof: (t) => 0.13 - 0.004 * t, k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
+      L.push(ell(kn, [0.124, 0.124, 0.124], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
+      L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.12 + 0.022 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS, disp: (x, y, z) => (y < 0.36 ? 0.007 * Math.sin(y * 55) * (1 - y / 0.36) : 0) }));
     }
     return L;
   }
@@ -1172,7 +1172,7 @@
   function bodyMesh(engine, lod) {
     if (!BODY) {
       const nodes = bodyNodes();
-      const cuts = [(x, y) => y - 0.795, (x, y) => y - 0.776, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
+      const cuts = [(x, y) => y - 0.74, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
       for (const k of ['F', 'B']) {
         const sj = R0['sj' + k], du = vn(vsub(R0['el' + k], sj));
         for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
@@ -1279,7 +1279,7 @@
     part(BM_LOGO, pal.pat === 0 ? pal.patCol : TAG, null);
     engine.cloth(0);
     part(BM_ZIP, ZIP, [0.35, 30]);
-    engine.cloth(0, null, 0, 0.25, 1);
+    engine.cloth(0, null, 0, 0.08, 1);
     part(BM_PANTS, pal.pants, null);
     engine.cloth(0);
     part(BM_GLOVE, pal.glove, [0.08, 10]);

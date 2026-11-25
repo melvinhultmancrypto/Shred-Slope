@@ -1215,18 +1215,21 @@
     if (P.flipLock && fi !== P.flipLock) P.flipLock = 0;
     const f = P.flipLock ? 0 : fi;
     const sk = 1 + 0.08 * STK.spin;
-    if (s) P.spinVel += (s * SPIN_RATE * sk - P.spinVel) * Math.min(1, dt * 10);
+    // spins build momentum: slow to start, then faster and faster the longer you hold (about half a
+    // second to full speed), and they keep turning a moment after you let go
+    if (s) { const acc = SPIN_RATE * sk * (1.1 + 1.8 * Math.max(0, P.spinVel * s) / SPIN_RATE); P.spinVel += clamp(s * SPIN_RATE * sk - P.spinVel, -acc * dt, acc * dt); }
     else {
-      P.spinVel *= Math.exp(-7 * dt);
+      P.spinVel *= Math.exp(-3 * dt);
       const tgt = Math.round((P.spin + P.stance) / Math.PI) * Math.PI - P.stance;
-      P.spin += clamp(tgt - P.spin, -3.4 * dt, 3.4 * dt);
+      P.spin += clamp(tgt - P.spin, -2.6 * dt, 2.6 * dt);
     }
     P.spin += P.spinVel * dt;
-    if (f) P.flipVel += (f * FLIP_RATE * sk - P.flipVel) * Math.min(1, dt * 10);
+    // flips the same: a slow start, building up, carrying on a moment after you let go
+    if (f) { const acc = FLIP_RATE * sk * (1.0 + 1.6 * Math.max(0, P.flipVel * f) / FLIP_RATE); P.flipVel += clamp(f * FLIP_RATE * sk - P.flipVel, -acc * dt, acc * dt); }
     else {
-      P.flipVel *= Math.exp(-7 * dt);
+      P.flipVel *= Math.exp(-3 * dt);
       const tgt = Math.round(P.flip / TAU) * TAU;
-      P.flip += clamp(tgt - P.flip, -2.6 * dt, 2.6 * dt);
+      P.flip += clamp(tgt - P.flip, -2.0 * dt, 2.0 * dt);
     }
     P.flip += P.flipVel * dt;
     if (world.cave && world.inCave(P.z)) {
