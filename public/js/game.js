@@ -3111,8 +3111,8 @@
   const FRAMES = {
     suit: { pose: 'stand', yaw: Math.PI / 2 + 0.35, d: 2.7, cy: 1.32, ty: 1.12, fov: 0.6 },
     rider: { pose: 'stand', yaw: Math.PI / 2 + 0.2, d: 1.25, cy: 1.66, ty: 1.56, fov: 0.6 },
-    helmet: { pose: 'stand', yaw: Math.PI / 2 + 0.55, d: 0.95, cy: 1.72, ty: 1.66, fov: 0.6 },
-    goggles: { pose: 'stand', yaw: Math.PI / 2 + 0.25, d: 0.8, cy: 1.69, ty: 1.66, fov: 0.6 },
+    helmet: { pose: 'helmet', yaw: Math.PI / 2 + 0.6, d: 0.66, cy: 1.8, ty: 1.73, fov: 0.6 },
+    goggles: { pose: 'goggles', yaw: Math.PI / 2 + 0.45, d: 0.52, cy: 1.76, ty: 1.72, fov: 0.6 },
     board: { pose: 'board', yaw: Math.PI / 2 + 0.3, d: 2.3, cy: 0.05, ty: 0, fov: 0.6, roll: 0.95 },
   };
   function thumb(look, slot, cb) {

@@ -1002,12 +1002,12 @@
   // the woven brand tag on the left chest
   const tagF = [(x, y) => Math.abs(y - 1.338) - 0.019, (x, y, z) => Math.abs(z + 0.092) - 0.034];
   function bodyNodes() {
-    const { ell, tube, box, plane, group } = S3;
+    const { ell, tube, box, torus, plane, group } = S3;
     const L = [];
     // ---- the jacket: clean and roomy, straight down to a thin dark hem; a tall funnel collar zipped
     // up under the goggles, a front zip, two pocket slits, the hood lying flat behind the collar
     const hoodiePaint = (x, y, z, m) => {
-      if (y < 0.74) return BM_POUCH;                                     // hem band
+      if (y < 0.765) return BM_POUCH;                                    // hem band
       if (x > 0.05 && y < 1.64 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
       if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket slits
       if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
@@ -1028,6 +1028,8 @@
       ell([0.0, 1.425, 0.2], [0.078, 0.08, 0.076], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       // the collar, zipped up
       tube([0.004, 1.46, 0], [0.02, 1.63, 0], 0.088, 0.08, { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
+      // the hem: a firm band round the bottom that stands proud of the jacket
+      torus([-0.02, 0.738, 0], [0, 1, 0], 0.15, 0.024, { Rz: 0.234, k: 0.012, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.715, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET }));
     // ---- neck (inside the collar)
@@ -1085,6 +1087,10 @@
     const cuts = [];
     L.cuts = cuts;
     const skinMat = r.mask === 'balaclava' ? HM_MASK : HM_SKIN;
+    // r.part: none for the head itself; 'goggles' for the goggles alone (built finer, on their own);
+    // 'helmet' for the shop's picture of a helmet on its own
+    const onlyGog = r.part === 'goggles', onlyHelm = r.part === 'helmet';
+    if (!r.part) {
     // ---- the head and neck underneath (a balaclava covers all of it)
     L.push(ell([-0.012, 0.012, 0], [0.1, 0.108, 0.088], { mat: skinMat }));
     L.push(ell([0.026, -0.045, 0], [0.08, 0.075, 0.074], { k: 0.04, mat: skinMat }));
@@ -1104,9 +1110,15 @@
       L.push(tube([-0.158, -0.1, 0], [-0.168, -0.245, 0], 0.027, 0.009, { k: 0.02, mat: HM_HAIR, disp: strand }));
       L.push(torus([-0.13, -0.07, 0], vn([-0.7, -0.7, 0]), 0.028, 0.008, { k: 0.004, mat: HM_TIE }));
     }
+    }
+    if (!onlyGog) {
     // ---- the helmet: a smooth hard shell with a dark rim trim
-    const shellPaint = (x, y, z, m) => (rimF(x, y, z) > -0.009 ? HM_VENT : m);
-    L.push(group([ell(SHELL_C, SHELL_R, { mat: HM_HAT, paint: shellPaint }), plane([0, -0.02, 0], RIM_N, { op: 'int', k: 0.008 })], { k: 0.004, mat: HM_HAT, paint: shellPaint }));
+    const inner = (x, y, z) => ((x - SHELL_C[0]) / SHELL_R[0]) ** 2 + ((y - SHELL_C[1]) / SHELL_R[1]) ** 2 + ((z - SHELL_C[2]) / SHELL_R[2]) ** 2 < 0.86;
+    const shellPaint = (x, y, z, m) => (rimF(x, y, z) > -0.009 || (onlyHelm && inner(x, y, z)) ? HM_VENT : m);
+    const shell = [ell(SHELL_C, SHELL_R, { mat: HM_HAT, paint: shellPaint }), plane([0, -0.02, 0], RIM_N, { op: 'int', k: 0.008 })];
+    // on its own the helmet is a hollow shell with a dark lining
+    if (onlyHelm) shell.push(ell(SHELL_C, [SHELL_R[0] - 0.013, SHELL_R[1] - 0.013, SHELL_R[2] - 0.013], { op: 'sub', k: 0.003 }));
+    L.push(group(shell, { k: 0.004, mat: HM_HAT, paint: shellPaint }));
     cuts.push((x, y, z) => rimF(x, y, z) + 0.009);
     if (r.helmet === 'peak') {
       // a short visor over the goggles
@@ -1119,7 +1131,8 @@
       // soft ear pads under the rim
       for (const sd of [1, -1]) L.push(ell([-0.012, -0.044, 0.112 * sd], [0.05, 0.056, 0.024], { k: 0.012, mat: HM_PAD, bias: 0.004, disp: (x, y, z) => 0.0012 * Math.sin(y * 150) }));
     }
-    if (r.hood) {
+    }
+    if (r.hood && !r.part) {
       // the jacket's hood up over the helmet
       L.push(group([
         ell(HOOD_C, HOOD_R, { mat: HM_HOOD, paint: (x, y, z) => (((x - HOOD_C[0]) / HOOD_R[0]) ** 2 + ((y - HOOD_C[1]) / HOOD_R[1]) ** 2 + ((z - HOOD_C[2]) / HOOD_R[2]) ** 2 < 0.86 ? HM_HOODIN : HM_HOOD) }),
@@ -1130,32 +1143,34 @@
       cuts.push((x, y, z) => ((x - HOOD_C[0]) / HOOD_R[0]) ** 2 + ((y - HOOD_C[1]) / HOOD_R[1]) ** 2 + ((z - HOOD_C[2]) / HOOD_R[2]) ** 2 - 0.86);
     }
     // ---- goggles: a big frame and lens over the eyes, the strap round the helmet
+    if (onlyGog) {
     // ---- ski goggles: a wide frame, a rounded rectangle curved round the face with a cut-out for
     // the nose, a domed lens standing proud of it, and a wide strap round the back of the helmet
-    const GX = -0.02, GY = 0.002, GR = 0.14, GT = 0.011, GW = 0.152, GH = 0.043;
+    const GX = -0.02, GY = 0.003, GR = 0.14, GT = 0.012, GW = 0.152, GH = 0.047;
     const rrect = (u, v, w, h, rc) => { const qx = Math.abs(u) - w + rc, qy = Math.abs(v) - h + rc; return Math.hypot(Math.max(qx, 0), Math.max(qy, 0)) + Math.min(Math.max(qx, qy), 0) - rc; };
     const gcyl = (x, y, z) => { const dx = x - GX, r = Math.hypot(dx, z); return [Math.atan2(z, dx) * GR, y - GY, r]; };
     const gbb = [GX, GY - GH - 0.01, -0.16, 0.18, GY + GH + 0.01, 0.16];
     L.push(S3.custom((x, y, z) => {
       const [u, v, r] = gcyl(x, y, z);
       const face = Math.max(rrect(u, v, GW, GH, 0.032), -(Math.hypot(u, v + GH + 0.004) - 0.027));
-      return Math.max(face, Math.abs(r - GR) - GT);
+      return S3.smax(face, Math.abs(r - GR) - GT, 0.007);
     }, gbb, { mat: HM_FRAME }));
     L.push(S3.custom((x, y, z) => {
       const [u, v, r] = gcyl(x, y, z);
-      const face = Math.max(rrect(u, v, GW - 0.008, GH - 0.008, 0.025), -(Math.hypot(u, v + GH + 0.004) - 0.035));
-      const dome = 0.008 * Math.max(0, 1 - (u / GW) ** 2) * Math.max(0, 1 - (v / GH) ** 2);
-      return Math.max(face, Math.max(GR - r, r - (GR + GT + 0.004 + dome)));
+      const face = Math.max(rrect(u, v, GW - 0.011, GH - 0.011, 0.026), -(Math.hypot(u, v + GH + 0.004) - 0.038));
+      const dome = 0.011 * Math.max(0, 1 - (u / GW) ** 2) * Math.max(0, 1 - (v / GH) ** 2);
+      return S3.smax(face, Math.max(GR - r, r - (GR + GT + 0.004 + dome)), 0.004);
     }, gbb, { mat: HM_LENS }));
     // a crisp edge where the lens meets the frame
-    cuts.push((x, y, z) => { const [u, v, rr] = gcyl(x, y, z); return rr < GR ? 1 : Math.max(rrect(u, v, GW - 0.008, GH - 0.008, 0.025), -(Math.hypot(u, v + GH + 0.004) - 0.035)); });
+    cuts.push((x, y, z) => { const [u, v, rr] = gcyl(x, y, z); return rr < GR ? 1 : Math.max(rrect(u, v, GW - 0.011, GH - 0.011, 0.026), -(Math.hypot(u, v + GH + 0.004) - 0.038)); });
     if (!r.hood) {
-      const sr = [0.137, 0.021, 0.124];
+      const sr = [0.137, 0.024, 0.124];
       L.push(group([
         ell([-0.016, GY, 0], sr, { mat: HM_STRAP }),
         ell([-0.016, GY, 0], [sr[0] - 0.008, 0.04, sr[2] - 0.008], { op: 'sub', k: 0.002 }),
         plane([0.06, 0, 0], [1, 0, 0], { op: 'int', k: 0.004 }),
       ], { k: 0.002, mat: HM_STRAP }));
+    }
     }
     return L;
   }
@@ -1172,7 +1187,7 @@
   function bodyMesh(engine, lod) {
     if (!BODY) {
       const nodes = bodyNodes();
-      const cuts = [(x, y) => y - 0.74, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
+      const cuts = [(x, y) => y - 0.765, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
       for (const k of ['F', 'B']) {
         const sj = R0['sj' + k], du = vn(vsub(R0['el' + k], sj));
         for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
@@ -1198,6 +1213,24 @@
       H[lod] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null, m.ao) };
     }
     return H[lod];
+  }
+  const GOG = [null, null], HELMS = {};
+  function gogMesh(engine, lod) {
+    if (!GOG[lod]) {
+      const nodes = headNodes({ part: 'goggles' });
+      const m = S3.build(nodes, { ao: 0.004, min: [-0.17, -0.07, -0.165], max: [0.19, 0.075, 0.165], h: lod ? 0.008 : 0.0028, cuts: nodes.cuts });
+      GOG[lod] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null, m.ao) };
+    }
+    return GOG[lod];
+  }
+  function helmMesh(engine, pal) {
+    const k = pal.helmetType || 'vent';
+    if (!HELMS[k]) {
+      const nodes = headNodes({ part: 'helmet', helmet: k });
+      const m = S3.build(nodes, { ao: 0.006, min: [-0.17, -0.12, -0.16], max: [0.2, 0.2, 0.16], h: 0.004, cuts: nodes.cuts });
+      HELMS[k] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null, m.ao) };
+    }
+    return HELMS[k];
   }
   // a few skinned copies are kept, so a rider drawn twice in a frame (shadow, then colour) is skinned once
   const BONES = new Float32Array(NB * 16);
@@ -1292,27 +1325,42 @@
   const PAD = [0.1, 0.1, 0.11];
   const TAG = [0.93, 0.93, 0.9];
   const GAITER = [0.13, 0.135, 0.15];
-  function drawHeadS(engine, pal, HFm, far) {
-    const H = headMesh(engine, pal, far ? 1 : 0);
-    const R = H.m.ranges, g = H.gpu;
-    const part = (mat, col, spec, m) => { const r = R[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], g), HFm, col, 0, spec, m); };
-    part(HM_SKIN, pal.skin, SH_SKIN, 2);
-    // knit: ribs running up the mask and ear pads
-    engine.cloth(0, null, 0.35, 0, 2);
-    part(HM_MASK, pal.maskCol || GAITER, null);
-    part(HM_PAD, PAD, null);
-    engine.cloth(0, null, 0.3, 0, 0);
-    part(HM_HAIR, pal.hair, [0.22, 24]);
-    part(HM_TIE, pal.trim, SH_JACKET);
-    engine.cloth(0, null, 0.5, 0, 0);
-    part(HM_HOOD, pal.jacket, SH_NYLON);
+  function drawHeadS(engine, pal, HFm, far, only) {
+    const lod = far ? 1 : 0;
+    const from = (Hm) => (mat, col, spec, m) => { const r = Hm.m.ranges[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], Hm.gpu), HFm, col, 0, spec, m); };
+    if (only === 'helmet') {
+      const part = from(helmMesh(engine, pal));
+      engine.cloth(0);
+      part(HM_HAT, pal.helmet, pal.helmetSh || SH_LID);
+      part(HM_VENT, VENT, SH_SHELL);
+      engine.cloth(0, null, 0.3, 0, 2);
+      part(HM_PAD, PAD, null);
+      engine.cloth(0);
+      return;
+    }
+    if (only !== 'goggles') {
+      const part = from(headMesh(engine, pal, lod));
+      part(HM_SKIN, pal.skin, SH_SKIN, 2);
+      // knit: ribs running up the mask and ear pads
+      engine.cloth(0, null, 0.35, 0, 2);
+      part(HM_MASK, pal.maskCol || GAITER, null);
+      part(HM_PAD, PAD, null);
+      engine.cloth(0, null, 0.3, 0, 0);
+      part(HM_HAIR, pal.hair, [0.22, 24]);
+      part(HM_TIE, pal.trim, SH_JACKET);
+      engine.cloth(0, null, 0.5, 0, 0);
+      part(HM_HOOD, pal.jacket, SH_NYLON);
+      engine.cloth(0);
+      part(HM_HOODIN, pal.hoodIn, null);
+      part(HM_HAT, pal.helmet, pal.helmetSh || SH_LID);
+      part(HM_VENT, VENT, SH_SHELL);
+    }
+    // the goggles: their own finer mesh, so the frame and the lens have clean edges
+    const gp = from(gogMesh(engine, lod));
     engine.cloth(0);
-    part(HM_HOODIN, pal.hoodIn, null);
-    part(HM_HAT, pal.helmet, pal.helmetSh || SH_LID);
-    part(HM_VENT, VENT, SH_SHELL);
-    part(HM_FRAME, pal.frameCol, SH_SHELL);
-    part(HM_STRAP, pal.strapCol, SH_JACKET);
-    part(HM_LENS, pal.lens, SH_LENS, 3);
+    gp(HM_FRAME, pal.frameCol, [0.25, 24]);
+    gp(HM_STRAP, pal.strapCol, SH_JACKET);
+    gp(HM_LENS, pal.lens, SH_LENS, 3);
   }
 
   // the board standing on its tail: top sheet facing +x, nose up (frame `out`, from body frame `base`)
@@ -1337,6 +1385,15 @@
       standingBoard(M, [0, 0, 0], 0, 0, SB);
       drawBoard(engine, pal, SB, false);
       drawBindings(engine, pal, SB, false, false);
+      return;
+    }
+    if (st.pose === 'helmet' || st.pose === 'goggles') {
+      // just the helmet or just the goggles, where the head would be (the shop's pictures)
+      M4.identity(SHL);
+      M4.translate(SHL, 0.045, 1.72, 0);
+      M4.scale(SHL, 1.1, 1.1, 1.1);
+      M4.mul(HF, M, SHL);
+      drawHeadS(engine, pal, HF, false, st.pose);
       return;
     }
     // standing tall, breathing; the board stands on its tail at your side, one hand on its edge
@@ -1377,7 +1434,7 @@
     const sf = onTorso(R0.sjF), sb = onTorso(R0.sjB);
     M4.point(SB, -0.17, 0.03, 0.12, PT);
     armJoints(J, 'F', sf, [PT[0], PT[1], PT[2]], [-0.4, -0.5, 0.9]);
-    armJoints(J, 'B', sb, add(sb, [0.04, -0.53 - br, -0.07]), [-0.6, -0.2, -0.6]);
+    armJoints(J, 'B', sb, add(sb, [0.06, -0.5 - br, -0.17]), [-0.6, -0.2, -0.6]);
     setLimbs(J);
     drawBody(engine, pal, M, false);
     drawHeadS(engine, pal, HF, false);
