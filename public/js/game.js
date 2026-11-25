@@ -17,15 +17,15 @@
   SS.GIANT_SPEED = GIANT_SPEED;
   const SPIN_RATE = 11;      // rad/s in the air: quick enough for a 1440 off a big kicker
   const FLIP_RATE = 7.6;     // rad/s while holding up/down in the air: room for double corks
-  const MAX_SPEED = 42;      // m/s (150 km/h)
+  const MAX_SPEED = 44;      // m/s (158 km/h)
   const BOOST_MAX = 42;      // m/s while boosting
   const BOOST_ACC = 7;       // extra m/s^2 while boosting
   // the snow and the air
   const MU_SNOW = 0.035;     // waxed base on packed snow
   // standing up you settle at about 80 km/h on a park slope; tuck (W) to go well past 100
-  const DRAG_UP = 0.0034;    // air drag per m of speed², standing up (a rider in baggy outerwear)
-  const DRAG_TUCK = 0.0016;  // tucked: half the frontal area
-  const DRAG_AIR = 0.0012;   // in the air, between the two
+  const DRAG_UP = 0.0019;    // air drag per m of speed², standing up: you hold 110 km/h or so riding tall
+  const DRAG_TUCK = 0.0011;  // tucked: 140 to 150 km/h on the steeper streets
+  const DRAG_AIR = 0.0009;   // in the air, between the two
   const GRIP = 20;           // m/s²: the sideways pull an edge holds before the board skids (about 2 g)
   const BOOST_TIME = 2.8;    // seconds a full boost meter lasts
   const TARGET_TIME = 150;   // s: finishing faster than this earns a time bonus
@@ -1428,7 +1428,7 @@
     run.bankT = 2.4;
     if (mode === 'menu') return;
     const m = mult();
-    setTrick(name, '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">x${m.toFixed(2)}</span>` : ''), false, 2.6, lines || [[name, pts]]);
+    setTrick(name, '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">LINE ×${m.toFixed(1)}</span>` : ''), false, 2.6, lines || [[name, pts]]);
     Sfx.trick();
     if (mode === 'mp' && pts >= 600) net.send({ t: 'ev', txt: name });
   }
@@ -3395,7 +3395,7 @@
       trickT -= dt;
       if (run.pot > 0 && !ui.trick.classList.contains('bail')) {
         const m = mult();
-        ui.trickSub.innerHTML = '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">x${m.toFixed(2)}</span>` : '');
+        ui.trickSub.innerHTML = '+' + fmt(run.pot * m) + (m > 1 ? `<span class="mult">LINE ×${m.toFixed(1)}</span>` : '');
       }
       if (trickT <= 0) ui.trick.classList.add('fade');
     }
