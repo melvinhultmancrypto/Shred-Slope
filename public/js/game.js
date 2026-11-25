@@ -97,6 +97,7 @@
     engine = new SS.Engine($('gl'));
   } catch (e) {
     show(ui.title, false);
+    show(ui.loading, false);
     show(ui.nogl, true);
     console.error(e);
     return;
@@ -169,7 +170,13 @@
     return p;
   };
   const starCount = () => SS.MAP_IDS.reduce((n, id) => n + prog(id).stars.filter(Boolean).length, 0);
-  const updateStars = () => { ui.starsTotal.textContent = starCount() + '/' + SS.MAP_IDS.length * 3; };
+  const updateStars = () => {
+    const n = starCount(), all = SS.MAP_IDS.length * 3;
+    ui.starsTotal.textContent = n + '/' + all;
+    const f = $('passFill');
+    if (f) f.style.width = (100 * n / all).toFixed(1) + '%';
+    if (typeof renderPass === 'function' && ui.title && ui.title.dataset.page === 'pass') renderPass();
+  };
   updateStars();
   function goalMet(g, final) {
     switch (g.k) {
@@ -220,10 +227,15 @@
       voice.setTalkKey(true);
       return;
     }
-    if (!hidden(ui.maps) && (e.code === 'ArrowLeft' || e.code === 'ArrowRight')) {
+    if (!hidden(ui.maps) && /^Arrow(Left|Right|Up|Down)$/.test(e.code)) {
       e.preventDefault();
-      setMapPage(mapPage + (e.code === 'ArrowRight' ? 1 : -1), e.code === 'ArrowRight' ? 1 : -1);
+      const cols = Math.max(1, getComputedStyle(ui.mapGrid).gridTemplateColumns.split(' ').length);
+      moveMapSel(e.code === 'ArrowRight' ? 1 : e.code === 'ArrowLeft' ? -1 : e.code === 'ArrowDown' ? cols : -cols);
       return;
+    }
+    if (!hidden(ui.maps) && e.code === 'Enter' && mapSel) { e.preventDefault(); rideMap(mapSel); return; }
+    if (e.code === 'Enter' && mode === 'menu' && !hidden(ui.title) && ui.title.dataset.page === 'ride' && document.querySelectorAll('.modal-ov:not(.hidden)').length === 0) {
+      e.preventDefault(); saveName(); Sfx.init(); openMaps(); return;
     }
     const k = KEYMAP[e.code];
     if (k) {
@@ -399,7 +411,8 @@
     if (world.map.racers) P.x = world.center(z) + 2.25; // your gate in the start house
     P.y = world.H(P.x, P.z);
     resetRivals(z);
-    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0, place: 0 });
+    Object.assign(run, { score: 0, pot: 0, combo: 0, bankT: 0, tricks: 0, bails: 0, topSpeed: 0, bigAir: 0, finalTime: 0, bonus: 0, tokens: 0, perfects: 0, boost: 0.25, goals: [false, false, false], grindT: 0, giantLands: 0, place: 0,
+      parts: { air: 0, grab: 0, rail: 0, land: 0, flakes: 0 }, potParts: {}, bestTrick: { name: '', pts: 0 }, landed: 0 });
     tokenGot = new Set();
     raceT = 0;
     zoneName = '';
@@ -638,7 +651,7 @@
       const perfect = P.grind > 0.45 && P.balErr / P.grind < 0.22;
       if (perfect) pts *= 1.3;
       if (f.type === 'rail') pts *= 1.2;
-      addTrick(name, Math.round(pts));
+      addTrick(name, Math.round(pts), { rail: pts });
       if (perfect && mode !== 'menu') {
         ui.landTag.textContent = 'PERFECT BALANCE +30%';
         ui.landTag.className = 'brush show perfect';
@@ -1290,19 +1303,24 @@
       pts = SPIN_PTS[Math.min(half, 14)];
     }
     const held = (P.grabs || []).filter((g) => g.t > 0.15);
+    let gp = 0;
     if (held.length) {
       const g = held.map((h) => GRABS[h.type]).join(' TO ');
       name = name ? name + ' ' + g : g;
-      for (const h of held) pts += 150 + Math.min(2.5, h.t) * 300;
-      if (held.length > 1) pts *= 1 + 0.25 * (held.length - 1);
+      for (const h of held) gp += 150 + Math.min(2.5, h.t) * 300;
+      pts += gp;
+      if (held.length > 1) { const k = 1 + 0.25 * (held.length - 1); pts *= k; gp *= k; }
     }
     if (air > 1.1) {
       pts += (air - 1.1) * 250;
       if (!name) name = 'BIG AIR';
     }
+    // which part of the score each piece goes to (for the results screen)
+    const pre = pts;
+    let ks = 1;
     if (qual === 'perfect') pts *= 1.15;
-    else if (qual === 'sketchy') pts *= 0.7;
-    if (name) addTrick(name, Math.round(pts));
+    else if (qual === 'sketchy') { pts *= 0.7; ks = 0.7; }
+    if (name) addTrick(name, Math.round(pts), { air: (pre - gp) * ks, grab: gp * ks, land: qual === 'perfect' ? pre * 0.15 : 0 });
   }
 
   const mult = () => Math.min(3, 1 + 0.15 * Math.max(0, run.combo - 1));
@@ -1313,11 +1331,14 @@
     if (was < 1 && run.boost >= 1 && mode !== 'menu' && !ai.on) { Sfx.tone(660, 0.12, 'square', 0.05); Sfx.tone(990, 0.2, 'square', 0.05, 0, 0.08); }
   }
 
-  function addTrick(name, pts) {
+  function addTrick(name, pts, parts) {
     addBoost(Math.min(0.4, pts / 4500));
     run.combo++;
     run.pot += pts;
     run.tricks++;
+    const pp = run.potParts || (run.potParts = {});
+    for (const [k, v] of Object.entries(parts || { air: pts })) pp[k] = (pp[k] || 0) + v;
+    if (run.bestTrick && pts * mult() > run.bestTrick.pts) run.bestTrick = { name, pts: Math.round(pts * mult()) };
     run.bankT = 2.4;
     if (mode === 'menu') return;
     const m = mult();
@@ -1328,7 +1349,11 @@
 
   function bank() {
     if (run.pot <= 0) return;
-    run.score += Math.round(run.pot * mult());
+    const m = mult();
+    run.score += Math.round(run.pot * m);
+    if (run.parts) for (const [k, v] of Object.entries(run.potParts || {})) run.parts[k] = (run.parts[k] || 0) + Math.round(v * m);
+    run.landed = (run.landed || 0) + 1;
+    run.potParts = {};
     run.pot = 0;
     run.combo = 0;
     if (mode !== 'menu') Sfx.bank();
@@ -1338,6 +1363,7 @@
     if (P.bailT > 0) return;
     if (window.ShredSlopeDebug) (window.ShredSlopeDebug.bailLog = window.ShredSlopeDebug.bailLog || []).push(reason + '@' + Math.round(P.z) + (window.ShredSlopeDebug.verbose ? ' off=' + (P.x - world.center(P.z)).toFixed(1) + ' hd=' + P.heading.toFixed(2) + ' sp=' + P.speed.toFixed(1) + ' ref=' + (world.surfRef ? world.surfRef.type || world.surfRef.kind : '-') + ' wasSurf=' + P.surf : ''));
     const lost = Math.round(run.pot * mult());
+    run.potParts = {};
     run.pot = 0;
     run.combo = 0;
     run.bails++;
@@ -1469,6 +1495,7 @@
           tokenGot.add(t.id);
           run.tokens++;
           run.score += TOKEN_PTS;
+          if (run.parts) run.parts.flakes += TOKEN_PTS;
           addBoost(0.025);
           if (run.pot > 0) run.bankT = Math.max(run.bankT, 1.2);
           if (mode !== 'menu') Sfx.token();
@@ -1871,7 +1898,7 @@
     const m = SS.MAPS[votes.next];
     const n = votes.counts[votes.next] || 0;
     $('mpNext').textContent = m ? m.name + (n ? ` (${n} ${n === 1 ? 'vote' : 'votes'})` : '') : '—';
-    if (mapVote && !hidden(ui.maps)) buildMaps();
+    if (mapVote && !hidden(ui.maps)) { buildMaps(); if (mapSel) selectMap(mapSel); }
   }
 
   // ---- voice chat (voice.js does the talking)
@@ -1982,7 +2009,7 @@
       phase = 'results';
       showMpResults(m.results || []);
     }
-    show(ui.hud, true);
+    show(ui.hud, m.phase !== 'results');
     show(ui.menuBtn, true);
     if (touchMode) show(ui.touch, m.phase !== 'results');
   }
@@ -2132,8 +2159,7 @@
     phase = 'countdown';
     countdownT = 99;
     hideOverlays();
-    ui.loadingText.textContent = 'Building the mountain…';
-    show(ui.loading, true);
+    showLoading('PREPARING THE MOUNTAIN');
     setTimeout(() => {
       const seed = sameMountain && lastSpSeed !== null ? lastSpSeed : reuse !== null ? reuse : (Math.random() * 2147483647) | 0;
       lastSpSeed = seed;
@@ -2183,10 +2209,7 @@
     const mapBest = run.score > pr.best;
     if (mapBest) pr.best = Math.round(run.score);
     const got = map.goals.map((g) => goalMet(g, true));
-    const chal = map.goals.map((g, i) => {
-      const cls = got[i] ? (pr.stars[i] ? 'on was' : 'on new') : pr.stars[i] ? 'was on' : '';
-      return `<div class="${cls}" style="animation-delay:${0.25 + i * 0.25}s"><i>&#9733;</i>${esc(g.t)}</div>`;
-    }).join('');
+    const wasStar = pr.stars.slice();
     pr.stars = pr.stars.map((v, i) => v || got[i]);
     store.set(PROG_KEY, progress);
     updateStars();
@@ -2194,30 +2217,42 @@
     if (newBest) { best = Math.round(run.score); store.set(BEST_KEY, best); ui.bestScore.textContent = fmt(best); }
     accountChanged();
     const placeTxt = rivals.length ? ['', '1ST PLACE', '2ND PLACE', '3RD PLACE', '4TH PLACE'][run.place] || 'RUN COMPLETE' : 'RUN COMPLETE';
-    ui.resTitle.innerHTML = `${placeTxt}<small>${esc(map.name)}, ${sentence(map.time).toLowerCase()}</small>`;
+    ui.resTitle.innerHTML = `${placeTxt}<small>${esc(map.name)} &middot; ${sentence(map.time).toLowerCase()}</small>`;
     ui.results.style.setProperty('--acc', map.accent);
-    ui.resBody.innerHTML = `<div class="res-top">
-      <div class="res-score"><b>${fmt(run.score)}</b><span>points</span>${mapBest ? '<span class="stamp">NEW BEST!</span>' : ''}${run.bonus ? `<small>incl. +${fmt(run.bonus)} time bonus</small>` : ''}</div>
-      <div class="chal">${chal}</div>
+    const pt = run.parts || {};
+    const rows = [
+      ['Tricks &amp; airtime', '', pt.air],
+      ['Grabs &amp; style', '', pt.grab],
+      ['Rails &amp; boxes', '', pt.rail],
+      ['Stomped landings', `${run.perfects} perfect landing${run.perfects === 1 ? '' : 's'}`, pt.land],
+      ['Snowflakes', `${run.tokens} of ${world.tokens.length} collected`, pt.flakes],
+    ];
+    if (run.bonus) rows.push(['Time bonus', 'for a fast run', run.bonus]);
+    const goals = map.goals.map((g, i) => `<span class="${got[i] ? 'on' : pr.stars[i] ? 'on' : ''}${got[i] && !wasStar[i] ? ' new' : ''}">${esc(g.t)}</span>`).join('');
+    const bt = run.bestTrick && run.bestTrick.name ? run.bestTrick : null;
+    ui.resBody.innerHTML = `<div class="res-grid">
+      <div class="res-total"><small class="kicker">TOTAL SCORE</small><div class="num">${fmt(run.score)}</div>
+        <span class="pb${mapBest ? ' yes' : ''}">${mapBest ? '&#8599; NEW PERSONAL BEST' : 'BEST HERE ' + fmt(pr.best)}</span></div>
+      <ul class="res-break">${rows.map(([n, sub, v]) => `<li><span>${n}${sub ? `<small>${sub}</small>` : ''}</span><b>+${fmt(Math.max(0, v || 0))}</b></li>`).join('')}</ul>
     </div>
-    <div class="stats">
-      <div><span>Time</span><b>${fmtTime(run.finalTime)}</b></div>
-      <div><span>Tricks</span><b>${run.tricks}</b></div>
-      <div><span>Perfect landings</span><b>${run.perfects}</b></div>
-      <div><span>Tokens</span><b>${run.tokens}/${world.tokens.length}</b></div>
-      <div><span>Top speed</span><b>${Math.round(run.topSpeed * 3.6)} km/h</b></div>
-      <div><span>Biggest air</span><b>${run.bigAir.toFixed(1)} s</b></div>
-      <div><span>Bails</span><b>${run.bails}</b></div>
-      <div><span>Best here</span><b>${fmt(pr.best)}</b></div>
+    <div class="res-stats">
+      <div><small class="kicker">RUN TIME</small><b>${fmtTime(run.finalTime)}</b></div>
+      <div><small class="kicker">TOP SPEED</small><b>${Math.round(run.topSpeed * 3.6)}<em>KM/H</em></b></div>
+      <div><small class="kicker">BIGGEST AIR</small><b>${run.bigAir.toFixed(1)}<em>S</em></b></div>
+      <div><small class="kicker">TRICKS</small><b>${run.tricks}<em>${run.bails ? run.bails + ' BAIL' + (run.bails === 1 ? '' : 'S') : 'NO BAILS'}</em></b></div>
     </div>
+    ${bt ? `<div class="res-best"><small class="kicker">BEST TRICK</small><span class="nm">${esc(bt.name)}</span><b>+${fmt(bt.pts)}</b></div>` : ''}
+    <div class="res-goals">${goals}</div>
     <div id="resCoins" class="res-coins">${isCup ? `<b class="cup-tag">${esc(cupRun.name)}</b> ` : ''}<span class="dim">${SS.Shop && SS.Shop.signedIn ? 'Counting your coins…' : SS.Account && SS.Account.online ? 'Create an account to earn coins for your runs and spend them in the shop.' : ''}</span></div>`;
     reportRun(isCup);
+    show(ui.hud, false);
+    show(ui.menuBtn, false);
     show(ui.againBtn, true);
     show(ui.newBtn, true);
     show(ui.resMapsBtn, true);
     show(ui.touch, false);
-    ui.resMenuBtn.textContent = 'MENU';
-    ui.resNote.textContent = 'Same mountain rides this exact course again against a ghost of your best run. Press Enter.';
+    ui.resMenuBtn.textContent = 'LOBBY';
+    ui.resNote.textContent = 'Same mountain rides this exact course again, against a ghost of your best run.';
     show(ui.results, true);
   }
 
@@ -2230,7 +2265,7 @@
     const parts = [];
     if (isCup) parts.push(`<b class="cup-tag">${esc(cupRun.name)}</b>`);
     if (r.status === 200) {
-      parts.push(`<span class="got"><i class="coin"></i>+${fmt(r.earned)} coins</span>`);
+      parts.push(`<b><i class="coin"></i>+${fmt(r.earned)}</b><span>coins</span>`);
       if (r.cup && r.cup.me) parts.push(`<span>Your best <b>${fmt(r.cup.me.best)}</b>, <b>#${r.cup.me.rank}</b> of ${r.cup.n}</span>`);
       parts.push(`<span class="dim">You have ${fmt(r.coins)}</span>`);
     } else parts.push(`<span class="dim">${esc(r.error || 'Couldn’t reach the server for your coins.')}</span>`);
@@ -2241,7 +2276,7 @@
     ui.resTitle.innerHTML = `ROUND RESULTS<small>${esc(world.map.name)}</small>`;
     ui.results.style.setProperty('--acc', world.map.accent);
     ui.resBody.innerHTML = rows.length
-      ? `<table class="rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'Didn\'t finish (' + fmt(r.dist) + ' m)'}</td><td class="n"><b>${fmt(r.score)}</b>${r.coins ? `<span class="res-coin"><i class="coin"></i>+${r.coins}</span>` : ''}</td></tr>`).join('')}</table>`
+      ? `<table class="res-table rank">${rows.map((r, i) => `<tr class="${r.id === myId ? 'me' : ''}"><td>${i + 1}</td><td><span class="dot" style="background:${SS.PALETTE[r.color % 10].css}"></span>${esc(r.name)}</td><td class="n">${r.fin ? fmtTime(r.time / 1000) : 'Didn\'t finish (' + fmt(r.dist) + ' m)'}</td><td class="n"><b>${fmt(r.score)}</b>${r.coins ? `<span class="res-coin"><i class="coin"></i>+${r.coins}</span>` : ''}</td></tr>`).join('')}</table>`
       : '<p class="small">Nobody finished this round.</p>';
     show(ui.againBtn, false);
     show(ui.newBtn, false);
@@ -2251,9 +2286,18 @@
     show(ui.results, true);
   }
 
+  // the loading screen, with a riding tip
+  const TIPS = ['Hold SPACE into the lip of a kicker and let go at the top to pop.', 'Land straight and flat for a perfect landing: it keeps your speed up.',
+    'Hold SHIFT in the air to grab. Tap it to switch grabs.', 'Mix your tricks: the same trick twice scores less.', 'Tricks fill your boost. Press F to use it.',
+    'On a rail, tap A and D to keep your balance.', 'Collect the snowflakes on the way down for points and a star.', 'Drag your rider in the lobby to turn them round.'];
+  function showLoading(txt) {
+    ui.loadingText.textContent = txt;
+    $('loadingTip').textContent = TIPS[(Math.random() * TIPS.length) | 0];
+    show(ui.loading, true);
+  }
+
   function hideOverlays() {
-    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps, $('auth'), $('store'), $('cups')]) if (el) show(el, false);
-    setPreview(null);
+    for (const el of [ui.title, ui.servers, ui.pauseMenu, ui.results, ui.nogl, ui.settings, ui.maps, $('auth'), $('store'), $('cups'), $('help')]) if (el) show(el, false);
     show(ui.mapIntro, false);
   }
 
@@ -2265,6 +2309,7 @@
     show(ui.menuBtn, false);
     show(ui.touch, false);
     show(ui.loading, false);
+    setPage('ride');
     show(ui.title, true);
     Sfx.silence();
     previewLock = false;
@@ -2546,63 +2591,73 @@
   }
 
   let previewTimer = 0;
-  // the picker shows a page of mountains at a time; the arrows by BACK flip pages
+  // the picker: every mountain in one list; pick one to see it behind the list (and its stars),
+  // then RIDE. In multiplayer the same list is used to vote for the next mountain.
   let mapPage = 0;
-  const perPage = () => (window.innerWidth < 700 ? 4 : 5);
-  const pageCount = () => Math.ceil(SS.MAP_IDS.length / perPage());
-  function setMapPage(p, dir) {
-    const n = pageCount();
-    mapPage = clamp(p, 0, n - 1);
-    buildMaps(dir);
+  let mapSel = null;
+  const RIDE_ARROW = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function setMapPage(p, dir) { moveMapSel(dir || 0); }
+  function moveMapSel(d) {
+    const ids = SS.MAP_IDS, i = Math.max(0, ids.indexOf(mapSel));
+    selectMap(ids[(i + d + ids.length) % ids.length], true);
   }
-  function buildMaps(dir) {
+  function previewMap(id) {
+    if (coarse || mode !== 'menu') return;
+    clearTimeout(previewTimer);
+    previewTimer = setTimeout(() => {
+      if (hidden(ui.maps) || (world && world.mapId === id)) return;
+      previewLock = true;
+      useWorld((Math.random() * 2147483647) | 0, id);
+      startAttract();
+    }, 380);
+  }
+  function selectMap(id, scroll) {
+    mapSel = id;
+    for (const c of ui.mapGrid.children) c.classList.toggle('sel', c.dataset.id === id);
+    const card = ui.mapGrid.querySelector(`[data-id="${id}"]`);
+    if (card && scroll) card.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    const m = SS.MAPS[id], pr = prog(id), info = $('mapInfo');
+    info.style.setProperty('--acc', m.accent);
+    info.innerHTML = `<div class="mi-tags"><span class="on-dark">${pisteSign(m.diff)}</span>${sentence(m.time)} &middot; ${DIFF_WORD[m.diff]}${m.oly ? ' &middot; OLYMPIC STYLE' : ''}</div>
+      <div class="mi-name">${esc(m.name)}</div>
+      <p class="mi-sub">${esc(m.sub)}</p>
+      <ul class="mi-goals">${m.goals.map((g, i) => `<li class="${pr.stars[i] ? 'on' : ''}">${esc(g.t)}</li>`).join('')}</ul>
+      <div class="mi-best">BEST <b>${pr.best ? fmt(pr.best) : '&mdash;'}</b> &nbsp;&middot;&nbsp; STARS <b>${pr.stars.filter(Boolean).length}/3</b></div>
+      <button id="mapGo" class="btn primary mi-go" type="button"><span class="brush">${mapVote ? (votes.mine === id ? 'Take back vote' : 'Vote') : 'Ride solo'}</span>${RIDE_ARROW}</button>`;
+    $('mapGo').addEventListener('click', (e) => { e.currentTarget.blur(); rideMap(id); });
+    previewMap(id);
+  }
+  function rideMap(id) {
+    clearTimeout(previewTimer);
+    if (mapVote) { net.send({ t: 'vote', map: id }); closeMaps(); return; }
+    saveName();
+    startSingle(false, id);
+  }
+  function buildMaps() {
     ui.mapGrid.innerHTML = '';
-    const pp = perPage(), n = pageCount();
-    mapPage = clamp(mapPage, 0, n - 1);
-    ui.mapGrid.classList.remove('slide-l', 'slide-r');
-    if (dir) { void ui.mapGrid.offsetWidth; ui.mapGrid.classList.add(dir > 0 ? 'slide-l' : 'slide-r'); }
-    ui.mapPrev.disabled = mapPage === 0;
-    ui.mapNext.disabled = mapPage >= n - 1;
-    ui.mapDots.innerHTML = n > 1 ? Array.from({ length: n }, (_, i) => `<i class="${i === mapPage ? 'on' : ''}"></i>`).join('') + `<span>${mapPage + 1} / ${n}</span>` : '';
-    for (const id of SS.MAP_IDS.slice(mapPage * pp, mapPage * pp + pp)) {
+    for (const id of SS.MAP_IDS) {
       const m = SS.MAPS[id], pr = prog(id);
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'mapCard';
       b.dataset.id = id;
       b.style.setProperty('--acc', m.accent);
-      b.innerHTML = `<div class="art">${mapArt(m)}<img class="shot" src="img/maps/${id}.jpg" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m.oly ? '<span class="olyTag">OLYMPIC STYLE</span>' : ''}<span class="play">RIDE &#9654;</span></div>
+      b.innerHTML = `<div class="art">${mapArt(m)}<img class="shot" src="img/maps/${id}.jpg" alt="" loading="lazy" decoding="async" onerror="this.remove()">${m.oly ? '<span class="olyTag">OLYMPIC</span>' : ''}</div>
         <div class="mc-body"><div class="mc-name brush">${pisteSign(m.diff)}<span>${esc(m.name)}</span></div>
-        <div class="mc-tags">${sentence(m.time)}, ${DIFF_WORD[m.diff].toLowerCase()}</div>
-        <div class="mc-sub">${esc(m.sub)}</div>
-        <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'Best ' + fmt(pr.best) : 'Not ridden yet'}</span></div></div>`;
+        <div class="mc-foot"><span class="stars">${pr.stars.map((v) => `<i class="${v ? 'on' : ''}">&#9733;</i>`).join('')}</span><span class="best">${pr.best ? 'Best ' + fmt(pr.best) : sentence(m.time)}</span></div></div>`;
       b.title = m.goals.map((g, i) => (pr.stars[i] ? '★ ' : '☆ ') + g.t).join('\n');
       if (mapVote) {
         const n = votes.counts[id] || 0;
         const tag = votes.mine === id ? 'YOUR VOTE' + (n > 1 ? ' + ' + (n - 1) : '') : n ? n + (n === 1 ? ' VOTE' : ' VOTES') : '';
         if (tag) b.querySelector('.art').insertAdjacentHTML('beforeend', `<span class="voteTag${votes.mine === id ? ' mine' : ''}">${tag}</span>`);
         if (world && world.mapId === id) b.querySelector('.art').insertAdjacentHTML('beforeend', '<span class="voteTag now">RIDING NOW</span>');
-        b.querySelector('.play').textContent = votes.mine === id ? 'TAKE BACK' : 'VOTE ▶';
       }
+      // one click picks it, a second click (or the button) rides it
       b.addEventListener('click', (e) => {
         e.currentTarget.blur();
-        clearTimeout(previewTimer);
-        if (mapVote) { net.send({ t: 'vote', map: id }); closeMaps(); return; }
-        saveName();
-        startSingle(false, id);
+        if (mapSel === id) rideMap(id);
+        else selectMap(id);
       });
-      const preview = () => {
-        if (coarse || mode !== 'menu') return;
-        clearTimeout(previewTimer);
-        previewTimer = setTimeout(() => {
-          if (hidden(ui.maps) || (world && world.mapId === id)) return;
-          previewLock = true;
-          useWorld((Math.random() * 2147483647) | 0, id);
-          startAttract();
-        }, 380);
-      };
-      b.addEventListener('pointerenter', preview);
-      b.addEventListener('focus', preview);
       ui.mapGrid.appendChild(b);
     }
   }
@@ -2613,16 +2668,14 @@
     mapVote = !!vote;
     const h = ui.maps.querySelector('h2'), lead = ui.maps.querySelector('.lead');
     if (mapsHead.h === null) { mapsHead.h = h.textContent; mapsHead.lead = lead.textContent; }
-    h.textContent = mapVote ? 'VOTE FOR A MOUNTAIN' : mapsHead.h;
-    lead.textContent = mapVote ? 'The most votes picks the next round’s mountain. If more than half the server votes for one during the countdown, you switch to it right away.' : mapsHead.lead;
+    h.textContent = mapVote ? 'Vote for a mountain' : mapsHead.h;
+    lead.textContent = mapVote ? 'The most votes picks the next round’s mountain. More than half the server voting for one switches to it right away.' : mapsHead.lead;
     if (mapVote) { show(ui.pauseMenu, false); show(ui.maps, true); }
     else hideOverlays();
     const cur = mapVote ? (votes.mine || (world && world.mapId)) : spMap;
-    mapPage = Math.floor(Math.max(0, SS.MAP_IDS.indexOf(cur)) / perPage());
     buildMaps();
     show(ui.maps, true);
-    const sel = ui.mapGrid.querySelector(`[data-id="${spMap}"]`);
-    if (sel && !coarse) sel.focus({ preventScroll: true });
+    selectMap(SS.MAP_IDS.includes(cur) ? cur : SS.MAP_IDS[0], true);
   }
   function closeMaps() {
     clearTimeout(previewTimer);
@@ -2666,24 +2719,45 @@
   }
 
   let settingsBack = null;
+  // settings and help open over whatever is on screen (the lobby stays behind them)
   function openSettings(back) {
     settingsBack = back;
-    show(back, false);
+    if (back !== ui.title) show(back, false);
     show(ui.settings, true);
     applySettings();
   }
+  function closeSettings() {
+    show(ui.settings, false);
+    if (settingsBack && settingsBack !== ui.title) show(settingsBack, true);
+    else if (mode === 'menu') show(ui.title, true);
+  }
+  let helpBack = null;
+  function openHelp(back) {
+    helpBack = back;
+    if (back && back !== ui.title) show(back, false);
+    show($('help'), true);
+  }
+  function closeHelp() {
+    show($('help'), false);
+    if (helpBack && helpBack !== ui.title) show(helpBack, true);
+    helpBack = null;
+  }
 
   function toggleMenu() {
-    if (!hidden(ui.settings)) { show(ui.settings, false); show(settingsBack || ui.title, true); return; }
+    if (!hidden(ui.settings)) { closeSettings(); return; }
+    if (!hidden($('help'))) { closeHelp(); return; }
     if (mode === 'menu') {
       if (!hidden(ui.servers)) { show(ui.servers, false); show(ui.title, true); stopServerPoll(); }
+      else if (!hidden(ui.title) && ui.title.dataset.page !== 'ride') setPage('ride');
       return;
     }
     if (phase === 'results' && mode === 'sp') return;
     const open = hidden(ui.pauseMenu);
     show(ui.pauseMenu, open);
     if (mode === 'sp') paused = open;
-    ui.restartBtn.textContent = mode === 'mp' ? 'LEAVE SERVER' : 'RESTART RUN';
+    ui.restartBtn.querySelector('b').textContent = mode === 'mp' ? 'Leave server' : 'Restart run';
+    $('pauseWhere').textContent = (world ? world.map.name : '') + (mode === 'mp' ? ' · MULTIPLAYER' : ' · SOLO');
+    $('pauseMute').textContent = Sfx.muted ? 'Unmute audio' : 'Mute audio';
     show($('voteBtn'), mode === 'mp');
     if (open) Sfx.silence();
   }
@@ -2750,19 +2824,12 @@
     mode = 'mp';
     ai.on = false;
     phase = 'waiting';
-    ui.loadingText.textContent = 'Joining server…';
-    show(ui.loading, true);
+    showLoading('JOINING THE SERVER');
     show(ui.standings, true);
     show(ui.mpbar, true);
     net.connect(id, playerName, settings.outfit | 0, SS.Account ? SS.Account.token : null);
   }
 
-  // the photo on the season pass: a real shot of your 3D rider in the chosen outfit, taken on the
-  // mountain behind the title screen (the drawn one below shows until the first photo is ready)
-  const portraitCv = document.createElement('canvas');
-  portraitCv.width = 184; portraitCv.height = 224;
-  portraitCv.className = 'shot';
-  let portraitWant = true, portraitAt = performance.now() + 1200;
   // ---- studio shots: your rider alone on a clean backdrop with soft, even light (the season-pass
   // photo and the shop's try-on). Drawn into a small offscreen target, read back, and laid over a
   // painted backdrop, so they never depend on which mountain, light or slope is behind the menu.
@@ -2791,13 +2858,14 @@
     engine.rim = [0.3, 0.38, 0.5]; engine.fog = [5000, 9000]; engine.fogCol = [0.85, 0.9, 0.96];
     engine.shadowOn = false;
     engine.w = W; engine.h = H;
-    STAND.t = time;
+    STAND.t = o.t !== undefined ? o.t : time;
+    STAND.pose = o.pose || null;
     try {
       gl.bindFramebuffer(gl.FRAMEBUFFER, studio.t.fb);
       gl.viewport(0, 0, W, H);
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-      engine.setCamera(eye, tgt, o.fov || 0.6, 0);
+      engine.setCamera(eye, tgt, o.fov || 0.6, o.roll || 0);
       engine.beginLit();
       SS.drawRider(engine, STUDIO_WORLD, STAND, o.look);
       gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, studio.px);
@@ -2811,8 +2879,9 @@
     const d = studio.img.data, row = W * 4;
     for (let y = 0; y < H; y++) d.set(studio.px.subarray((H - 1 - y) * row, (H - y) * row), y * row);
     studio.cv.getContext('2d').putImageData(studio.img, 0, 0);
-    // backdrop, a soft shadow on the floor, then the rider
+    // backdrop, a soft shadow on the floor, then the rider (or just the rider, on a clear background)
     const c2 = cv.getContext('2d');
+    if (o.clear) { c2.clearRect(0, 0, W, H); c2.drawImage(studio.cv, 0, 0); return true; }
     const g = c2.createLinearGradient(0, 0, 0, H);
     g.addColorStop(0, o.top || '#a9cdf2'); g.addColorStop(0.6, o.mid || '#e4effc'); g.addColorStop(1, o.bottom || '#f4f8fd');
     c2.fillStyle = g;
@@ -2832,56 +2901,19 @@
     c2.drawImage(studio.cv, 0, 0);
     return true;
   }
-  function takePortrait() {
-    portraitWant = false;
-    if (!studioShot(portraitCv, { look: myLook(), yaw: 0.62, d: 1.55, cy: 1.66, ty: 1.52, fov: 0.6, top: '#8fbbe8', mid: '#cfe2f8', bottom: '#e6f0fb' })) return;
-    if (portraitCv.parentNode !== ui.avatar) { ui.avatar.innerHTML = ''; ui.avatar.appendChild(portraitCv); }
-  }
-  // the shop's try-on: the whole rider, swaying gently (drag it to turn them round)
-  let preview = null;
-  function setPreview(cv, look) {
-    if (!cv) { preview = null; return; }
-    const keep = preview && preview.cv === cv ? preview : null;
-    preview = { cv, look, t: keep ? keep.t : 0, last: keep ? keep.last : 0, drag: keep ? keep.drag : 0, held: keep ? keep.held : 0, dirty: true };
-    if (!cv.dataset.drag) {
-      cv.dataset.drag = '1';
-      let x0 = null;
-      cv.addEventListener('pointerdown', (e) => { x0 = e.clientX; cv.setPointerCapture(e.pointerId); });
-      cv.addEventListener('pointermove', (e) => {
-        if (x0 === null || !preview) return;
-        preview.drag += (e.clientX - x0) * 0.012;
-        preview.held = preview.t;
-        x0 = e.clientX;
-      });
-      const up = () => { x0 = null; };
-      cv.addEventListener('pointerup', up);
-      cv.addEventListener('pointercancel', up);
-    }
-  }
+  // the lobby shows your name under your rider, and the season pass card
   function drawAvatar() {
-    portraitWant = true;
-    portraitAt = Math.max(portraitAt, performance.now() + 250);
-    if (portraitCv.parentNode === ui.avatar) return; // the old photo stays until the new one is taken
-    const p = SS.PALETTE[settings.outfit | 0];
-    const jacket = rgbOf(p.jacket), trim = rgbOf(p.trim), helmet = rgbOf(p.helmet), board = rgbOf(p.board), stripe = rgbOf(p.stripe);
-    ui.avatar.innerHTML = `<svg viewBox="0 0 92 112" xmlns="http://www.w3.org/2000/svg">
-      <defs><linearGradient id="avSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#9fd0ff"/><stop offset="1" stop-color="#e8f3ff"/></linearGradient>
-      <linearGradient id="avLens" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ffb347"/><stop offset="0.55" stop-color="#ff4f8b"/><stop offset="1" stop-color="#6b4dff"/></linearGradient></defs>
-      <rect width="92" height="112" fill="url(#avSky)"/>
-      <path d="M0 78 L22 58 L36 68 L56 46 L92 74 L92 112 L0 112Z" fill="#fff" opacity="0.9"/>
-      <g transform="rotate(-28 46 70)"><rect x="-6" y="62" width="104" height="17" rx="8.5" fill="${board}" stroke="#10204a" stroke-width="2"/><rect x="4" y="68.5" width="84" height="4" rx="2" fill="${stripe}"/></g>
-      <path d="M8 112 Q11 76 46 72 Q81 76 84 112Z" fill="${jacket}" stroke="#10204a" stroke-width="2"/>
-      <path d="M46 78 L46 112" stroke="${trim}" stroke-width="3.5"/>
-      <rect x="33" y="57" width="26" height="19" rx="7" fill="${trim}" stroke="#10204a" stroke-width="2"/>
-      <circle cx="46" cy="43" r="21" fill="${helmet}" stroke="#10204a" stroke-width="2"/>
-      <path d="M31 33 Q46 24 61 33" stroke="#10204a" stroke-width="2" fill="none" opacity="0.35"/>
-      <rect x="26" y="41" width="40" height="15" rx="7.5" fill="#1a1d2b" stroke="#10204a" stroke-width="2"/>
-      <rect x="29" y="43.5" width="34" height="10" rx="5" fill="url(#avLens)"/>
-      <path d="M33 46 L40 46" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity="0.7"/>
-    </svg>`;
+    const n = $('riderName');
+    if (n) n.textContent = playerName || 'RIDER';
+    const sub = $('passSub');
+    if (sub) {
+      const acc = SS.Account && SS.Account.name;
+      sub.textContent = acc ? 'Saved to ' + acc : SS.Account && SS.Account.online ? 'Sign in to save your stars' : 'Saved on this computer';
+    }
+    updateStars();
   }
 
-  // outfit picker
+  // outfit picker (the free suits; the locker uses it for guests)
   function setOutfit(i) {
     settings.outfit = i;
     myColor = i;
@@ -2890,25 +2922,101 @@
     accountChanged();
   }
   function buildSwatches() {
-    ui.swatches.innerHTML = '';
-    SS.PALETTE.forEach((p, i) => {
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.title = p.name;
-      b.style.background = `linear-gradient(135deg, ${p.css} 0 60%, rgb(${p.board.map((v) => Math.round(v * 255)).join(',')}) 60%)`;
-      const lk = myLook();
-      b.classList.toggle('sel', typeof lk === 'object' ? lk.suit === SS.ITEMS.FREE_SUITS[i] : i === (settings.outfit | 0));
-      b.addEventListener('click', (e) => {
-        e.currentTarget.blur();
-        setOutfit(i);
-        if (SS.Shop) SS.Shop.wearFree(i);
-      });
-      ui.swatches.appendChild(b);
-    });
     const lk = myLook();
     const suit = typeof lk === 'object' ? SS.ITEMS.get('suit', lk.suit) : null;
     ui.outfitName.textContent = suit ? suit.name : SS.PALETTE[settings.outfit | 0].name;
     drawAvatar();
+    if (SS.Shop && SS.Shop.refresh) SS.Shop.refresh();
+  }
+
+  // ---- lobby pages: RIDE, LOCKER, SHOP, PASS, CUPS, UPDATES
+  function setPage(pg) {
+    if (!ui.title) return;
+    ui.title.dataset.page = pg;
+    for (const b of document.querySelectorAll('#lobbyTabs button')) b.classList.toggle('sel', b.dataset.page === pg);
+    if (pg === 'pass') renderPass();
+    if (SS.Shop && SS.Shop.page) SS.Shop.page(pg);
+    if (pg !== 'shop') setStageLook(null);
+  }
+  function renderPass() {
+    const n = starCount(), all = SS.MAP_IDS.length * 3;
+    $('passStars').textContent = n;
+    $('passStars').nextElementSibling.textContent = '/ ' + all;
+    $('passBar').style.width = (100 * n / all).toFixed(1) + '%';
+    const tiers = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.round(all * f));
+    $('passTiers').innerHTML = tiers.map((t) => `<span class="${n >= t ? 'on' : ''}">${t ? '&#9733; ' + t : 'START'}</span>`).join('');
+    $('passList').innerHTML = SS.MAP_IDS.map((id) => {
+      const m = SS.MAPS[id], pr = prog(id);
+      return `<button type="button" class="pmap" data-map="${id}"><span class="pic" style="background-image:url('img/maps/${id}.jpg')"></span>
+        <span class="bd"><span class="nm">${pisteSign(m.diff)}<span>${esc(m.name)}</span></span><ul class="gl">${m.goals.map((g, i) => `<li class="${pr.stars[i] ? 'on' : ''}">${esc(g.t)}</li>`).join('')}</ul></span>
+        <span class="bst">BEST<b>${pr.best ? fmt(pr.best) : '&mdash;'}</b></span></button>`;
+    }).join('');
+  }
+  function lobbyInit() {
+    $('lobbyTabs').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-page]');
+      if (!b) return;
+      b.blur();
+      Sfx.init();
+      setPage(b.dataset.page);
+    });
+    ui.title.addEventListener('click', (e) => {
+      const g = e.target.closest('[data-goto]');
+      if (g) { g.blur(); setPage(g.dataset.goto); return; }
+      const o = e.target.closest('[data-open]');
+      if (o) { o.blur(); if (o.dataset.open === 'help') openHelp(ui.title); else openSettings(ui.title); }
+    });
+    $('passList').addEventListener('click', (e) => {
+      const b = e.target.closest('[data-map]');
+      if (!b) return;
+      spMap = b.dataset.map;
+      saveName(); Sfx.init(); openMaps();
+    });
+    for (const b of document.querySelectorAll('#setTabs button')) b.addEventListener('click', () => {
+      for (const x of document.querySelectorAll('#setTabs button')) x.classList.toggle('sel', x === b);
+      for (const pane of document.querySelectorAll('.set-pane')) show(pane, pane.dataset.tab === b.dataset.tab);
+    });
+    click($('settingsX'), () => closeSettings());
+    click($('helpX'), () => closeHelp());
+    click($('helpDone'), () => closeHelp());
+    click($('pauseX'), () => toggleMenu());
+    click($('pauseHelpBtn'), () => openHelp(ui.pauseMenu));
+    click($('pauseMute'), () => { Sfx.setMuted(!Sfx.muted); $('pauseMute').textContent = Sfx.muted ? 'Unmute audio' : 'Mute audio'; });
+    click($('pauseFull'), () => {
+      const d = document;
+      if (d.fullscreenElement) d.exitFullscreen && d.exitFullscreen();
+      else d.documentElement.requestFullscreen && d.documentElement.requestFullscreen().catch(() => {});
+    });
+  }
+
+  // ---- little 3D pictures for the shop and the locker (a few each frame, cached)
+  const thumbs = { cache: new Map(), queue: [], cv: null };
+  const FRAMES = {
+    suit: { pose: 'stand', yaw: Math.PI / 2 + 0.35, d: 2.7, cy: 1.32, ty: 1.12, fov: 0.6 },
+    helmet: { pose: 'stand', yaw: Math.PI / 2 + 0.55, d: 0.95, cy: 1.72, ty: 1.66, fov: 0.6 },
+    goggles: { pose: 'stand', yaw: Math.PI / 2 + 0.25, d: 0.8, cy: 1.69, ty: 1.66, fov: 0.6 },
+    board: { pose: 'board', yaw: Math.PI / 2 + 0.3, d: 2.3, cy: 0.05, ty: 0, fov: 0.6, roll: 0.95 },
+  };
+  function thumb(look, slot, cb) {
+    const key = slot + '|' + JSON.stringify(look);
+    const have = thumbs.cache.get(key);
+    if (have) { cb(have); return have; }
+    thumbs.queue.push({ key, look, slot, cb });
+    return null;
+  }
+  function thumbTick() {
+    if (!thumbs.queue.length || !engine) return;
+    if (!thumbs.cv) { thumbs.cv = document.createElement('canvas'); thumbs.cv.width = 320; thumbs.cv.height = 240; }
+    for (let n = 0; n < 2 && thumbs.queue.length; n++) {
+      const j = thumbs.queue.shift();
+      let url = thumbs.cache.get(j.key);
+      if (!url) {
+        studioShot(thumbs.cv, Object.assign({ look: j.look, clear: true, t: 1.2 }, FRAMES[j.slot] || FRAMES.suit));
+        url = thumbs.cv.toDataURL('image/png');
+        thumbs.cache.set(j.key, url);
+      }
+      try { j.cb(url); } catch (e) { /* the card went away */ }
+    }
   }
 
   // buttons
@@ -2921,7 +3029,7 @@
   click(ui.mpBtn, () => { saveName(); Sfx.init(); openServers(); });
   click(ui.settingsBtn, () => { Sfx.init(); openSettings(ui.title); });
   click(ui.pauseSettingsBtn, () => openSettings(ui.pauseMenu));
-  click(ui.settingsDone, () => { show(ui.settings, false); show(settingsBack || ui.title, true); });
+  click(ui.settingsDone, () => closeSettings());
   click(ui.backBtn, () => { stopServerPoll(); show(ui.servers, false); show(ui.title, true); });
   click(ui.resumeBtn, () => toggleMenu());
   click(ui.restartBtn, () => { if (mode === 'mp') toMenu(); else startSingle(true); });
@@ -3289,6 +3397,32 @@
     trails.get('me').add(P.x, P.z, P.heading + P.yawOff * 0.5, P.grounded && P.surf === 0 && P.bailT <= 0 && P.speed > 2 && !P.pipeMode && !(world.pipeArr && world.sample(world.pipeArr, P.z) > 0.05), 1 + P.slide * 1.2);
   }
 
+  // ---- the lobby's view: a slow drone shot down the mountain (your rider stands in front of it).
+  // Every so often it moves on to the next mountain.
+  const lob = { z: 0, t: 0, was: false, map: null };
+  function lobbyOpen() { return mode === 'menu' && !!ui.title && !ui.title.classList.contains('hidden'); }
+  function lobbyCam(dt) {
+    if (!lob.was || lob.map !== world) {
+      lob.was = true;
+      lob.map = world;
+      lob.z = P.z || 60;
+      lob.t = 0;
+      cam.snap = true;
+    }
+    lob.t += dt;
+    lob.z += dt * 2.6;
+    if (lob.t > 48 || lob.z > C.LENGTH - 120) { nextAttract(); return; }
+    const z = lob.z, cx = world.center(z);
+    const ex = cx + 7, ez = z;
+    const ey = Math.max(world.ground(ex, ez), world.H(cx, z)) + 8.5;
+    const zt = z + 64, xt = world.center(zt) - 3, yt = world.H(world.center(zt), zt) + 1.5;
+    const k = cam.snap ? 1 : 1 - Math.exp(-dt * 2);
+    cam.snap = false;
+    cam.x = lerp(cam.x, ex, k); cam.y = lerp(cam.y, ey, k); cam.z = lerp(cam.z, ez, k);
+    cam.tx = lerp(cam.tx, xt, k); cam.ty = lerp(cam.ty, yt, k); cam.tz = lerp(cam.tz, zt, k);
+    cam.fov = lerp(cam.fov, 1.0, k); cam.roll = 0;
+  }
+
   function update(dt) {
     time += dt;
     engine.time = time;
@@ -3298,7 +3432,9 @@
     let focus = P;
 
     if (mode === 'menu') {
-      if (world && phase === 'attract') {
+      if (world && phase === 'attract' && lobbyOpen()) lobbyCam(dt);
+      else if (world && phase === 'attract') {
+        if (lob.was) { lob.was = false; cam.snap = true; }
         aiThink();
         simulate(dt);
         if (P.finished || P.z > C.LENGTH - 30) nextAttract();
@@ -3501,13 +3637,108 @@
   }
   const SC = [0, 0, 0];
   const sunUV = [0, 0];
+  // ---- the stage: your rider standing in the menus (lobby, locker, shop try-on, results), drawn on
+  // top of the mountain with a camera of its own. Where it stands comes from a .stage box in the
+  // page; pages with data-blur / data-dim soften the mountain behind them.
+  const stage = { els: [], fxEls: [], el: null, fx: null, look: null, t: 0, last: 0, drag: 0, held: -9 };
+  const STAGE_ST = { x: 0, y: 0, z: 0, heading: 0, pose: 'stand', t: 0 };
+  const STAGE_W = { nearLamps: () => null, Hk: () => 0, H: () => 0 };
+  const STAGE_SM = M4.create();
+  const shownEl = (el) => el.getClientRects().length > 0;
+  function stageInit() {
+    stage.els = [...document.querySelectorAll('.stage')];
+    stage.fxEls = [...document.querySelectorAll('[data-blur]')];
+    for (const el of stage.els) {
+      let x0 = null;
+      el.addEventListener('pointerdown', (e) => { x0 = e.clientX; el.setPointerCapture(e.pointerId); el.classList.add('grab'); });
+      el.addEventListener('pointermove', (e) => {
+        if (x0 === null) return;
+        stage.drag += (e.clientX - x0) * 0.011;
+        stage.held = stage.t;
+        x0 = e.clientX;
+      });
+      const up = () => { x0 = null; el.classList.remove('grab'); };
+      el.addEventListener('pointerup', up);
+      el.addEventListener('pointercancel', up);
+      for (const b of el.querySelectorAll('[data-turn]')) b.addEventListener('click', (e) => { e.stopPropagation(); stage.drag += +b.dataset.turn * 0.8; stage.held = stage.t; });
+      for (const b of el.querySelectorAll('[data-turn]')) b.addEventListener('pointerdown', (e) => e.stopPropagation());
+    }
+  }
+  function stageTick(now) {
+    stage.el = null; stage.fx = null;
+    if (!world) return;
+    for (const el of stage.els) if (shownEl(el)) { stage.el = el; break; }
+    for (const el of stage.fxEls) if (shownEl(el)) { stage.fx = el; break; }
+    const rdt = Math.min(0.1, Math.max(0, (now - (stage.last || now)) / 1000));
+    stage.last = now;
+    stage.t += rdt;
+    // a few seconds after you let go, the rider turns back to face you
+    const idle = stage.t - stage.held;
+    if (idle > 2.5 && stage.drag) {
+      const turns = Math.round(stage.drag / (Math.PI * 2)) * Math.PI * 2;
+      stage.drag = turns + (stage.drag - turns) * Math.exp(-rdt * 2.2);
+      if (Math.abs(stage.drag - turns) < 0.002) stage.drag = 0;
+    }
+  }
+  function setStageLook(look) { stage.look = look || null; }
+  function drawStage() {
+    const fx = stage.fx;
+    engine.backdrop(fx ? +fx.dataset.blur || 0 : 0, fx ? +fx.dataset.dim || 0 : 0);
+    const el = stage.el;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cv = engine.canvas, cw = cv.clientWidth || window.innerWidth, ch = cv.clientHeight || window.innerHeight;
+    const kx = engine.w / cw, ky = engine.h / ch;
+    const vx = Math.round(r.left * kx), vy = Math.round((ch - r.bottom) * ky);
+    const vw = Math.max(1, Math.round(r.width * kx)), vh = Math.max(1, Math.round(r.height * ky));
+    const d = el.dataset;
+    const idle = stage.t - stage.held;
+    const sway = idle > 2.5 ? Math.sin((idle - 2.5) * 0.45) * 0.22 * Math.min(1, (idle - 2.5) / 2) : 0;
+    const yaw = Math.PI / 2 + (+d.yaw || 0.42) + stage.drag + sway;
+    const dist = +d.d || 4.6, fov = +d.fov || 0.5;
+    const eye = [Math.sin(yaw) * dist, +d.cy || 1.12, Math.cos(yaw) * dist], tgt = [0, +d.ty || 0.93, 0];
+    const L = engine.light;
+    const keep = { sky: L.sky, ground: L.ground, moonDir: L.moonDir, moonCol: L.moonCol, rim: engine.rim, fog: engine.fog, fogCol: engine.fogCol, w: engine.w, h: engine.h, shadowOn: engine.shadowOn, haze: engine.haze };
+    // a soft key light from above the camera's left shoulder, sky fill and a cool rim
+    const kx2 = Math.sin(yaw - 0.8) * 0.62, kz2 = Math.cos(yaw - 0.8) * 0.62, kl = Math.hypot(kx2, 0.8, kz2);
+    L.sky = [0.58, 0.63, 0.74]; L.ground = [0.3, 0.3, 0.32];
+    L.moonDir = [kx2 / kl, 0.8 / kl, kz2 / kl]; L.moonCol = [0.98, 0.95, 0.9];
+    engine.rim = [0.34, 0.42, 0.56]; engine.fog = [5000, 9000]; engine.fogCol = [0.85, 0.9, 0.96];
+    engine.shadowOn = false; engine.haze = [0, 0, 0];
+    engine.w = vw; engine.h = vh;
+    gl.viewport(vx, vy, vw, vh);
+    try {
+      engine.setCamera(eye, tgt, fov, 0);
+      engine.beginBaked();
+      gl.enable(gl.BLEND);
+      gl.depthMask(false);
+      // a soft shadow under your feet and the board: a few see-through discs, smaller and darker inward
+      for (let i = 0; i < 9; i++) {
+        const k = 1 - i * 0.095;
+        M4.identity(STAGE_SM);
+        M4.translate(STAGE_SM, 0.04, 0.004 + i * 0.0004, 0.2);
+        M4.scale(STAGE_SM, 0.52 * k, 1, 0.8 * k);
+        engine.drawBaked(engine.disc, STAGE_SM, 0.05);
+      }
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+      STAGE_ST.t = time;
+      engine.beginLit();
+      SS.drawRider(engine, STAGE_W, STAGE_ST, stage.look || myLook());
+    } finally {
+      Object.assign(L, { sky: keep.sky, ground: keep.ground, moonDir: keep.moonDir, moonCol: keep.moonCol });
+      Object.assign(engine, { rim: keep.rim, fog: keep.fog, fogCol: keep.fogCol, w: keep.w, h: keep.h, shadowOn: keep.shadowOn, haze: keep.haze });
+      gl.viewport(0, 0, engine.w, engine.h);
+    }
+  }
+
   function render(g) {
     if (!world) { engine.beginFrame(false); engine.clear(engine.fogCol); return; }
     applyEnv();
     // sun shadows: riders near you are drawn from the sun into a shadow map
     engine.shadowOn = false;
     const shadowList = [];
-    const showMe0 = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
+    const showMe0 = !stage.el && !lobbyOpen() && (phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp'));
     if (q.shadows && envK < 0.6 && showMe0 && P.x !== undefined) {
       SC[0] = P.x; SC[1] = P.y + 0.8; SC[2] = P.z;
       engine.beginShadow(SC, world.L.sunDir, 10, q.shadows);
@@ -3552,7 +3783,7 @@
 
     // who to draw
     riderList.length = 0;
-    const showMe = phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp');
+    const showMe = !stage.el && !lobbyOpen() && (phase === 'attract' || phase === 'riding' || phase === 'finished' || phase === 'countdown' || (phase === 'results' && mode === 'sp'));
     if (showMe && P.x !== undefined) {
       riderList.push({ st: shadowList[0] || myState(), color: myLook(), alpha: 1 });
     }
@@ -3611,9 +3842,11 @@
     else if (sf > 0) engine.drawPoints(flakes, Math.round(FLAKES * Math.min(1, sf)), { soft: 1, max: sf > 1 ? 8 : 6 });
     else engine.drawPoints(flakes, 150, { soft: 1, max: 4, additive: true });
 
+    if (stage.el || stage.fx) drawStage();
+
     // sun rays when the sun (or moon) is on or near the screen
     let rays = 0;
-    if (q.rays && envK < 0.5) {
+    if (q.rays && envK < 0.5 && !stage.fx) {
       const d = engine.sky.dir, m = engine.vp;
       const x = eyeV[0] + d[0] * 1000, y = eyeV[1] + d[1] * 1000, z = eyeV[2] + d[2] * 1000;
       const cw = m[3] * x + m[7] * y + m[11] * z + m[15];
@@ -3662,29 +3895,13 @@
     }
     const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
     last = now;
-    if (world) world.ensureChunks(engine, P.z || 0, 1);
+    if (world) world.ensureChunks(engine, lobbyOpen() ? lob.z : P.z || 0, 1);
     update(dt);
     // a fresh season-pass photo, taken before the frame you see so it never shows on screen
-    if (portraitWant && mode === 'menu' && now > portraitAt) takePortrait();
-    if (preview && mode === 'menu') {
-      // real seconds, so slow frames don't slow the turn down
-      const rdt = Math.min(0.1, Math.max(0, (now - (preview.last || now)) / 1000));
-      preview.last = now;
-      preview.t += rdt;
-      // sway gently, unless you've just turned the rider yourself; a few seconds after you let go
-      // they turn back to face you
-      const idle = preview.t - preview.held;
-      if (idle > 2.5 && preview.drag) {
-        const turns = Math.round(preview.drag / (Math.PI * 2)) * Math.PI * 2;
-        preview.drag = turns + (preview.drag - turns) * Math.exp(-rdt * 2.2);
-        if (Math.abs(preview.drag - turns) < 0.002) preview.drag = 0;
-      }
-      const sway = idle > 2.5 ? Math.sin((idle - 2.5) * 0.6) * 0.4 * Math.min(1, (idle - 2.5) / 2) : 0;
-      if ((preview.n = (preview.n || 0) + 1) % 2 === 0 || preview.dirty) {
-        preview.dirty = false;
-        studioShot(preview.cv, { look: preview.look, yaw: 0.62 + preview.drag + sway, d: 4.1, cy: 1.15, ty: 0.83, fov: 0.6, floor: 0.905 });
-      }
-    }
+    thumbTick();
+    // the loading screen at start-up goes once the mountain has been drawn for a moment
+    if (bootLoad && world && now > bootLoad) { bootLoad = 0; show(ui.loading, false); }
+    stageTick(now);
     const g = ghostState();
     render(g);
     updateTags(g);
@@ -3694,11 +3911,17 @@
   }
 
   // ------------------------------------------------------------------ boot
-  buildSwatches();
+  let bootLoad = performance.now() + 1100;
+  showLoading('PREPARING THE MOUNTAIN');
+  stageInit();
+  lobbyInit();
   applySettings();
   if (SS.Shop) {
     SS.Shop.init({
-      preview: (cv, look) => setPreview(cv, look),
+      stageLook: (look) => setStageLook(look),
+      setPage: (pg) => setPage(pg),
+      thumb,
+      myLook: () => myLook(),
       lookChanged: () => buildSwatches(),
       outfit: () => settings.outfit | 0,
       setOutfit: (i) => setOutfit(i),
@@ -3706,7 +3929,8 @@
       toast,
     });
   }
-  if (SS.Account) SS.Account.init({ save: accountSave, apply: applyAccountSave, setName: setAccountName, toast });
+  if (SS.Account) SS.Account.init({ save: accountSave, apply: applyAccountSave, setName: setAccountName, toast, changed: () => drawAvatar() });
+  buildSwatches();
   useWorld(20261117, spMap);
   startAttract();
   for (let i = 0; i < FLAKES; i++) resetFlake(i, true);
@@ -3742,6 +3966,13 @@
       progress,
       pop() { if (P.grounded || P.coyote > 0) pop(); },
       get phase() { return phase; },
+      // a studio photo of a rider (for checking how the model looks): returns a PNG data URL
+      studio(o) {
+        const cv = document.createElement('canvas');
+        cv.width = o.w || 400; cv.height = o.h || 560;
+        studioShot(cv, Object.assign({ look: myLook(), yaw: 0.62, d: 4.1, cy: 1.15, ty: 0.83, fov: 0.6, floor: 0.905 }, o));
+        return cv.toDataURL('image/png');
+      },
       get ghost() { return bestGhost && { seed: bestGhost.seed, n: bestGhost.frames.length, first: bestGhost.frames[0], worldSeed: world.seed, state: ghostState() }; },
     };
   }

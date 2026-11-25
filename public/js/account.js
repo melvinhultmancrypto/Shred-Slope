@@ -109,10 +109,11 @@
     const up = m === 'up';
     ui.authTabs.querySelectorAll('button').forEach((b) => b.classList.toggle('sel', b.dataset.mode === m));
     ui.auth.classList.toggle('up', up);
+    ui.auth.querySelector('.authcard').classList.toggle('up', up);
     ui.authForm.classList.toggle('hidden', m === 'acct');
     ui.authTabs.classList.toggle('hidden', m === 'acct');
     ui.authAcct.classList.toggle('hidden', m !== 'acct');
-    ui.authTitle.textContent = up ? 'Get your season pass' : 'Welcome back';
+    ui.authTitle.textContent = up ? 'Create account' : 'Welcome back';
     ui.authSub.textContent = up ? 'Pick a username and a password. Your stars and best runs are saved to it.' : 'Sign in and your stars, best runs and outfit come with you.';
     ui.authGo.textContent = up ? 'CREATE ACCOUNT' : 'SIGN IN';
     ui.authPass.autocomplete = up ? 'new-password' : 'current-password';
@@ -142,7 +143,8 @@
   function open(m, from) {
     if (!online) return;
     backTo = from || null;
-    for (const el of document.querySelectorAll('.overlay:not(.hidden)')) if (el !== ui.auth) { if (!backTo) backTo = el; el.classList.add('hidden'); }
+    // the lobby stays behind the panel; anything else steps aside until it closes
+    for (const el of document.querySelectorAll('.overlay:not(.hidden)')) if (el !== ui.auth && el.id !== 'title') { if (!backTo) backTo = el; el.classList.add('hidden'); }
     setMode(m || (acc ? 'acct' : get(GUEST_KEY, false) ? 'in' : 'up'));
     ui.authPass.value = ui.authPass2.value = '';
     if (m !== 'acct' && !acc) ui.authUser.value = ui.authUser.value || '';
@@ -152,7 +154,8 @@
   function close() {
     ui.auth.classList.add('hidden');
     ui.acctDelBox.classList.add('hidden');
-    (backTo || $('title')).classList.remove('hidden');
+    if (backTo) backTo.classList.remove('hidden');
+    else if ($('title') && !document.querySelector('#hud:not(.hidden)')) $('title').classList.remove('hidden');
     backTo = null;
   }
 
@@ -218,14 +221,16 @@
   }
 
   // the strip on the season pass
+  // the chip in the lobby's top bar: SIGN IN, or your name
   function render() {
     if (!ui.passAcct) return;
     ui.passAcct.classList.toggle('hidden', !online && !acc);
     if (acc) {
-      ui.passAcct.innerHTML = `<span class="pa-dot on"></span><span class="pa-txt">Signed in as <b>${esc(acc.name)}</b>${online ? '' : ' <em>(offline)</em>'}</span><button type="button" class="pa-btn" data-a="acct">ACCOUNT</button>`;
+      ui.passAcct.innerHTML = `<button type="button" class="pa-btn" data-a="acct" title="Your account"><span class="pa-dot"></span><span class="pa-txt">${esc(acc.name)}${online ? '' : ' <em>(offline)</em>'}</span></button>`;
     } else {
-      ui.passAcct.innerHTML = `<span class="pa-dot"></span><span class="pa-txt">Guest: saved on this computer only</span><button type="button" class="pa-btn go" data-a="in">SIGN IN</button>`;
+      ui.passAcct.innerHTML = `<button type="button" class="pa-btn go" data-a="in" title="Save your stars, coins and gear">SIGN IN</button>`;
     }
+    if (hooks && hooks.changed) hooks.changed();
   }
 
   async function init(h) {

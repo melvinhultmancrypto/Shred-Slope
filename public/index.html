@@ -7,7 +7,7 @@
   <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Twenty-three mountains: sunny days, sunsets, floodlit nights, an ice cave, giant big-air kickers, rail parks, cliff drops, Olympic and Youth Olympic slopestyle, big air, halfpipe and snowboard cross. Ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Manrope:wght@500;600;700;800&family=Permanent+Marker&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="img/icon-64.png">
   <link rel="apple-touch-icon" href="img/icon-180.png">
   <link rel="stylesheet" href="style.css">
@@ -61,168 +61,273 @@
     <div id="note" class="hidden"></div>
   </div>
 
-  <button id="menuBtn" class="hidden" type="button">&#9776; MENU <kbd>ESC</kbd></button>
+  <button id="menuBtn" class="hidden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>MENU <kbd>ESC</kbd></button>
 
-  <!-- Title -->
-  <section id="title" class="overlay">
-    <a id="discordBtn" class="discord" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer" title="Join the Shred Slope Discord server"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2h-7l-5 4v-4H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z" fill="currentColor"/><circle cx="8.5" cy="11" r="1.5" fill="#5865f2"/><circle cx="15.5" cy="11" r="1.5" fill="#5865f2"/></svg><span>JOIN OUR DISCORD</span></a>
-    <div class="title-wrap">
-      <h1 class="logo brush"><span class="logo-mark" aria-hidden="true"><img src="img/logo.png" alt=""></span><span class="logo-words"><span>SHRED</span><span>SLOPE</span></span></h1>
-      <p class="tag">Twenty-three mountains, from rail parks to a halfpipe and a big air final.</p>
-      <div class="pass">
-        <div class="pass-head"><span class="brush">Season pass</span><span class="pass-tally"><span id="passCoins" class="pass-coins hidden" title="Your coins (play money for the shop)"><i class="coin" aria-hidden="true"></i><b id="coinsTotal">0</b></span><span class="pass-stars" title="Stars earned">&#9733; <b id="starsTotal">0/15</b></span></span></div>
-        <div id="passAcct" class="pass-acct hidden"></div>
-        <div class="pass-body">
-          <div id="avatar" class="avatar" aria-hidden="true"></div>
-          <div class="pass-fields">
-            <label class="field"><span>Rider</span><input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
-            <div class="field"><span>Outfit</span><div id="swatches"></div></div>
-            <div class="pass-meta"><span id="outfitName"></span><span>Best run <b id="bestScore">0</b></span></div>
+  <!-- The lobby: top tabs, and a page for each -->
+  <section id="title" class="overlay lobby" data-page="ride">
+    <header class="topbar">
+      <div class="brand"><img src="img/logo.png" alt=""><span class="brush">Shred Slope</span></div>
+      <nav id="lobbyTabs" class="tabs" aria-label="Lobby">
+        <button type="button" data-page="ride" class="sel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19 9.5 7l4 6 2.5-3.5L21 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="brush">Ride</span></button>
+        <button id="lockerBtn" type="button" data-page="locker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 4 6v4l3 1v10h10V11l3-1V6l-4-3c-.5 1.6-2 2.6-4 2.6S8.5 4.6 8 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span class="brush">Locker</span></button>
+        <button id="shopBtn" type="button" data-page="shop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.3 12H6.3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span class="brush">Shop</span></button>
+        <button type="button" data-page="pass"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v3a2 2 0 0 0 0 4v3H3v-3a2 2 0 0 0 0-4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 8v8" stroke="currentColor" stroke-width="1.6" stroke-dasharray="2 2"/></svg><span class="brush">Pass</span></button>
+        <button id="cupsBtn" type="button" data-page="cups"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4h10v4a5 5 0 0 1-10 0z M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8 20h8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="brush">Cups</span><em class="tag soon">SOON</em></button>
+        <button type="button" data-page="updates"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8 9h8M8 12.5h8M8 16h5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg><span class="brush">Updates</span><em class="tag new">NEW</em></button>
+      </nav>
+      <div class="top-right">
+        <div id="passCoins" class="coins hidden" title="Your coins: play money you earn by riding"><i class="coin" aria-hidden="true"></i><b id="coinsTotal">0</b></div>
+        <div id="passAcct" class="acct-chip hidden"></div>
+        <button id="settingsBtn" class="iconbtn" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm8.2 4.7-1.9 1.1c-.1.5-.3 1-.6 1.4l.6 2.1-1.5 1.5-2.1-.6c-.4.3-.9.5-1.4.6l-1.1 1.9h-2.2l-1.1-1.9c-.5-.1-1-.3-1.4-.6l-2.1.6-1.5-1.5.6-2.1c-.3-.4-.5-.9-.6-1.4l-1.9-1.1v-2.2l1.9-1.1c.1-.5.3-1 .6-1.4l-.6-2.1 1.5-1.5 2.1.6c.4-.3.9-.5 1.4-.6L10.9 3h2.2l1.1 1.9c.5.1 1 .3 1.4.6l2.1-.6 1.5 1.5-.6 2.1c.3.4.5.9.6 1.4l1.9 1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
+      </div>
+    </header>
+
+    <!-- RIDE -->
+    <div class="page page-ride" data-page="ride">
+      <div class="ride-col">
+        <button id="passCard" class="card pass-card" type="button" data-goto="pass">
+          <span class="sticker brush">Season pass</span>
+          <span class="pc-stars"><small>STARS</small><b class="brush" id="starsTotal">0/69</b></span>
+          <span class="pc-bar"><i id="passFill"></i></span>
+          <span id="passSub" class="pc-sub brush">Sign in to save</span>
+        </button>
+        <div class="card-row">
+          <button class="card promo promo-shop" type="button" data-goto="shop"><em class="tag new">NEW</em><b class="brush">The shop is open</b><small>Suits, boards, helmets, goggles</small></button>
+          <button class="card promo promo-cups" type="button" data-goto="cups"><small class="kicker">COMING SOON</small><b class="brush">Daily &amp; weekly cups</b></button>
+        </div>
+        <div class="grow"></div>
+        <a class="card promo-wide" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.3 5.3A16 16 0 0 0 15.4 4l-.5 1a15 15 0 0 0-5.8 0l-.5-1a16 16 0 0 0-3.9 1.3C2.2 9 1.5 12.6 1.8 16.2A16 16 0 0 0 6.6 18.6l1-1.6c-.6-.2-1.1-.5-1.6-.8l.4-.3a11.5 11.5 0 0 0 11.2 0l.4.3c-.5.3-1 .6-1.6.8l1 1.6a16 16 0 0 0 4.8-2.4c.4-4.2-.6-7.8-2.9-10.9zM8.7 14c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z" fill="currentColor"/></svg><span><b class="brush">Join the Discord</b><small>Find riders, share clips, suggest mountains</small></span><i class="go">&rsaquo;</i></a>
+        <div class="card mode-card">
+          <div class="mode-head"><span class="kicker">GAME MODE</span><button id="mpBtn" class="mode-switch" type="button">MULTIPLAYER <i>&rsaquo;</i></button></div>
+          <div class="mode-name brush">Solo</div>
+          <div class="mode-sub">23 mountains &middot; 3 stars on each &middot; Best run <b id="bestScore">0</b></div>
+          <button id="spBtn" class="btn primary ride-btn" type="button"><span class="brush">Ride</span><kbd>ENTER</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <div class="stage stage-ride" data-yaw="0.32" aria-label="Your rider: drag to turn">
+        <button id="riderTag" class="nameplate" type="button" data-goto="locker"><span id="riderName">RIDER</span></button>
+      </div>
+      <footer class="lobby-foot">
+        <a href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.3 5.3A16 16 0 0 0 15.4 4l-.5 1a15 15 0 0 0-5.8 0l-.5-1a16 16 0 0 0-3.9 1.3C2.2 9 1.5 12.6 1.8 16.2A16 16 0 0 0 6.6 18.6l1-1.6c-.6-.2-1.1-.5-1.6-.8l.4-.3a11.5 11.5 0 0 0 11.2 0l.4.3c-.5.3-1 .6-1.6.8l1 1.6a16 16 0 0 0 4.8-2.4c.4-4.2-.6-7.8-2.9-10.9zM8.7 14c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z" fill="currentColor"/></svg>DISCORD</a>
+        <button type="button" data-open="help">How to ride</button>
+        <button type="button" data-open="settings">Settings</button>
+      </footer>
+    </div>
+
+    <!-- LOCKER -->
+    <div class="page page-locker" data-page="locker" data-blur="1" data-dim="0.5">
+      <aside class="locker-panel scroll">
+        <div class="lk-head"><div class="lk-tabs"><span class="brush sel">Outfit</span></div><span id="lockerSaved" class="saved">&#10003; Saved</span></div>
+        <label class="field"><span class="kicker">RIDER NAME</span><input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
+        <div class="kicker lk-label">GEAR</div>
+        <div id="slotTiles" class="slot-tiles"></div>
+        <div class="kicker lk-label" id="lockerListLabel">SUITS</div>
+        <div id="lockerGrid" class="lk-grid"></div>
+        <p id="lockerHint" class="hint"></p>
+        <div id="swatches" class="hidden"></div><span id="outfitName" class="hidden"></span><div id="avatar" class="hidden"></div>
+      </aside>
+      <div class="stage stage-locker" data-yaw="0.3" aria-label="Your rider: drag to turn">
+        <div class="turn"><button type="button" data-turn="-1" aria-label="Turn left">&larr;</button><span>DRAG TO ROTATE</span><button type="button" data-turn="1" aria-label="Turn right">&rarr;</button></div>
+      </div>
+    </div>
+
+    <!-- SHOP -->
+    <div class="page page-shop" data-page="shop" data-blur="1" data-dim="0.66">
+      <div class="shop-main scroll">
+        <div class="page-head">
+          <h2 class="brush">Shop</h2>
+          <span class="page-sub">Earn coins by riding &middot; play money only</span>
+          <div id="shopSlots" class="pills" role="tablist"><button type="button" data-slot="all" class="sel">ALL</button><button type="button" data-slot="suit">SUITS</button><button type="button" data-slot="board">BOARDS</button><button type="button" data-slot="helmet">HELMETS</button><button type="button" data-slot="goggles">GOGGLES</button></div>
+        </div>
+        <div id="shopGrid"></div>
+        <p id="shopHint" class="hint"></p>
+      </div>
+      <aside id="tryOn" class="tryon hidden">
+        <button id="tryOnX" class="x" type="button" aria-label="Close">&times;</button>
+        <div class="stage stage-try" data-yaw="0.3" aria-label="Try it on: drag to turn"></div>
+        <div id="storeAct" class="tryon-info"></div>
+      </aside>
+    </div>
+
+    <!-- PASS -->
+    <div class="page page-pass" data-page="pass" data-blur="1" data-dim="0.7">
+      <div class="pass-main scroll">
+        <div class="page-head">
+          <h2 class="brush">Season pass</h2>
+          <span class="page-sub">Three stars to earn on every mountain</span>
+        </div>
+        <div class="pass-hero">
+          <div class="ph-stars"><small class="kicker">STARS</small><b class="brush" id="passStars">0</b><span>/ 69</span></div>
+          <div class="ph-track"><div class="ph-bar"><i id="passBar"></i></div><div id="passTiers" class="ph-tiers"></div></div>
+        </div>
+        <div id="passList" class="pass-list"></div>
+      </div>
+    </div>
+
+    <!-- CUPS -->
+    <div class="page page-cups" data-page="cups" data-blur="1" data-dim="0.7">
+      <div class="soon-hero">
+        <span class="sticker brush">Coming soon</span>
+        <h2 class="brush">Daily &amp; weekly cups</h2>
+        <p>One mountain and one course for everyone. Your best score counts, and when the cup closes the top riders win coins.</p>
+        <div class="soon-prizes">
+          <div><small class="kicker">DAILY CUP</small><b class="brush"><i class="coin"></i>1,000</b><span>for the winner</span></div>
+          <div><small class="kicker">WEEKLY CUP</small><b class="brush"><i class="coin"></i>5,000</b><span>for the winner</span></div>
+          <div><small class="kicker">EVERYONE</small><b class="brush"><i class="coin"></i>50+</b><span>just for riding</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- UPDATES -->
+    <div class="page page-updates" data-page="updates" data-blur="1" data-dim="0.7">
+      <div class="upd-main scroll">
+        <article class="upd-hero">
+          <div class="upd-pic" style="background-image:url('img/maps/slopestyle.jpg')"></div>
+          <div class="upd-txt">
+            <small class="kicker">NEW LOOK</small>
+            <h3 class="brush">A brand new lobby</h3>
+            <div class="chips"><span>NEW RIDER</span><span>LOCKER</span><span>SHOP</span><span>SEASON PASS</span></div>
+            <p>Shred Slope has a new look: a cleaner lobby with your rider front and centre, a locker to dress them up, a shop with big pictures of everything, and a new mountain picker. Drag your rider to turn them round.</p>
           </div>
+        </article>
+        <div class="kicker upd-month">LATEST</div>
+        <div class="upd-grid">
+          <article class="upd"><small class="kicker">SHOP</small><h4 class="brush">Coins and gear</h4><p>Every run pays coins (play money). Spend them on suits, boards, helmets and goggles. Your look shows in multiplayer too.</p></article>
+          <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Better jumps</h4><p>Smoother take-offs, no more slow motion off kickers, and the giant kickers land clean again.</p></article>
+          <article class="upd"><small class="kicker">CAMERA</small><h4 class="brush">High camera</h4><p>A new HIGH camera hangs up in the sky behind you, so you see the course coming. Pick it in Settings.</p></article>
+          <article class="upd"><small class="kicker">MULTIPLAYER</small><h4 class="brush">Voice chat</h4><p>Talk with up to nine other riders on a server: open mic or push to talk.</p></article>
+          <article class="upd"><small class="kicker">COMING SOON</small><h4 class="brush">Cups</h4><p>Daily and weekly cups: one course for everyone, with coin prizes for the top riders.</p></article>
         </div>
-        <div class="buttons">
-          <button id="spBtn" class="btn" type="button">SINGLEPLAYER</button>
-          <button id="mpBtn" class="btn alt" type="button">MULTIPLAYER</button>
-          <button id="settingsBtn" class="btn ghost icon" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10.3 2h3.4l.5 2.6c.6.2 1.2.5 1.7.9l2.5-.9 1.7 2.9-2 1.8c.1.6.1 1.2 0 1.8l2 1.8-1.7 2.9-2.5-.9c-.5.4-1.1.7-1.7.9l-.5 2.6h-3.4l-.5-2.6c-.6-.2-1.2-.5-1.7-.9l-2.5.9-1.7-2.9 2-1.8a6 6 0 0 1 0-1.8l-2-1.8 1.7-2.9 2.5.9c.5-.4 1.1-.7 1.7-.9z" fill="currentColor"/><circle cx="12" cy="11" r="3" fill="#fff"/></svg></button>
-        </div>
-        <div class="pass-more">
-          <button id="shopBtn" class="chipbtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16l-1.5 12h-13z" fill="currentColor"/><path d="M8.5 8V6.5a3.5 3.5 0 0 1 7 0V8" stroke="currentColor" stroke-width="2" fill="none"/></svg>SHOP</button>
-          <button id="lockerBtn" class="chipbtn" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2" fill="currentColor"/><path d="M9 7h6M9 10h6" stroke="#fff" stroke-width="1.6"/><circle cx="15" cy="15" r="1.4" fill="#fff"/></svg>LOCKER</button>
-          <button id="cupsBtn" class="chipbtn soon" type="button" title="Coming soon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h10v5a5 5 0 0 1-10 0z" fill="currentColor"/><path d="M7 5H4v1.5A3.5 3.5 0 0 0 7.5 10M17 5h3v1.5A3.5 3.5 0 0 1 16.5 10" stroke="currentColor" stroke-width="1.8" fill="none"/><path d="M12 13v4M8 21h8l-1-4H9z" fill="currentColor" stroke="currentColor" stroke-width="1.2"/></svg>CUPS<em>SOON</em></button>
-        </div>
-        <div class="barcode" aria-hidden="true"></div>
-      </div>
-      <div class="controls">
-        <div class="howto-h brush">How to ride</div>
-        <div><kbd>A</kbd><kbd>D</kbd> carve &middot; air: tap to steer, hold to spin</div>
-        <div><kbd>Space</kbd> jump</div>
-        <div><kbd>W</kbd> speed up &middot; air: front flip</div>
-        <div><kbd>S</kbd> powerslide &middot; air: back flip</div>
-        <div><kbd>Shift</kbd> crouch for a bigger pop &middot; air: grab (tap to switch)</div>
-        <div><kbd>F</kbd> boost (tricks fill it up)</div>
-        <div>On rails <kbd>A</kbd><kbd>D</kbd> keep your balance</div>
-        <div><kbd>Esc</kbd> menu &nbsp;<kbd>M</kbd> mute</div>
       </div>
     </div>
   </section>
 
-  <!-- Map select -->
-  <section id="maps" class="overlay hidden">
-    <div class="panel wide">
-      <h2 class="brush">PICK A MOUNTAIN</h2>
-      <p class="lead">Every mountain has 3 stars to earn, and every run builds a fresh course.</p>
-      <div id="mapGrid"></div>
-      <div class="pager">
-        <button id="mapPrev" class="btn ghost icon arrow" type="button" aria-label="Previous mountains" title="Previous">&#9664;</button>
-        <button id="mapsBack" class="btn ghost" type="button">BACK</button>
-        <button id="mapNext" class="btn ghost icon arrow" type="button" aria-label="More mountains" title="More">&#9654;</button>
-      </div>
-      <div id="mapDots" aria-hidden="true"></div>
-    </div>
+  <!-- Pick a mountain -->
+  <section id="maps" class="overlay hidden picker">
+    <header class="picker-top"><button id="mapsBack" class="backbtn" type="button">&larr; <span class="brush">Back</span></button><h2 class="brush">Choose your mountain</h2><span class="lead">Every mountain has 3 stars to earn, and every run builds a fresh course.</span></header>
+    <div id="mapGrid" class="map-list scroll"></div>
+    <aside id="mapInfo" class="map-info"></aside>
+    <div class="hidden"><button id="mapPrev" type="button"></button><button id="mapNext" type="button"></button><div id="mapDots"></div></div>
   </section>
 
-  <!-- Shop and locker -->
-  <section id="store" class="overlay hidden" data-mode="shop">
-    <div class="panel wide store">
-      <h2 class="brush"><span class="store-tabs"><button type="button" data-mode="shop">SHOP</button><button type="button" data-mode="locker">LOCKER</button></span></h2>
-      <div id="storeCoinChip" class="coinchip hidden" title="Your coins"><i class="coin" aria-hidden="true"></i><b id="storeCoins">0</b></div>
-      <div class="store-body">
-        <div class="store-left">
-          <div class="store-preview"><canvas id="storeCv" width="440" height="560" aria-label="Your rider"></canvas></div>
-          <div id="storeAct" class="store-act"></div>
-        </div>
-        <div class="store-right">
-          <div class="store-slots" role="tablist"><button type="button" data-slot="suit">SUITS</button><button type="button" data-slot="board">BOARDS</button><button type="button" data-slot="helmet">HELMETS</button><button type="button" data-slot="goggles">GOGGLES</button></div>
-          <div id="storeGrid" class="store-grid"></div>
-          <p id="storeHint" class="small dim store-hint"></p>
-        </div>
-      </div>
-      <button id="storeBack" class="btn ghost" type="button">BACK</button>
-    </div>
-  </section>
-
-  <!-- Cups -->
-  <section id="cups" class="overlay hidden">
-    <div class="panel wide cups">
-      <h2 class="brush">CUPS</h2>
-      <p class="lead">One mountain and one course for everyone. Your best score counts, and when the cup closes the top riders win coins (everyone who rode it gets some).</p>
-      <div id="cupAcct" class="mp-acct hidden">
-        <div class="mp-acct-txt"><b>Create an account to enter the cups</b><span>Cup prizes are paid in coins, which you spend in the shop.</span></div>
-        <div class="mp-acct-btns"><button id="cupSignUp" class="btn" type="button">CREATE ACCOUNT</button><button id="cupSignIn" class="btn ghost" type="button">SIGN IN</button></div>
-      </div>
-      <div id="cupList" class="cup-list"></div>
-      <div id="cupPast" class="cup-past"></div>
-      <button id="cupsBack" class="btn ghost" type="button">BACK</button>
-    </div>
-  </section>
+  <!-- the old store and cups screens are pages in the lobby now; these stay for the scripts -->
+  <section id="store" class="overlay hidden"><canvas id="storeCv" width="2" height="2"></canvas><div id="storeGrid"></div><p id="storeHint"></p><button id="storeBack" type="button"></button><div class="store-tabs"></div><div class="store-slots"></div><div id="storeCoinChip"></div><b id="storeCoins"></b></section>
+  <section id="cups" class="overlay hidden"><div id="cupAcct"></div><div id="cupList"></div><div id="cupPast"></div><button id="cupsBack" type="button"></button><button id="cupSignUp" type="button"></button><button id="cupSignIn" type="button"></button></section>
 
   <!-- Server browser -->
-  <section id="servers" class="overlay hidden">
-    <div class="panel">
-      <h2 class="brush">MULTIPLAYER</h2>
+  <section id="servers" class="overlay hidden modal-ov">
+    <div class="modal wide">
+      <div class="modal-head"><h2 class="brush">Multiplayer</h2><button id="backBtn" class="x" type="button" aria-label="Back">&times;</button></div>
       <p class="lead">Up to 10 riders per server race the same course. Vote for the next mountain, and talk with voice chat.</p>
       <div id="mpAcct" class="mp-acct hidden">
-        <div class="mp-acct-txt"><b>Create an account to play multiplayer</b><span>It's free and takes a few seconds. Your name is saved and your stars and best runs come with you.</span></div>
-        <div class="mp-acct-btns"><button id="mpSignUp" class="btn" type="button">CREATE ACCOUNT</button><button id="mpSignIn" class="btn ghost" type="button">SIGN IN</button></div>
+        <div class="mp-acct-txt"><b class="brush">Create an account to play multiplayer</b><span>It's free and takes a few seconds. Your name is saved and your stars and best runs come with you.</span></div>
+        <div class="mp-acct-btns"><button id="mpSignUp" class="btn primary" type="button">CREATE ACCOUNT</button><button id="mpSignIn" class="btn outline" type="button">SIGN IN</button></div>
       </div>
       <div id="serverList"></div>
       <p id="serverMsg" class="small"></p>
-      <button id="backBtn" class="btn ghost" type="button">BACK</button>
     </div>
   </section>
 
-  <!-- Menu -->
-  <section id="pauseMenu" class="overlay hidden">
-    <div class="panel narrow">
-      <h2 class="brush">MENU</h2>
-      <button id="resumeBtn" class="btn" type="button">RESUME</button>
-      <button id="restartBtn" class="btn alt" type="button">RESTART RUN</button>
-      <button id="voteBtn" class="btn alt hidden" type="button">VOTE FOR A MAP</button>
-      <button id="pauseSettingsBtn" class="btn ghost" type="button">SETTINGS</button>
-      <button id="quitBtn" class="btn ghost" type="button">QUIT TO MENU</button>
-      <a class="discord-link" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer">Join our Discord server</a>
-    </div>
+  <!-- Menu (while riding): a drawer on the right -->
+  <section id="pauseMenu" class="overlay hidden side-ov">
+    <aside class="side">
+      <div class="side-head"><div><small id="pauseWhere" class="kicker">MENU</small><h2 class="brush">Menu</h2></div><button id="pauseX" class="x" type="button" aria-label="Close">&times;</button></div>
+      <button id="resumeBtn" class="btn primary side-main" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>RESUME <kbd>ESC</kbd></button>
+      <div class="side-list">
+        <button id="pauseSettingsBtn" class="row" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm8.2 4.7-1.9 1.1c-.1.5-.3 1-.6 1.4l.6 2.1-1.5 1.5-2.1-.6c-.4.3-.9.5-1.4.6l-1.1 1.9h-2.2l-1.1-1.9c-.5-.1-1-.3-1.4-.6l-2.1.6-1.5-1.5.6-2.1c-.3-.4-.5-.9-.6-1.4l-1.9-1.1v-2.2l1.9-1.1c.1-.5.3-1 .6-1.4l-.6-2.1 1.5-1.5 2.1.6c.4-.3.9-.5 1.4-.6L10.9 3h2.2l1.1 1.9c.5.1 1 .3 1.4.6l2.1-.6 1.5 1.5-.6 2.1c.3.4.5.9.6 1.4l1.9 1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg><span><b>Settings</b><small>Camera, graphics &amp; sound</small></span><i>&rsaquo;</i></button>
+        <button id="pauseHelpBtn" class="row" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="7" width="18" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M7 11v3M5.5 12.5h3M15.5 11.5h.01M17.5 13.5h.01" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span><b>How to ride</b><small>Keys, tricks &amp; scoring</small></span><i>&rsaquo;</i></button>
+        <hr>
+        <button id="restartBtn" class="row slim" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7M4 4v4h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Restart run</b></span></button>
+        <button id="voteBtn" class="row slim hidden" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19 9.5 7l4 6 2.5-3.5L21 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span><b>Vote for a mountain</b></span></button>
+        <button id="quitBtn" class="row slim danger" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h5v16h-5M10 8l-4 4 4 4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Return to lobby</b></span></button>
+      </div>
+      <div class="side-foot">
+        <button id="pauseMute" class="btn outline" type="button">Mute audio</button>
+        <button id="pauseFull" class="btn outline" type="button">Fullscreen</button>
+      </div>
+      <div class="side-links"><a class="discord-link" href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer">Discord</a></div>
+    </aside>
   </section>
 
   <!-- Results -->
-  <section id="results" class="overlay hidden">
-    <div class="panel">
+  <section id="results" class="overlay hidden results" data-blur="1.3" data-dim="0.62">
+    <div class="res-brand" aria-hidden="true"><img src="img/logo.png" alt=""><span class="brush">Shred Slope</span></div>
+    <div class="stage stage-results" data-yaw="0.25" data-cy="1.25" data-ty="1.0" data-d="4.3" aria-label="Your rider"></div>
+    <div class="res-main">
       <h2 id="resTitle" class="brush">RUN COMPLETE</h2>
       <div id="resBody"></div>
-      <div class="buttons">
-        <button id="againBtn" class="btn" type="button">SAME MOUNTAIN</button>
-        <button id="newBtn" class="btn alt" type="button">NEW COURSE</button>
-        <button id="resMapsBtn" class="btn ghost" type="button">MAPS</button>
-        <button id="resMenuBtn" class="btn ghost" type="button">MENU</button>
+      <div class="res-btns">
+        <button id="againBtn" class="btn primary" type="button"><span class="brush">Same mountain</span><kbd>ENTER</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button id="newBtn" class="btn outline" type="button">NEW COURSE</button>
+        <button id="resMapsBtn" class="btn outline" type="button">MOUNTAINS</button>
+        <button id="resMenuBtn" class="btn outline" type="button">LOBBY</button>
       </div>
       <p id="resNote" class="small dim"></p>
     </div>
   </section>
 
   <!-- Settings -->
-  <section id="settings" class="overlay hidden">
-    <div class="panel narrow">
-      <h2 class="brush">SETTINGS</h2>
-      <div class="set"><span>Graphics</span><div class="seg" data-key="quality"><button data-v="low" type="button">LOW</button><button data-v="medium" type="button">MEDIUM</button><button data-v="high" type="button">HIGH</button></div></div>
-      <div class="set"><span>Frame rate</span><div class="seg" data-key="fps"><button data-v="30" type="button">30</button><button data-v="60" type="button">60</button><button data-v="90" type="button">90</button></div></div>
-      <div class="set"><span>Music</span><div class="seg" data-key="music"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
-      <div class="set"><span>Sound effects</span><div class="seg" data-key="sfx"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
-      <div class="set"><span>Camera</span><div class="seg" data-key="camera"><button data-v="close" type="button">CLOSE</button><button data-v="far" type="button">FAR</button><button data-v="high" type="button">HIGH</button></div></div>
-      <div class="set"><span>Auto rail<small>Ride straight at a rail and you hop on by yourself</small></span><div class="seg" data-key="autoRail"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
-      <div class="set stack"><span>Voice chat<small>In multiplayer. Push to talk: hold V</small></span><div class="seg" data-key="voice"><button data-v="ask" type="button">ASK</button><button data-v="off" type="button">OFF</button><button data-v="ptt" type="button">PUSH</button><button data-v="open" type="button">OPEN</button></div></div>
-      <p class="lead">Low graphics and 30 FPS run best on older school computers. 90 FPS needs a screen that runs at 90 Hz or more.</p>
-      <button id="settingsDone" class="btn" type="button">DONE</button>
+  <section id="settings" class="overlay hidden modal-ov">
+    <div class="modal">
+      <div class="modal-head"><h2 class="brush">Settings</h2><button id="settingsX" class="x" type="button" aria-label="Close">&times;</button></div>
+      <div id="setTabs" class="set-tabs" role="tablist"><button type="button" data-tab="camera" class="sel">CAMERA</button><button type="button" data-tab="graphics">GRAPHICS</button><button type="button" data-tab="sound">SOUND</button><button type="button" data-tab="controls">CONTROLS</button></div>
+      <div class="set-body scroll">
+        <div class="set-pane" data-tab="camera">
+          <div class="set"><span>Camera<small>Close behind you, further back, or high up like a drone so you see the course coming</small></span><div class="seg" data-key="camera"><button data-v="close" type="button">CLOSE</button><button data-v="far" type="button">FAR</button><button data-v="high" type="button">HIGH</button></div></div>
+        </div>
+        <div class="set-pane hidden" data-tab="graphics">
+          <div class="set"><span>Quality<small>Low runs best on older school computers</small></span><div class="seg" data-key="quality"><button data-v="low" type="button">LOW</button><button data-v="medium" type="button">MEDIUM</button><button data-v="high" type="button">HIGH</button></div></div>
+          <div class="set"><span>Frame rate<small>90 needs a screen that runs at 90 Hz or more</small></span><div class="seg" data-key="fps"><button data-v="30" type="button">30</button><button data-v="60" type="button">60</button><button data-v="90" type="button">90</button></div></div>
+        </div>
+        <div class="set-pane hidden" data-tab="sound">
+          <div class="set"><span>Music</span><div class="seg" data-key="music"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
+          <div class="set"><span>Sound effects</span><div class="seg" data-key="sfx"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
+          <div class="set"><span>Voice chat<small>In multiplayer. Push to talk: hold V</small></span><div class="seg" data-key="voice"><button data-v="ask" type="button">ASK</button><button data-v="off" type="button">OFF</button><button data-v="ptt" type="button">PUSH</button><button data-v="open" type="button">OPEN</button></div></div>
+        </div>
+        <div class="set-pane hidden" data-tab="controls">
+          <div class="set"><span>Auto rail<small>Ride straight at a rail and you hop on by yourself</small></span><div class="seg" data-key="autoRail"><button data-v="on" type="button">ON</button><button data-v="off" type="button">OFF</button></div></div>
+          <div class="keys">
+            <div><span>Carve, spin in the air</span><span><kbd>A</kbd><kbd>D</kbd></span></div>
+            <div><span>Jump</span><span><kbd>SPACE</kbd></span></div>
+            <div><span>Speed up &middot; front flip</span><span><kbd>W</kbd></span></div>
+            <div><span>Powerslide &middot; back flip</span><span><kbd>S</kbd></span></div>
+            <div><span>Crouch &middot; grab</span><span><kbd>SHIFT</kbd></span></div>
+            <div><span>Boost</span><span><kbd>F</kbd></span></div>
+            <div><span>Menu &middot; mute</span><span><kbd>ESC</kbd><kbd>M</kbd></span></div>
+          </div>
+        </div>
+      </div>
+      <button id="settingsDone" class="btn primary wide" type="button">DONE <kbd>ESC</kbd></button>
+    </div>
+  </section>
+
+  <!-- How to ride -->
+  <section id="help" class="overlay hidden modal-ov">
+    <div class="modal">
+      <div class="modal-head"><h2 class="brush">How to ride</h2><button id="helpX" class="x" type="button" aria-label="Close">&times;</button></div>
+      <div class="keys big">
+        <div><span><b>Carve</b> on the snow &middot; in the air tap to steer, hold to spin</span><span><kbd>A</kbd><kbd>D</kbd></span></div>
+        <div><span><b>Jump</b>: hold into the lip, let go to pop</span><span><kbd>SPACE</kbd></span></div>
+        <div><span><b>Speed up</b> &middot; in the air a front flip</span><span><kbd>W</kbd></span></div>
+        <div><span><b>Powerslide</b> &middot; in the air a back flip</span><span><kbd>S</kbd></span></div>
+        <div><span><b>Crouch</b> for a bigger pop &middot; in the air grab (tap to switch)</span><span><kbd>SHIFT</kbd></span></div>
+        <div><span><b>Boost</b>: tricks fill it up</span><span><kbd>F</kbd></span></div>
+        <div><span>On rails keep your <b>balance</b></span><span><kbd>A</kbd><kbd>D</kbd></span></div>
+        <div><span><b>Menu</b> &middot; <b>mute</b></span><span><kbd>ESC</kbd><kbd>M</kbd></span></div>
+      </div>
+      <p class="lead">Land straight and flat for <b>perfect</b> landings. Mix spins, flips and grabs: the same trick twice scores less. Collect the snowflakes on the way down.</p>
+      <button id="helpDone" class="btn primary wide" type="button">GOT IT</button>
     </div>
   </section>
 
   <!-- Voice chat, asked when you join a server -->
-  <section id="voicePrompt" class="overlay hidden" aria-labelledby="vpTitle">
-    <div class="panel narrow vp">
-      <h2 id="vpTitle" class="brush">VOICE CHAT</h2>
-      <div class="vp-ic" aria-hidden="true"><svg viewBox="0 0 64 64"><rect x="22" y="6" width="20" height="34" rx="10" fill="#fff" stroke="#10204a" stroke-width="4"/><path d="M14 30 Q14 48 32 48 Q50 48 50 30" fill="none" stroke="#10204a" stroke-width="4" stroke-linecap="round"/><path d="M32 48 L32 58 M22 58 L42 58" stroke="#10204a" stroke-width="4" stroke-linecap="round"/></svg></div>
+  <section id="voicePrompt" class="overlay hidden modal-ov" aria-labelledby="vpTitle">
+    <div class="modal narrow vp">
+      <div class="vp-ic" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M5.5 11a6.5 6.5 0 0 0 13 0M12 17.5V21M9 21h6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+      <h2 id="vpTitle" class="brush">Voice chat</h2>
       <p class="lead">Talk with the other riders on this server while you ride?</p>
-      <button id="vpOpen" class="btn" type="button">OPEN MIC</button>
-      <button id="vpPtt" class="btn alt" type="button">PUSH TO TALK <kbd>V</kbd></button>
+      <button id="vpOpen" class="btn primary" type="button">OPEN MIC</button>
+      <button id="vpPtt" class="btn outline" type="button">PUSH TO TALK <kbd>V</kbd></button>
       <button id="vpOff" class="btn ghost" type="button">NO THANKS</button>
       <label class="vp-remember"><input id="vpRemember" type="checkbox"> <span>Don't ask again (you can change it in Settings)</span></label>
       <p class="small dim">Be kind out there. Click a rider's name in the voice list to mute them.</p>
@@ -231,30 +336,9 @@
   </section>
 
   <!-- Sign in / create account -->
-  <section id="auth" class="overlay hidden" aria-labelledby="authTitle">
-    <div class="authcard" role="dialog" aria-modal="true">
-      <button id="authClose" class="auth-x" type="button" aria-label="Close">&times;</button>
-      <div class="auth-side">
-        <div class="auth-logo brush"><img class="auth-mark" src="img/logo.png" alt=""><span>SHRED</span><span>SLOPE</span></div>
-        <p class="auth-pitch">Your season pass, on every computer.</p>
-        <ul class="auth-perks">
-          <li><i>&#9733;</i><span>Stars and best scores on all 23 mountains</span></li>
-          <li><i>&#8635;</i><span>Pick up where you left off, anywhere</span></li>
-          <li><i>&#9673;</i><span>Your outfit, gear and riding settings</span></li>
-          <li><i>@</i><span>Your name, saved for multiplayer</span></li>
-          <li><i>&#9673;</i><span>Coins for every run, to spend in the shop</span></li>
-        </ul>
-        <svg class="auth-art" viewBox="0 0 400 150" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
-          <defs><linearGradient id="aaSnow" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f4f8ff"/><stop offset="1" stop-color="#c9d8f0"/></linearGradient></defs>
-          <path d="M0 96 L58 44 L84 62 L132 18 L176 70 L214 40 L262 84 L310 34 L358 72 L400 50 L400 150 L0 150Z" fill="#2a4580"/>
-          <path d="M132 18 L148 36 L138 33 L126 38 L118 31Z M310 34 L324 50 L312 46 L300 50Z M58 44 L70 56 L60 53 L48 56Z" fill="#e8f0ff"/>
-          <path d="M0 150 L0 112 Q120 84 230 104 T400 96 L400 150Z" fill="url(#aaSnow)"/>
-          <g transform="translate(250 88) rotate(-16)"><rect x="-26" y="14" width="52" height="7" rx="3.5" fill="#ff5b1f" stroke="#10204a" stroke-width="2"/>
-            <path d="M-8 14 L-4 -6 L8 -6 L10 14Z" fill="#2563ff" stroke="#10204a" stroke-width="2"/><circle cx="2" cy="-14" r="8" fill="#ffc21a" stroke="#10204a" stroke-width="2"/>
-            <rect x="-5" y="-17" width="14" height="5" rx="2.5" fill="#10204a"/></g>
-          <path d="M96 118 q60 -20 150 -24" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round" opacity="0.8"/>
-        </svg>
-      </div>
+  <section id="auth" class="overlay hidden modal-ov" aria-labelledby="authTitle">
+    <div class="modal authcard" role="dialog" aria-modal="true">
+      <button id="authClose" class="x auth-x" type="button" aria-label="Close">&times;</button>
       <div class="auth-main">
         <div id="authTabs" class="auth-tabs" role="tablist">
           <button type="button" data-mode="in" role="tab">SIGN IN</button>
@@ -263,13 +347,12 @@
         <form id="authForm" novalidate>
           <h2 id="authTitle" class="brush">Welcome back</h2>
           <p id="authSub" class="auth-sub"></p>
-          <label class="af"><span>Username</span><input id="authUser" name="username" autocomplete="username" maxlength="16" spellcheck="false" autocapitalize="off" placeholder="e.g. PowderKid"></label>
-          <label class="af"><span>Password</span><span class="pw"><input id="authPass" name="password" type="password" autocomplete="current-password" maxlength="100" placeholder="At least 6 characters"><button id="authEye" type="button" aria-label="Show password">SHOW</button></span></label>
-          <label class="af up-only"><span>Repeat password</span><input id="authPass2" name="password2" type="password" autocomplete="new-password" maxlength="100" placeholder="Same again"></label>
+          <label class="af"><span>USERNAME</span><input id="authUser" name="username" autocomplete="username" maxlength="16" spellcheck="false" autocapitalize="off" placeholder="e.g. PowderKid"></label>
+          <label class="af"><span>PASSWORD</span><span class="pw"><input id="authPass" name="password" type="password" autocomplete="current-password" maxlength="100" placeholder="At least 6 characters"><button id="authEye" type="button" aria-label="Show password">SHOW</button></span></label>
+          <label class="af up-only"><span>REPEAT PASSWORD</span><input id="authPass2" name="password2" type="password" autocomplete="new-password" maxlength="100" placeholder="Same again"></label>
           <p id="authErr" class="auth-err" role="alert"></p>
-          <button id="authGo" class="btn" type="submit">SIGN IN</button>
-          <div class="auth-or"><span>or</span></div>
-          <button id="authGuest" class="btn ghost" type="button">PLAY AS A GUEST</button>
+          <button id="authGo" class="btn primary wide" type="submit">SIGN IN</button>
+          <button id="authGuest" class="linkbtn" type="button">Play as a guest</button>
           <p id="authFine" class="auth-fine"></p>
         </form>
         <div id="authAcct" class="auth-acct hidden">
@@ -277,8 +360,8 @@
           <h2 id="acctName" class="brush"></h2>
           <div id="acctMeta" class="acct-meta"></div>
           <p class="auth-sub">Your progress saves to this account after every run.</p>
-          <button id="acctBack" class="btn" type="button">BACK TO THE MOUNTAIN</button>
-          <button id="acctOut" class="btn ghost" type="button">SIGN OUT</button>
+          <button id="acctBack" class="btn primary wide" type="button">BACK TO THE MOUNTAIN</button>
+          <button id="acctOut" class="btn outline wide" type="button">SIGN OUT</button>
           <button id="acctDel" class="linkbtn" type="button">Delete my account</button>
           <div id="acctDelBox" class="acct-del hidden">
             <p>This deletes your account and everything saved to it. Type your password to confirm.</p>
@@ -292,11 +375,14 @@
 
   <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
-  <div id="loading" class="hidden"><div class="spinner"></div><span id="loadingText">Building the mountain&hellip;</span></div>
+  <div id="loading">
+    <div class="ld-logo"><img src="img/logo.png" alt=""><span class="brush">Shred<br>Slope</span></div>
+    <div class="ld-foot"><div class="ld-row"><span id="loadingText" class="kicker">PREPARING THE MOUNTAIN</span><span class="kicker">LOADING</span></div><div class="ld-bar"><i></i></div><p id="loadingTip"></p></div>
+  </div>
 
-  <section id="nogl" class="overlay hidden">
-    <div class="panel narrow">
-      <h2 class="brush">NO 3D</h2>
+  <section id="nogl" class="overlay hidden modal-ov">
+    <div class="modal narrow">
+      <h2 class="brush">No 3D</h2>
       <p>This browser can't run WebGL, which Shred Slope needs for 3D. Try Chrome, Edge or Firefox.</p>
     </div>
   </section>

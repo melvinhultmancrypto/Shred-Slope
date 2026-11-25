@@ -463,6 +463,14 @@ void main() {
   c += (texture2D(uTex, vUv + uDir * 3.231).rgb + texture2D(uTex, vUv - uDir * 3.231).rgb) * 0.070;
   gl_FragColor = vec4(c, 1.0);
 }`;
+  // the menus: the blurred mountain copied back, darker and a little tinted
+  const FS_COPY = HEAD + `
+varying vec2 vUv;
+uniform sampler2D uTex; uniform float uK; uniform vec3 uTint;
+void main() { gl_FragColor = vec4(texture2D(uTex, vUv).rgb * uK + uTint, 1.0); }`;
+  const FS_FADE = HEAD + `
+uniform vec4 uCol;
+void main() { gl_FragColor = uCol; }`;
   const FS_SHAFTS = HEAD + `
 varying vec2 vUv;
 uniform sampler2D uTex; uniform vec2 uSun; uniform float uAspect;
@@ -694,6 +702,7 @@ void main() {
       this.pp = {
         bright: makeProgram(gl, VS_FS, FS_BRIGHT), blur: makeProgram(gl, VS_FS, FS_BLUR),
         shafts: makeProgram(gl, VS_FS, FS_SHAFTS), comp: makeProgram(gl, VS_FS, FS_COMP),
+        copy: makeProgram(gl, VS_FS, FS_COPY), fade: makeProgram(gl, VS_FS, FS_FADE),
       };
       this.tri = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, this.tri);
@@ -1000,6 +1009,37 @@ void main() {
       this.attribs([0]);
       gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
       gl.drawArrays(gl.TRIANGLES, 0, 3);
+    }
+    // behind a menu: blur (when post-processing is on) and darken what has been drawn so far, then
+    // clear the depth so something (your rider) can be drawn on top with its own camera
+    backdrop(blur, dim, tint) {
+      const gl = this.gl;
+      gl.disable(gl.DEPTH_TEST);
+      gl.depthMask(false);
+      const tr = tint || [0.03, 0.04, 0.06];
+      if (blur > 0 && this.postOn) {
+        const P = this.post, pp = this.pp, qx = 1 / P.a.w, qy = 1 / P.a.h, k = 0.6 + blur;
+        gl.disable(gl.BLEND);
+        this.pass(pp.blur, P.b, P.scene.tex, (u) => gl.uniform2f(u.uDir, qx * 0.6 * k, 0));
+        this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy * 0.6 * k));
+        this.pass(pp.blur, P.b, P.a.tex, (u) => gl.uniform2f(u.uDir, qx * 1.8 * k, 0));
+        this.pass(pp.blur, P.a, P.b.tex, (u) => gl.uniform2f(u.uDir, 0, qy * 1.8 * k));
+        this.pass(pp.copy, P.scene, P.a.tex, (u) => { gl.uniform1f(u.uK, 1 - dim); gl.uniform3f(u.uTint, tr[0] * dim, tr[1] * dim, tr[2] * dim); });
+      } else if (dim > 0) {
+        const u = this.use(this.pp.fade);
+        gl.uniform4f(u.uCol, tr[0], tr[1], tr[2], dim);
+        gl.enable(gl.BLEND);
+        gl.bindBuffer(gl.ARRAY_BUFFER, this.tri);
+        this.attribs([0]);
+        gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 8, 0);
+        gl.drawArrays(gl.TRIANGLES, 0, 3);
+        gl.disable(gl.BLEND);
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, this.postOn ? this.post.scene.fb : null);
+      gl.viewport(0, 0, this.w, this.h);
+      gl.enable(gl.DEPTH_TEST);
+      gl.depthMask(true);
+      gl.clear(gl.DEPTH_BUFFER_BIT);
     }
     // bloom, sun rays, grading and FXAA onto the screen
     endFrame(sunUV, shaftsK) {

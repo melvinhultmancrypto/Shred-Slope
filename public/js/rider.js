@@ -1,11 +1,13 @@
 /*
  * Shred Slope: the snowboarder.
- * A detailed, posed model built once from lofted shapes: jacket with a colour-blocked yoke, side
- * panels, arm stripes, reflective wrist bands, hood with drawcords, zip, pocket and chest patch;
- * baggy pants with knee patches, cargo pockets and hem stripes; laced boots in strap bindings with
- * ratchets and highbacks; five-finger gloves with cuffs; a backpack with straps and a shovel; and a
- * helmet with a stripe, vents, ear pads, goggles and a strap.
+ * A clean, posed model built once from lofted shapes: a smooth puffer jacket with a broad band
+ * across the chest and arms, a tall funnel collar zipped up to the chin, zip, pocket and chest
+ * patch; baggy pants with cargo pockets and hem stripes; laced boots in strap bindings with ratchets
+ * and highbacks; big mitts with cuffs; and a helmet with big framed goggles and a strap, with the
+ * face showing underneath.
  * Body frame: board along +z, rider faces +x (regular stance), up is +y.
+ * st.pose 'stand': standing up, holding the board upright beside you (the lobby and the results);
+ * st.pose 'board': just the board, standing up (the shop's pictures).
  */
 (function () {
   'use strict';
@@ -210,17 +212,35 @@
     const body = loft([tr(0.04, 0.186, 0.146), tr(0.2, 0.19, 0.149), tr(0.42, 0.197, 0.152, -0.004), tr(0.6, 0.206, 0.151, -0.008)], 26, { p: TP });
     const yoke = loft([tr(0.6, 0.206, 0.151, -0.008), tr(0.72, 0.214, 0.145, -0.006), tr(0.84, 0.212, 0.131), tr(0.92, 0.176, 0.114), tr(0.97, 0.12, 0.096), tr(1.0, 0.07, 0.076)], 26, { p: TP, capTop: true });
     const hem = loft([tr(-0.04, 0.19, 0.15), tr(0.06, 0.192, 0.152)], 26, { p: TP, capBottom: true });
-    // hood bunched at the back of the neck, and a stand-up collar
-    const hood = sphere(8, 12, 0.125, 0.11, 0.085, 0, 0.92, 0.1);
-    // a stand-up collar round the neck (with a lining, so the inside shows)
-    const collarRings = [{ y: 0.86, rx: 0.125, rz: 0.112, oz: -0.004 }, { y: 0.97, rx: 0.112, rz: 0.104, oz: -0.012 }, { y: 1.06, rx: 0.108, rz: 0.102, oz: -0.016 }];
-    const collar = [...loft(collarRings, 22), ...loft(collarRings.map((r) => ({ ...r, rx: r.rx - 0.012, rz: r.rz - 0.012 })), 22, { inside: true })];
-    for (let j = 0; j < 22; j++) {
-      // rolled top edge between the shell and the lining
-      const a0 = (j / 22) * Math.PI * 2, a1 = ((j + 1) / 22) * Math.PI * 2, r = collarRings[collarRings.length - 1];
-      const P = (k, a) => [Math.cos(a) * (r.rx - k), r.y, Math.sin(a) * (r.rz - k) + r.oz];
-      quad(collar, P(0.012, a0), P(0, a0), P(0, a1), P(0.012, a1), [0, 1, 0]);
+    // a tall funnel collar zipped up to the chin: puffy, flaring a little at the top, lower at the
+    // front so the chin shows (with a lining, so the inside shows)
+    const collarRings = [{ y: 0.84, rx: 0.15, rz: 0.13, oz: -0.004 }, { y: 0.93, rx: 0.14, rz: 0.125, oz: -0.008 }, { y: 1.01, rx: 0.132, rz: 0.12, oz: -0.012 }, { y: 1.075, rx: 0.135, rz: 0.124, oz: -0.014 }];
+    const CS = 30;
+    const collarTop = (a) => { const f = Math.max(0, -Math.sin(a)); return -0.07 * Math.pow(f, 3); }; // front (-z) sits lower
+    const collar = [];
+    {
+      const ringPt = (i, a, k) => {
+        const r = collarRings[i];
+        const u = (r.y - collarRings[0].y) / (collarRings[collarRings.length - 1].y - collarRings[0].y);
+        return [Math.cos(a) * (r.rx - k), r.y + collarTop(a) * u * u, Math.sin(a) * (r.rz - k) + r.oz];
+      };
+      for (const [k, inside] of [[0, false], [0.014, true]]) {
+        for (let i = 0; i < collarRings.length - 1; i++) {
+          for (let j = 0; j < CS; j++) {
+            const a0 = (j / CS) * TAU, a1 = ((j + 1) / CS) * TAU;
+            const p00 = ringPt(i, a0, k), p01 = ringPt(i, a1, k), p10 = ringPt(i + 1, a0, k), p11 = ringPt(i + 1, a1, k);
+            const am = (a0 + a1) / 2, out = [Math.cos(am) * (inside ? -1 : 1), 0, Math.sin(am) * (inside ? -1 : 1)];
+            quad(collar, p00, p10, p11, p01, out);
+          }
+        }
+      }
+      for (let j = 0; j < CS; j++) {
+        // rolled top edge between the shell and the lining
+        const a0 = (j / CS) * TAU, a1 = ((j + 1) / CS) * TAU, n = collarRings.length - 1;
+        quad(collar, ringPt(n, a0, 0.014), ringPt(n, a0, 0), ringPt(n, a1, 0), ringPt(n, a1, 0.014), [0, 1, 0]);
+      }
     }
+    const hood = [];
     // where the jacket surface is, so the zip, pocket and pack straps sit right on it
     const TR = [[0.04, 0.186, 0.146, 0], [0.2, 0.19, 0.149, 0], [0.42, 0.197, 0.152, -0.004], [0.6, 0.206, 0.151, -0.008], [0.72, 0.214, 0.145, -0.006], [0.84, 0.212, 0.131, 0], [0.92, 0.176, 0.114, 0], [0.97, 0.12, 0.096, 0], [1.0, 0.07, 0.076, 0]];
     const ringAt = (y) => {
@@ -240,10 +260,10 @@
       const y0 = 0.05 + i * 0.058, y1 = y0 + 0.058;
       quad(zip, [-0.006, y0, surfZ(0, y0, -1)], [0.006, y0, surfZ(0, y0, -1)], [0.006, y1, surfZ(0, y1, -1)], [-0.006, y1, surfZ(0, y1, -1)], [0, 0, -1]);
     }
-    // and on up the front of the collar
+    // and on up the front of the collar to its notch
     for (let i = 0; i < 3; i++) {
-      const y0 = 0.86 + i * 0.066, y1 = y0 + 0.066;
-      const zf = (y) => { let r = collarRings[0]; for (const q of collarRings) if (q.y <= y) r = q; return r.oz - r.rz - 0.002; };
+      const y0 = 0.86 + i * 0.05, y1 = y0 + 0.05;
+      const zf = (y) => { let r = collarRings[0]; for (const q of collarRings) if (q.y <= y) r = q; return r.oz - r.rz - 0.003; };
       quad(zip, [-0.006, y0, zf(y0)], [0.006, y0, zf(y0)], [0.006, y1, zf(y1)], [-0.006, y1, zf(y1)], [0, 0, -1]);
     }
     // chest pocket with a little flap
@@ -280,7 +300,8 @@
     // face below the goggles: cheeks, nose, lips and chin; a neck gaiter pulled down; hair out the back
     const face = sphere(12, 18, 0.098, 0.082, 0.088, 0.03, -0.075, 0);
     const nose = sphere(8, 10, 0.021, 0.02, 0.014, 0.127, -0.07, 0);
-    const lips = sphere(6, 10, 0.008, 0.0068, 0.026, 0.118, -0.104, 0);
+    const lips = sphere(6, 10, 0.009, 0.0072, 0.028, 0.117, -0.106, 0);
+    const chin = sphere(8, 12, 0.05, 0.034, 0.06, 0.085, -0.13, 0);
     // a neck warmer pulled up over the chin and mouth, to just under the nose
     const gaiter = loft([{ y: -0.225, rx: 0.094, rz: 0.094, ox: -0.004 }, { y: -0.17, rx: 0.112, rz: 0.104, ox: 0.01 }, { y: -0.125, rx: 0.118, rz: 0.104, ox: 0.024 }, { y: -0.098, rx: 0.112, rz: 0.1, ox: 0.028 }, { y: -0.09, rx: 0.106, rz: 0.096, ox: 0.028 }], 20);
     // knit beanie: a slouchy cap, a folded cuff and a pom-pom
@@ -445,9 +466,9 @@
       packStraps: mk(packStraps), shovel: mk(shovel), tongue: mk(tongue), laces: mk(laces), stomp: mk(stomp), ratchet: mk(ratchet), helmetStripe: mk(helmetStripe),
       cyl: mk(cyl), sph: mk(sph), band: mk(band),
       sleeveUp: mk(sleeveUp), sleeveLo: mk(sleeveLo), thigh: mk(thigh), shin: mk(shin),
-      body: mk(body), yoke: mk(yoke), hem: mk(hem), hood: mk(hood), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
+      body: mk(body), yoke: mk(yoke), hem: mk(hem), collar: mk(collar), zip: mk(zip), pocket: mk(pocket), straps: mk(straps),
       pack: mk(pack), packLid: mk(packLid),
-      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), hair: mk(hair), beanie: mk(beanie), beanieCuff: mk(beanieCuff), pom: mk(pom), frame: mk(frame), lens: mk(lens), strap: mk(strap),
+      helmet: mk(helmet), peak: mk(peak), vents: mk(vents), ears: mk(ears), gaiter: mk(gaiter), face: mk(face), nose: mk(nose), lips: mk(lips), chin: mk(chin), hair: mk(hair), beanie: mk(beanie), beanieCuff: mk(beanieCuff), pom: mk(pom), frame: mk(frame), lens: mk(lens), strap: mk(strap),
       mitt: mk(mitt), cuff: mk(cuff),
       boot: mk(boot), sole: mk(sole), plate: mk(plate), highback: mk(highback), arch: mk([...arch, ...archIn]),
       top: mk(top), side: mk(side), edge: mk(edge), base: mk(base), gfx: mk(gfx), baseGfx: mk(baseGfx),
@@ -551,6 +572,190 @@
   }
   const boardPt = (p) => { M4.point(BT, p[0], p[1], p[2], PT); return [PT[0], PT[1], PT[2]]; };
 
+  // ---- parts shared by every pose
+  const TH_B = 0.026;
+  function drawBoard(engine, pal, BMx, far) {
+    engine.drawLit(meshes.top, BMx, pal.board, 0, pal.boardSh || SH_BOARD);
+    engine.drawLit(meshes.gfx, BMx, pal.stripe, 0, pal.boardSh || SH_BOARD);
+    engine.drawLit(meshes.base, BMx, BASE);
+    engine.drawLit(meshes.baseGfx, BMx, pal.board);
+    engine.drawLit(meshes.side, BMx, DARK);
+    if (!far) { engine.drawLit(meshes.edge, BMx, STEEL, 0, SH_STEEL); engine.drawLit(meshes.stomp, BMx, DARK, 0, SH_BOOT); }
+  }
+  // a boot standing at frame BF (sole on y = 0)
+  function drawBoot(engine, pal, BF, far) {
+    engine.drawLit(meshes.sole, BF, SOLE);
+    engine.cloth(0, null, 0, 0.35, 0);
+    engine.drawLit(meshes.boot, BF, pal.boot, 0, SH_BOOT);
+    engine.cloth(0);
+    if (!far) {
+      engine.drawLit(meshes.tongue, BF, pal.trim, 0, SH_BOOT);
+      engine.drawLit(meshes.laces, BF, LACE, 0, SH_PANTS);
+    }
+  }
+  const FB = M4.create();
+  function drawBindings(engine, pal, BMx, far, boots) {
+    for (const [fz, yaw] of [[0.25, -0.27], [-0.25, 0.12]]) {
+      M4.identity(L);
+      M4.translate(L, 0.0, TH_B, fz);
+      M4.rotY(L, yaw);
+      M4.mul(FF, BMx, L);
+      engine.drawLit(meshes.plate, FF, BIND);
+      if (!far) engine.drawLit(meshes.highback, FF, BIND, 0, SH_BOOT);
+      if (boots) {
+        M4.identity(L); M4.translate(L, 0, 0.022, 0);
+        M4.mul(FB, FF, L);
+        drawBoot(engine, pal, FB, far);
+      }
+      if (!far) {
+        M4.identity(L); M4.translate(L, 0.01, 0.1, 0.094);
+        engine.drawLit(meshes.ratchet, M4.mul(W, FF, L), STEEL, 0, SH_STEEL);
+        // ankle strap over the instep and a toe strap (empty bindings: the straps lie open)
+        M4.identity(L); M4.translate(L, 0.0, boots ? 0.09 : 0.05, 0); M4.rotZ(L, -0.45); M4.scale(L, 0.07, boots ? 0.2 : 0.14, 0.086);
+        engine.drawLit(meshes.arch, M4.mul(W, FF, L), pal.board, 0, SH_BOOT);
+        M4.identity(L); M4.translate(L, 0.125, boots ? 0.06 : 0.035, 0); M4.scale(L, 0.045, boots ? 0.1 : 0.07, 0.08);
+        engine.drawLit(meshes.arch, M4.mul(W, FF, L), BIND, 0, SH_BOOT);
+      }
+    }
+  }
+  // smooth puffer with the band across the chest, the funnel collar, zip and chest patch (torso frame TF)
+  function drawJacket(engine, pal, far) {
+    engine.cloth(pal.pat, pal.patCol, 0.32, 0, 0);
+    engine.drawLit(meshes.body, TF, pal.jacket, 0, SH_JACKET);
+    engine.drawLit(meshes.yoke, TF, pal.jacket, 0, SH_JACKET);
+    engine.cloth(0);
+    engine.drawLit(meshes.hem, TF, pal.patCol, 0, SH_JACKET);
+    engine.cloth(0, null, 0.22, 0, 0);
+    engine.drawLit(meshes.collar, TF, pal.jacket, 0, SH_JACKET);
+    engine.cloth(0);
+    if (!far) {
+      engine.drawLit(meshes.zip, TF, ZIP, 0, SH_STEEL);
+      engine.drawLit(meshes.logo, TF, PATCH, 0, SH_JACKET);
+    }
+  }
+  // face under the goggles, helmet, goggles and strap (head frame HF)
+  function drawHead(engine, pal, far) {
+    engine.drawLit(meshes.face, HF, pal.skin, 0, null, 2);
+    engine.drawLit(meshes.chin, HF, pal.skin, 0, null, 2);
+    if (!far) {
+      engine.drawLit(meshes.nose, HF, pal.skin, 0, null, 2);
+      engine.drawLit(meshes.lips, HF, pal.lips, 0, null, 2);
+      if (pal.beanie) engine.drawLit(meshes.hair, HF, pal.hair, 0, [0.15, 18]);
+    }
+    if (pal.beanie) {
+      engine.cloth(0, null, 1, 0, 2);
+      engine.drawLit(meshes.beanie, HF, pal.beanieCol, 0, SH_PANTS);
+      engine.drawLit(meshes.beanieCuff, HF, pal.beanieCol, 0, SH_PANTS);
+      engine.cloth(0, null, 0.6, 0, 2);
+      engine.drawLit(meshes.pom, HF, PATCH, 0, SH_PANTS);
+      engine.cloth(0);
+    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, pal.helmetSh || SH_HELMET);
+    engine.drawLit(meshes.strap, HF, pal.frameCol, 0, SH_JACKET);
+    engine.drawLit(meshes.frame, HF, pal.frameCol, 0, SH_HELMET);
+    engine.drawLit(meshes.lens, HF, pal.lens, 0, SH_LENS, 3);
+    if (!far && !pal.beanie) engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
+  }
+  // an arm from shoulder s0 to hand target h1, the elbow bending toward `bend` (body frame)
+  function drawArm(engine, pal, base, s0, h1, bend, far) {
+    const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
+    const elbow = ik(s0, hand, ARM_U, ARM_F, bend);
+    engine.cloth(0, null, 0.3, 0, 0);
+    ball(engine, base, s0, 0.104, pal.jacket, SH_JACKET);
+    ball(engine, base, elbow, 0.084, pal.jacket, SH_JACKET);
+    engine.cloth(pal.pat, pal.patCol, 0.4, 0, 1);
+    limb(engine, base, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);
+    const dir = nrm(sub(hand, elbow));
+    const wrist = add(hand, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
+    engine.cloth(0, null, 0.45, 0, 1);
+    limb(engine, base, meshes.sleeveLo, elbow, wrist, pal.jacket, SH_JACKET);
+    engine.cloth(0);
+    const tip = add(hand, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
+    const palmSide = nrm(cross(dir, [0, 1, 0]));
+    if (!far) {
+      const c1 = add(wrist, [dir[0] * 0.05, dir[1] * 0.05, dir[2] * 0.05]);
+      engine.drawLit(meshes.cuff, seg(base, wrist, c1, 1, 1, palmSide), pal.glove, 0, SH_JACKET);
+    }
+    engine.cloth(0, null, 0.3, 0.25, 0);
+    engine.drawLit(meshes.mitt, seg(base, add(hand, [-dir[0] * 0.02, -dir[1] * 0.02, -dir[2] * 0.02]), tip, 1, 1, palmSide), pal.glove, 0, SH_BOOT);
+    engine.cloth(0);
+  }
+
+  // the board standing on its tail: top sheet facing +x, nose up (frame `out`, from body frame `base`)
+  function standingBoard(base, c, lean, turn, out) {
+    M4.identity(L);
+    M4.translate(L, c[0], c[1], c[2]);
+    M4.rotX(L, lean);
+    M4.rotY(L, -Math.PI / 2 + turn);
+    M4.rotX(L, -Math.PI / 2);
+    return M4.mul(out, base, L);
+  }
+  const SB = M4.create();
+  const BOARD_C = [0.1, 0.81, 0.47];
+  function drawStanding(engine, st, pal) {
+    const t = st.t || 0;
+    M4.identity(M);
+    M4.translate(M, st.x || 0, st.y || 0, st.z || 0);
+    M4.rotY(M, st.heading || 0);
+    if (st.pose === 'board') {
+      // just the board, centred on the origin
+      standingBoard(M, [0, 0, 0], 0, 0, SB);
+      drawBoard(engine, pal, SB, false);
+      drawBindings(engine, pal, SB, false, false);
+      return;
+    }
+    // standing tall, breathing; the board stands on its tail at your side, one hand on its edge
+    const br = Math.sin(t * 1.7) * 0.006;
+    const sway = Math.sin(t * 0.55) * 0.012;
+    standingBoard(M, BOARD_C, -0.07, 0.18, SB);
+    drawBoard(engine, pal, SB, false);
+    drawBindings(engine, pal, SB, false, false);
+
+    // feet a little apart, toes out
+    const hip = [-0.03 + sway * 0.4, 0.94 + br * 0.5, sway];
+    const knees = [];
+    for (const [fz, yaw, hz] of [[0.15, -0.16, 0.1], [-0.15, 0.16, -0.1]]) {
+      M4.identity(L);
+      M4.translate(L, 0.02, 0.008, fz);
+      M4.rotY(L, yaw);
+      M4.mul(FB, M, L);
+      drawBoot(engine, pal, FB, false);
+      const ank = [-0.005, 0.2, fz * 0.96];
+      const hp = add(hip, [0, -0.02, hz]);
+      const knee = ik(ank, hp, LEG_S, LEG_T, [1, 0.05, hz * 1.5]);
+      knees.push(knee);
+      engine.cloth(0, null, 1.1, 0.25, 1);
+      limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
+      engine.cloth(0, null, 0.9, 0.04, 1);
+      limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
+      engine.cloth(0);
+      ball(engine, M, knee, 0.099, pal.pants, SH_PANTS);
+    }
+    engine.drawLit(meshes.sph, at(M, add(hip, [-0.01, -0.03, 0]), 0.29, 0.25, 0.37), pal.pants, 0, SH_PANTS);
+
+    // upright torso, shoulders square to the front
+    const sh = add(hip, [0.03, 0.545 + br, 0.004]);
+    const waist = add(hip, [-0.005, -0.03, 0]);
+    const neck = add(sh, [0.012, 0.11, 0]);
+    seg(M, waist, neck, 1, 1, [0, 0, 1], TF);
+    drawJacket(engine, pal, false);
+
+    const head = add(sh, [0.045, 0.25, 0]);
+    M4.identity(L);
+    M4.translate(L, head[0], head[1], head[2]);
+    M4.rotY(L, Math.sin(t * 0.37) * 0.1 + 0.04);
+    M4.rotZ(L, -0.04 + Math.sin(t * 0.29) * 0.025);
+    M4.scale(L, 0.98, 0.98, 0.98);
+    M4.mul(HF, M, L);
+    drawHead(engine, pal, false);
+
+    // board-side hand grips the board's edge at hip height; the other hangs loose
+    const sf = add(sh, [0, -0.04, 0.205]), sb = add(sh, [0, -0.04, -0.205]);
+    M4.point(SB, -0.17, 0.03, 0.12, PT);
+    const grip = [PT[0], PT[1], PT[2]];
+    drawArm(engine, pal, M, sf, grip, [-0.4, -0.5, 0.9], false);
+    drawArm(engine, pal, M, sb, add(sb, [0.04, -0.53 - br, -0.07]), [-0.6, -0.2, -0.6], false);
+  }
+
   /*
    * st: { x, y, z, heading, spin, stance, flip, lean, crouch, comp, grab, grabK, grabType, tuck, slide, air, airT,
    *       spinV, flipV, bail, tumble, tumbleRoll, wind, t }
@@ -563,6 +768,7 @@
     engine.setLights(world.nearLamps(st.x, st.z, nearL));
     engine.setLitAlpha(a);
     // far away (or a see-through ghost) gets the lighter version
+    if (st.pose) { drawStanding(engine, st, pal); engine.setLitAlpha(1); return; }
     const eye = engine.eye;
     const far = a < 1 || Math.hypot(st.x - eye[0], st.z - eye[2]) > 48;
 
@@ -619,40 +825,10 @@
     M4.mul(BM, M, BT);
 
     // ---- board ----
-    engine.drawLit(meshes.top, BM, pal.board, 0, pal.boardSh || SH_BOARD);
-    engine.drawLit(meshes.gfx, BM, pal.stripe, 0, pal.boardSh || SH_BOARD);
-    engine.drawLit(meshes.base, BM, BASE);
-    engine.drawLit(meshes.baseGfx, BM, pal.board);
-    engine.drawLit(meshes.side, BM, DARK);
-    if (!far) { engine.drawLit(meshes.edge, BM, STEEL, 0, SH_STEEL); engine.drawLit(meshes.stomp, BM, DARK, 0, SH_BOOT); }
+    drawBoard(engine, pal, BM, far);
 
     // ---- feet: bindings and boots, front foot angled toward the nose, back foot ducked out ----
-    const TH = 0.026;
-    for (const [fz, yaw] of [[0.25, -0.27], [-0.25, 0.12]]) {
-      M4.identity(L);
-      M4.translate(L, 0.0, TH, fz);
-      M4.rotY(L, yaw);
-      M4.mul(FF, BM, L);
-      engine.drawLit(meshes.plate, FF, BIND);
-      if (!far) engine.drawLit(meshes.highback, FF, BIND, 0, SH_BOOT);
-      M4.identity(L); M4.translate(L, 0, 0.022, 0);
-      const BF = M4.mul(W, FF, L);
-      engine.drawLit(meshes.sole, BF, SOLE);
-      engine.cloth(0, null, 0, 0.35, 0);
-      engine.drawLit(meshes.boot, BF, pal.boot, 0, SH_BOOT);
-      engine.cloth(0);
-      if (!far) {
-        engine.drawLit(meshes.tongue, BF, pal.trim, 0, SH_BOOT);
-        engine.drawLit(meshes.laces, BF, LACE, 0, SH_PANTS);
-        M4.identity(L); M4.translate(L, 0.01, 0.1, 0.094);
-        engine.drawLit(meshes.ratchet, M4.mul(W, FF, L), STEEL, 0, SH_STEEL);
-        // ankle strap over the instep and a toe strap
-        M4.identity(L); M4.translate(L, 0.0, 0.09, 0); M4.rotZ(L, -0.45); M4.scale(L, 0.07, 0.2, 0.086);
-        engine.drawLit(meshes.arch, M4.mul(W, FF, L), pal.board, 0, SH_BOOT);
-        M4.identity(L); M4.translate(L, 0.125, 0.06, 0); M4.scale(L, 0.045, 0.1, 0.08);
-        engine.drawLit(meshes.arch, M4.mul(W, FF, L), BIND, 0, SH_BOOT);
-      }
-    }
+    drawBindings(engine, pal, BM, far, true);
 
     // ---- legs: knees found from the hips and the boots ----
     const ankF = boardPt([-0.025, 0.2, 0.25]), ankB = boardPt([-0.025, 0.2, -0.25]);
@@ -690,21 +866,7 @@
     const neck = add(sh, tw([0.012, 0.11, 0], twist));
     const across = tw([0, 0, 1], twist);
     seg(M, waist, neck, 1, 1, across, TF);
-    // quilted puffer: the folds read as the stitched baffles; a broad band runs across the chest
-    engine.cloth(pal.pat, pal.patCol, 0.85, 0, 0);
-    engine.drawLit(meshes.body, TF, pal.jacket, 0, SH_JACKET);
-    engine.drawLit(meshes.yoke, TF, pal.jacket, 0, SH_JACKET);
-    engine.cloth(0);
-    engine.drawLit(meshes.hem, TF, pal.patCol, 0, SH_JACKET);
-    engine.cloth(0, null, 0.35, 0, 0);
-    engine.drawLit(meshes.collar, TF, pal.jacket, 0, SH_JACKET);
-    engine.cloth(0, null, 0.8, 0, 0);
-    engine.drawLit(meshes.hood, TF, pal.jacket, 0, SH_JACKET);
-    engine.cloth(0);
-    if (!far) {
-      engine.drawLit(meshes.zip, TF, ZIP, 0, SH_STEEL);
-      engine.drawLit(meshes.logo, TF, PATCH, 0, SH_JACKET);
-    }
+    drawJacket(engine, pal, far);
 
     // ---- head: looks ahead into the spin, down at a grab ----
     const head = add(sh, tw([0.05, 0.25, 0], twist));
@@ -714,24 +876,7 @@
     M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
     M4.scale(L, 0.98, 0.98, 0.98);
     M4.mul(HF, M, L);
-    engine.drawLit(meshes.face, HF, pal.skin, 0, null, 2);
-    engine.drawLit(meshes.gaiter, HF, pal.patCol, 0, SH_PANTS);
-    if (!far) {
-      engine.drawLit(meshes.nose, HF, pal.skin, 0, null, 2);
-      if (pal.beanie) engine.drawLit(meshes.hair, HF, pal.hair, 0, [0.15, 18]);
-    }
-    if (pal.beanie) {
-      engine.cloth(0, null, 1, 0, 2);
-      engine.drawLit(meshes.beanie, HF, pal.beanieCol, 0, SH_PANTS);
-      engine.drawLit(meshes.beanieCuff, HF, pal.beanieCol, 0, SH_PANTS);
-      engine.cloth(0, null, 0.6, 0, 2);
-      engine.drawLit(meshes.pom, HF, PATCH, 0, SH_PANTS);
-      engine.cloth(0);
-    } else engine.drawLit(meshes.helmet, HF, pal.helmet, 0, pal.helmetSh || SH_HELMET);
-    engine.drawLit(meshes.strap, HF, pal.frameCol, 0, SH_JACKET);
-    engine.drawLit(meshes.frame, HF, pal.frameCol, 0, SH_HELMET);
-    engine.drawLit(meshes.lens, HF, pal.lens, 0, SH_LENS, 3);
-    if (!far && !pal.beanie) engine.drawLit(meshes.ears, HF, pal.helmetDark, 0, SH_PANTS);
+    drawHead(engine, pal, far);
 
     // ---- arms: hands go to targets, elbows find themselves ----
     const sf = add(sh, tw([0, -0.04, 0.205], twist)), sb = add(sh, tw([0, -0.04, -0.205], twist));
@@ -790,31 +935,7 @@
         hf = add(sf, tw([0.2, -0.4 + sway - carve * 0.18, 0.3], twist));
         hb = add(sb, tw([0.1, -0.47 - sway + carve * 0.15, -0.2], twist));
     }
-    for (const [s0, h1, side] of [[sf, hf, 1], [sb, hb, -1]]) {
-      const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
-      const elbow = ik(s0, hand, ARM_U, ARM_F, tw([-0.55, -0.6, side * 0.75], twist));
-      engine.cloth(0, null, 0.6, 0, 0);
-      ball(engine, M, s0, 0.104, pal.jacket, SH_JACKET);
-      ball(engine, M, elbow, 0.084, pal.jacket, SH_JACKET);
-      engine.cloth(pal.pat, pal.patCol, 0.9, 0, 1);
-      limb(engine, M, meshes.sleeveUp, s0, elbow, pal.jacket, SH_JACKET);
-      // forearm stops short of the hand; the cuff and mitt cover the wrist
-      const dir = nrm(sub(hand, elbow));
-      const wrist = add(hand, [-dir[0] * 0.03, -dir[1] * 0.03, -dir[2] * 0.03]);
-      engine.cloth(0, null, 0.9, 0, 1);
-      limb(engine, M, meshes.sleeveLo, elbow, wrist, pal.jacket, SH_JACKET);
-      engine.cloth(0);
-
-      const tip = add(hand, [dir[0] * 0.12, dir[1] * 0.12, dir[2] * 0.12]);
-      const palmSide = nrm(cross(dir, [0, 1, 0]));
-      if (!far) {
-        const c1 = add(wrist, [dir[0] * 0.05, dir[1] * 0.05, dir[2] * 0.05]);
-        engine.drawLit(meshes.cuff, seg(M, wrist, c1, 1, 1, palmSide), pal.glove, 0, SH_JACKET);
-      }
-      engine.cloth(0, null, 0.3, 0.25, 0);
-      engine.drawLit(meshes.mitt, seg(M, add(hand, [-dir[0] * 0.02, -dir[1] * 0.02, -dir[2] * 0.02]), tip, 1, 1, palmSide), pal.glove, 0, SH_BOOT);
-      engine.cloth(0);
-    }
+    for (const [s0, h1, side] of [[sf, hf, 1], [sb, hb, -1]]) drawArm(engine, pal, M, s0, h1, tw([-0.55, -0.6, side * 0.75], twist), far);
     engine.setLitAlpha(1);
   };
 
