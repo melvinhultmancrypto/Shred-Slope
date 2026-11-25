@@ -784,7 +784,7 @@
           const u = off * 0.7 + z * 0.35, v = z * 0.7 - off * 0.28;
           y += mk * (e < 0 ? 1 : 1 - e / 3) * 0.46 * (Math.sin(u) * Math.sin(v) + 0.2 * Math.sin(u * 0.5 + 1.3));
         }
-        vk = this.sample(this.vilArr, z);
+        vk = this.map.village ? 1 : this.sample(this.vilArr, z);
       }
       if (e > 0 && this.map.open) {
         // a stadium: low banks, then a flat arena around the course
@@ -801,17 +801,19 @@
         // how steep the bank climbs changes along the run and differs left and right: narrow gullies, open bowls
         const steep = 0.05 * (0.62 + 0.4 * Math.sin(z * 0.0083 + sd * 2.9 + this.pr) + 0.12 * Math.sin(z * 0.029 - sd));
         // in the village the valley floor opens out into gentle terraces for the chalets
-        const vf = vk > 0 ? 1 - vk * 0.78 * (eb < 45 ? 1 : Math.max(0, 1 - (eb - 45) / 40)) : 1;
+        const vfe = this.map.village ? 75 : 45, vfw = this.map.village ? 60 : 40;
+        const vf = vk > 0 ? 1 - vk * (this.map.village ? 0.92 : 0.78) * (eb < vfe ? 1 : Math.max(0, 1 - (eb - vfe) / vfw)) : 1;
+        const vm = this.map.village ? 0.45 : 1; // the village sits in a wide valley: softer shoulders and peaks
         y += vf * (lerp(steep, 0.13, ck) * ee * ee + (eb > 38 ? (eb - 38) * wall * lerp(steep / 0.05, 1, ck) : 0));
         const k1 = Math.min(1, eb / 15) * (1 - ck * 0.7) * vf;
         y += k1 * (4 * Math.sin(x * 0.045 + z * 0.02) + 2.5 * Math.sin(z * 0.07 + x * 0.03));
         // ridges and gullies running down the banks, and big shoulders further out
         y += vf * Math.min(1, eb / 22) * (1 - ck) * 2.6 * Math.sin(x * 0.12 + z * 0.045) * Math.sin(z * 0.031 - x * 0.017 + sd);
-        if (eb > 24) y += Math.min(1, (eb - 24) / 30) * (1 - ck) * (9 * Math.sin(z * 0.0135 + x * 0.019 + sd) + 4 * Math.sin(z * 0.041 - x * 0.011));
+        if (eb > 24) y += (this.map.village ? vf : 1) * Math.min(1, (eb - 24) / 30) * (1 - ck) * (9 * Math.sin(z * 0.0135 + x * 0.019 + sd) + 4 * Math.sin(z * 0.041 - x * 0.011));
         // the rim of the valley rises into peaks and drops into saddles, so it never runs dead straight
         if (eb > 50) {
           const rimK = Math.min(1, (eb - 50) / 45) * (1 - ck);
-          y += rimK * (34 * Math.sin(z * 0.0071 + sd * 1.9 + this.pr) + 20 * Math.sin(z * 0.0187 - sd) + 9 * Math.sin(z * 0.052 + x * 0.013) - 22);
+          y += vm * rimK * (34 * Math.sin(z * 0.0071 + sd * 1.9 + this.pr) + 20 * Math.sin(z * 0.0187 - sd) + 9 * Math.sin(z * 0.052 + x * 0.013) - 22);
         }
       }
       return y;
@@ -1765,7 +1767,7 @@
       // chairlift up one bank (not over the cave)
       const ls = r() < 0.5 ? -1 : 1;
       if (!M.resort) this.liftSide = ls;
-      for (let z = C.Z0 + 20; z < C.ZMAX && !M.resort; z += 65) {
+      for (let z = C.Z0 + 20; z < C.ZMAX && !M.resort && !M.village; z += 65) {
         if (this.cave && z > this.cave[0] - 60 && z < this.cave[1] + 60) continue;
         const x = this.center(z) + ls * (HALF + 30);
         this.liftTowers.push({ x, z, gy: this.ground(x, z) });
@@ -1905,7 +1907,13 @@
           if (z > C.LENGTH - 14 && z < C.LENGTH + 14) continue;
           spot(side, R(5, 7.5), z, {});
           if (r() < 0.85) spot(side, R(19, 26), z + R(-5, 5), {});
-          if (r() < 0.6) spot(side, R(33, 44), z + R(-8, 8), { floors: 2 });
+        }
+      }
+      this.fences = [];
+      for (const side of [-1, 1]) {
+        for (let z = 30; z < C.LENGTH - 6; z += 2.6) {
+          const xa = this.center(z) + side * (HALF + 1.6), xb = this.center(z + 2.6) + side * (HALF + 1.6);
+          this.fences.push({ x: xa, z, x1: xb, z1: z + 2.6, side });
         }
       }
       for (let z = 160; z < C.LENGTH - 40; z += R(120, 170)) {
@@ -2359,6 +2367,7 @@
       for (const n of this.nets) add(n.z0, { k: 'net', o: n });
       for (const h of this.huts) add(h.z, { k: 'hut', o: h });
       for (const h of this.chalets || []) add(h.z, { k: 'chalet', o: h });
+      for (const f of this.fences || []) add(f.z, { k: 'fence', o: f });
       for (const b of this.buntings || []) add(b.z, { k: 'bunting', o: b });
       for (const g of this.guns || []) add(g.z, { k: 'gun', o: g });
       for (const g of this.signs || []) add(g.z, { k: 'sign', o: g });
@@ -2411,6 +2420,7 @@
           case 'hut': B.hut(o); break;
           case 'chalet': B.chalet(o); ch.maxZ = Math.max(ch.maxZ, o.z + 12); ch.minZ = Math.min(ch.minZ, o.z - 12); break;
           case 'bunting': B.bunting(o); break;
+          case 'fence': B.fence(o); break;
           case 'gun': B.gun(o); break;
           case 'sign': B.sign(o); break;
           case 'stand': B.stand(o); ch.maxZ = Math.max(ch.maxZ, o.z + 14); ch.minZ = Math.min(ch.minZ, o.z - 14); break;
@@ -3792,10 +3802,11 @@
         const g = w.ground(h.x + u * c + v * s, h.z - u * s + v * c);
         lo = Math.min(lo, g); hi = Math.max(hi, g);
       }
-      const gy = hi - 0.15;
+      // in the village the houses are built into the slope: the uphill side sits in the snow
+      const gy = w.map.village ? lo + (hi - lo) * 0.4 : hi - 0.15;
       const P = (x, y, z) => [h.x + x * c + z * s, gy + y, h.z - x * s + z * c];
       const B = (x, y, z, hx, hy, hz, col) => { const p = P(x, y, z); this.box(p[0], p[1], p[2], hx, hy, hz, h.yaw, col); };
-      const pal = h.pal, stone = [0.55, 0.55, 0.56], dark = [0.2, 0.13, 0.08], snowc = [0.96, 0.98, 1.0];
+      const pal = h.pal, stone = w.map.village ? [0.42, 0.4, 0.38] : [0.55, 0.55, 0.56], dark = [0.2, 0.13, 0.08], snowc = [0.96, 0.98, 1.0];
       const glass = [0.24, 0.34, 0.48], frame = [0.95, 0.94, 0.9];
       const base = lo - gy - 0.4;
       B(0, (base + 0.8) / 2, 0, W + 0.1, (0.8 - base) / 2, D + 0.1, stone);
@@ -3913,12 +3924,22 @@
     }
 
     // bunting: a line of little flags strung across the piste between two poles
+    // a section of wooden fence: a post, and two rails over to the next one
+    fence(f) {
+      const w = this.w, wood = [0.3, 0.2, 0.13];
+      const g0 = w.ground(f.x, f.z), g1 = w.ground(f.x1, f.z1);
+      this.box(f.x, g0 + 0.55, f.z, 0.06, 0.6, 0.06, 0, wood);
+      const len = Math.hypot(f.x1 - f.x, f.z1 - f.z), yaw = Math.atan2(f.x1 - f.x, f.z1 - f.z);
+      const xm = (f.x + f.x1) / 2, zm = (f.z + f.z1) / 2, gm = (g0 + g1) / 2;
+      for (const h of [0.45, 0.95]) this.box(xm, gm + h, zm, 0.03, 0.05, len / 2, yaw, wood);
+    }
+
     bunting(b) {
       const w = this.w;
       const g0 = w.ground(b.x0, b.z), g1 = w.ground(b.x1, b.z);
       const y0 = g0 + 7.5, y1 = g1 + 7.5;
       for (const [x, g] of [[b.x0, g0], [b.x1, g1]]) this.box(x, g + 3.9, b.z, 0.09, 4.0, 0.09, 0, [0.86, 0.86, 0.9]);
-      const cols = [[0.95, 0.2, 0.18], [1.0, 0.78, 0.1], [0.12, 0.5, 0.95], [0.2, 0.78, 0.38], [0.98, 0.98, 1.0]];
+      const cols = w.map.village ? [[0.68, 0.14, 0.13], [0.94, 0.94, 0.92]] : [[0.95, 0.2, 0.18], [1.0, 0.78, 0.1], [0.12, 0.5, 0.95], [0.2, 0.78, 0.38], [0.98, 0.98, 1.0]];
       const n = Math.round((b.x1 - b.x0) / 0.9);
       const yAt = (k) => lerp(y0, y1, k) - Math.sin(k * Math.PI) * 1.4;
       let px = b.x0, py = y0;
