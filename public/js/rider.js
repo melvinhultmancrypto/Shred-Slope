@@ -1006,20 +1006,28 @@
     const L = [];
     // ---- the jacket: clean and roomy, straight down to a thin dark hem; a tall funnel collar zipped
     // up under the goggles, a front zip, two pocket slits, the hood lying flat behind the collar
-    const onCollar = (x, z) => Math.hypot(x - 0.01, z) < 0.118;
     const hoodiePaint = (x, y, z, m) => {
       if (y < 0.795) return BM_POUCH;                                    // hem band
-      if (x > 0.05 && y < 1.69 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
+      if (x > 0.05 && y < 1.64 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
       if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket slits
       if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
-      if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2) && !onCollar(x, z) && x > -0.09) return BM_YOKE; // shoulders
+      if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)) return BM_YOKE; // shoulders and collar
       if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
       return m;
     };
     L.push(group([
-      box([-0.024, 1.105, 0], [0.176, 0.335, 0.232], 0.1, { mat: BM_JACKET, paint: hoodiePaint }),
-      tube([-0.012, 1.4, -0.168], [-0.012, 1.4, 0.168], 0.07, 0.07, { k: 0.07, mat: BM_JACKET, paint: hoodiePaint }),
-      tube([0.0, 1.4, 0], [0.022, 1.69, 0], 0.104, 0.098, { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
+      // a real build under the jacket: chest and shoulder blades up top, a narrower waist,
+      // the jacket falling over the hips; shoulders sloping down from the neck to round caps
+      ell([0.01, 1.28, 0], [0.13, 0.17, 0.195], { mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.035, 1.31, 0], [0.112, 0.15, 0.185], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.005, 1.04, 0], [0.122, 0.21, 0.178], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.02, 0.88, 0], [0.155, 0.2, 0.245], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.5, -0.04], [-0.006, 1.435, -0.19], 0.066, 0.07, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.5, 0.04], [-0.006, 1.435, 0.19], 0.066, 0.07, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.425, -0.2], [0.078, 0.08, 0.076], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.425, 0.2], [0.078, 0.08, 0.076], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
+      // the collar, zipped up
+      tube([0.004, 1.46, 0], [0.02, 1.63, 0], 0.088, 0.08, { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET }));
     // ---- neck (inside the collar)
@@ -1035,29 +1043,29 @@
         if (Math.abs(t - 0.62) < 0.13) return BM_BAND;
         return m;
       };
-      L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.09 - 0.005 * t, k: 0.04, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
-      L.push(ell(el, [0.085, 0.085, 0.085], { k: 0.035, bone: BN['fore' + k], mat: BM_JACKET }));
+      L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.078 - 0.004 * t, k: 0.035, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
+      L.push(ell(el, [0.074, 0.074, 0.074], { k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
       const wr = vadd(ha, vsc(df, -0.07));
-      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.085 - 0.004 * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
-      L.push(tube(vadd(ha, vsc(df, -0.085)), vadd(ha, vsc(df, -0.045)), 0.074, 0.072, { k: 0.01, bone: BN['fore' + k], mat: BM_POUCH }));
+      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.072 - 0.006 * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
+      L.push(tube(vadd(ha, vsc(df, -0.085)), vadd(ha, vsc(df, -0.045)), 0.066, 0.064, { k: 0.01, bone: BN['fore' + k], mat: BM_POUCH }));
       const hinge = hingeOf(sj, ha, R0['ab' + k]);
       const v = vn(perp(hinge, df));
       let w = vx(df, v);
       if (w[0] < 0) w = vsc(w, -1);
       const mc = vadd(ha, vsc(df, 0.03));
-      L.push(ell(mc, [0.082, 0.05, 0.064], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(ell(mc, [0.074, 0.046, 0.058], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
       L.push(tube(vadd(vadd(ha, vsc(df, -0.01)), vsc(w, 0.04)), vadd(vadd(ha, vsc(df, 0.04)), vsc(w, 0.072)), 0.026, 0.022, { k: 0.018, bone: BN['fore' + k], mat: BM_GLOVE }));
-      L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.064, 0.066, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.058, 0.06, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
     }
     // ---- straight, wide pants down over the boots
-    L.push(ell([-0.035, 0.84, 0], [0.13, 0.12, 0.2], { bone: BN.pelvis, mat: BM_PANTS }));
-    L.push(ell([0.03, 0.84, 0], [0.11, 0.11, 0.19], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([-0.03, 0.84, 0], [0.12, 0.11, 0.19], { bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([0.025, 0.84, 0], [0.1, 0.1, 0.18], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
     for (const k of ['F', 'B']) {
       const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
       const dl = vn(vsub(an, kn));
-      L.push(tube(hj, kn, 0, 0, { prof: () => 0.124, k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
-      L.push(ell(kn, [0.116, 0.116, 0.116], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
-      L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.116 + 0.008 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS }));
+      L.push(tube(hj, kn, 0, 0, { prof: (t) => 0.106 - 0.006 * t, k: 0.06, bone: BN['thigh' + k], mat: BM_PANTS }));
+      L.push(ell(kn, [0.1, 0.1, 0.1], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
+      L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.097 + 0.014 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS }));
     }
     return L;
   }
@@ -1389,7 +1397,7 @@
     let a = st.key ? ANIM_K[st.key] : ANIM.get(st);
     if (!a) { a = { t: -1 }; if (st.key) ANIM_K[st.key] = a; else ANIM.set(st, a); }
     const t = st.t || 0;
-    if (a.t < 0 || t < a.t || t - a.t > 0.25) { a.k = a.tw = a.hf = a.hb = null; a.dt = 0; }
+    if (a.t < 0 || t < a.t || t - a.t > 0.25) { a.k = a.tw = a.hf = a.hb = null; a.dt = 0; a.sw = undefined; }
     else a.dt = t - a.t;
     a.t = t;
     return a;
@@ -1595,6 +1603,20 @@
     }
     if (an.hf) { const e = easeK(an, st.bail ? 14 : air ? 11 : 8); hf = mix(an.hf, hf, e); hb = mix(an.hb, hb, e); }
     an.hf = hf; an.hb = hb;
+    // the arms swing a little as you shift your weight edge to edge: they lag behind the turn,
+    // swing through and settle (a damped spring on how fast the lean changes)
+    if (!st.bail) {
+      if (an.sw === undefined) { an.sw = 0; an.swv = 0; an.pc = carve; }
+      if (an.dt > 0) {
+        const dc = (carve - an.pc) / an.dt;
+        an.swv += (-an.sw * 28 - an.swv * 4.5 - dc * 2.2) * an.dt;
+        an.sw = clamp(an.sw + an.swv * an.dt, -0.7, 0.7);
+        an.pc = carve;
+      }
+      const sw = an.sw;
+      hf = add(hf, tw([sw * 0.05, Math.abs(sw) * 0.04, sw * 0.12], twist));
+      hb = add(hb, tw([-sw * 0.05, Math.abs(sw) * 0.04, sw * 0.12], twist));
+    }
     if ((st.wob || 0) > 0 && !st.bail) {
       // windmilling to stay on your feet
       const w = Math.min(1, st.wob);
