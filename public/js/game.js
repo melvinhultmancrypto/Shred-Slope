@@ -86,8 +86,8 @@
     // low still gets FXAA and the colour grade, just not bloom and sun rays ('lite')
     // far: how far down the valley you see (a coarse mesh past the detailed chunks; 0 = fog at the draw distance)
     low: { detail: 0, dpr: 1, draw: 320, fog: 300, far: 0, particles: 0.5, trails: true, shadows: 0, post: 'lite', rays: false },
-    medium: { detail: 0.6, dpr: 1.25, draw: 380, fog: 380, far: 1200, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
-    high: { detail: 1, dpr: 1.75, draw: 440, fog: 420, far: 1700, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
+    medium: { detail: 0.6, dpr: 1.5, draw: 380, fog: 380, far: 1200, particles: 0.8, trails: true, shadows: 1024, post: true, rays: false },
+    high: { detail: 1, dpr: 2, draw: 440, fog: 420, far: 1700, particles: 1, trails: true, shadows: 2048, post: true, rays: true },
   };
   let q = Q[settings.quality] || Q.high;
 
@@ -3103,7 +3103,7 @@
   }
   function thumbTick() {
     if (!thumbs.queue.length || !engine) return;
-    if (!thumbs.cv) { thumbs.cv = document.createElement('canvas'); thumbs.cv.width = 320; thumbs.cv.height = 240; }
+    if (!thumbs.cv) { thumbs.cv = document.createElement('canvas'); thumbs.cv.width = 560; thumbs.cv.height = 420; }
     for (let n = 0; n < 2 && thumbs.queue.length; n++) {
       const j = thumbs.queue.shift();
       let url = thumbs.cache.get(j.key);
@@ -3727,7 +3727,7 @@
       engine.glare = [m.light.sun[0] * 0.4, m.light.sun[1] * 0.4, m.light.sun[2] * 0.38];
     } else {
       // night: lights bloom, moonlight shadows are soft and blue
-      Object.assign(G, { bloom: 0.6, thr: 0.78, sat: 1.1, con: 1.1, lift: [0.0, 0.01, 0.034], gain: [0.98, 1.0, 1.05], vig: 0.42 });
+      Object.assign(G, { bloom: 0.3, thr: 0.9, sat: 1.1, con: 1.1, lift: [0.0, 0.01, 0.034], gain: [0.98, 1.0, 1.05], vig: 0.42 });
       G.shafts = [col[0] * 0.18, col[1] * 0.2, col[2] * 0.26];
       engine.shadowDark = [0.66, 0.7, 0.86];
       engine.cold = [0.92, 0.96, 1.05];
@@ -3991,14 +3991,15 @@
     engine.endFrame(rays > 0 ? sunUV : null, rays);
   }
 
-  // adaptive resolution for slower computers
+  // adaptive resolution for slower computers: it gives back the extra sharpness on high-DPI
+  // screens, but never drops below one pixel per screen pixel (that's what made everything blurry)
   let perfAcc = 0, perfN = 0;
   function perf(dt) {
     perfAcc += dt;
     perfN++;
     if (perfN >= 90) {
       const avg = perfAcc / perfN;
-      if (avg > 0.034 && dpr > 0.75) { dpr = Math.max(0.75, dpr - 0.25); resize(); }
+      if (avg > 0.034 && dpr > 1) { dpr = Math.max(1, dpr - 0.25); resize(); }
       perfAcc = 0;
       perfN = 0;
     }
