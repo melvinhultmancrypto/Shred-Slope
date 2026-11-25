@@ -1327,7 +1327,7 @@
       (window.ShredSlopeDebug.landLog = window.ShredSlopeDebug.landLog || []).push([Math.round(P.z), qual, +air.toFixed(2), +spinErr.toFixed(2), +flipErr.toFixed(2), +impact.toFixed(1), kf ? kf.size : '-', rel, +(P.toV || 0).toFixed(1)]);
     }
     if (qual === 'perfect') { if (P.speed < 32) P.speed = Math.min(32, P.speed * 1.05); run.perfects++; addBoost(0.12); }
-    else if (qual === 'sketchy') { P.speed *= 0.76; P.wobble = 0.9; }
+    else if (qual === 'sketchy') P.speed *= 0.8; // a sketchy landing costs speed, no wobble
     P.compV += Math.min(5, 0.6 + impact * 0.2);
     awardAir(half, Math.abs(m), Math.sign(m), grabT, air, qual, spinDir, wasSwitch);
     if (air > 0.5 && mode !== 'menu') showLand(qual);

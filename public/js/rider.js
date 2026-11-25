@@ -929,7 +929,7 @@
       r['kn' + k] = vadd(hj, vsc(vn(vsub(an, hj)), LEG_T));
       r['lb' + k] = [1, 0.1, 0.276 * s];
       // built in an A-pose, arms held out from the body, so the jacket never gets tied to the forearms
-      const sj = [0, 1.445, 0.205 * s], hand = vadd(sj, [0.07, -0.47, 0.26 * s]), ab = [-0.55, -0.6, 0.75 * s];
+      const sj = [0, 1.445, 0.228 * s], hand = vadd(sj, [0.07, -0.47, 0.26 * s]), ab = [-0.55, -0.6, 0.75 * s];
       r['sj' + k] = sj; r['ha' + k] = hand; r['ab' + k] = ab;
       r['el' + k] = ik(sj, hand, ARM_U, ARM_F, ab);
     }
@@ -995,7 +995,7 @@
   }
 
   // body materials
-  const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7, BM_LOGO = 8, BM_ZIP = 9;
+  const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7, BM_LOGO = 8, BM_ZIP = 9, BM_COLLAR = 10;
   // the zipped hand pockets: a slanted slit low on each side of the front
   const pocketF = (x, y, z) => (y < 0.87 || y > 0.99 ? 1 : Math.abs(Math.abs(z) - 0.118) - 0.0045);
   const zipF = (x, y, z) => Math.abs(z) - 0.0075;
@@ -1009,7 +1009,6 @@
     const hoodiePaint = (x, y, z, m) => {
       if (y < 0.765) return BM_POUCH;                                    // hem band
       if (x > 0.05 && y < 1.71 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
-      if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket slits
       if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
       if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)) return BM_YOKE; // shoulders and collar
       if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
@@ -1019,23 +1018,28 @@
       // a real build under the jacket: chest and shoulder blades up top, a narrower waist,
       // the jacket falling over the hips; shoulders sloping down from the neck to round caps
       // a puffy jacket standing off the body: full through the chest and back, falling straight
-      ell([0.0, 1.27, 0], [0.152, 0.2, 0.232], { mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.04, 1.3, 0], [0.13, 0.17, 0.222], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.01, 1.04, 0], [0.155, 0.24, 0.236], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.02, 0.86, 0], [0.172, 0.3, 0.272], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.27, 0], [0.148, 0.2, 0.245], { mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.04, 1.3, 0], [0.122, 0.17, 0.238], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.01, 1.04, 0], [0.14, 0.24, 0.215], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.01, 0.86, 0], [0.152, 0.3, 0.25], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
       // rounded, dropped shoulders
-      tube([-0.01, 1.51, -0.05], [-0.006, 1.44, -0.2], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
-      tube([-0.01, 1.51, 0.05], [-0.006, 1.44, 0.2], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([0.0, 1.415, -0.215], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([0.0, 1.415, 0.215], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
-      // a tall funnel collar, zipped right up round the chin, a little wider at the top
-      tube([0.004, 1.45, 0], [0.058, 1.7, 0], 0.104, 0.122, { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.51, -0.05], [-0.006, 1.44, -0.225], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.51, 0.05], [-0.006, 1.44, 0.225], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.415, -0.24], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.415, 0.24], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.715, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET });
     L.push(jk);
-    // the chest band: a panel sewn on round the body, standing a few mm proud
-    L.push(S3.custom((x, y, z) => Math.max(jk.d(x, y, z) - 0.004, Math.abs(y - 1.235) - 0.055),
-      [-0.3, 1.17, -0.3, 0.3, 1.3, 0.3], { bone: BN.spine, mat: BM_BAND, bias: 0.002 }));
+    // a tall funnel collar zipped up over the mouth: its own piece, in the jacket's colour
+    // a funnel collar: lower at the front by the zip, standing higher at the back, a dark lining inside
+    const collarIn = (x, y, z) => Math.hypot(x - (0.006 + (y - 1.45) * 0.25), z) < 0.094 + (y - 1.45) * 0.08;
+    const collarPaint = (x, y, z, m) => (collarIn(x, y, z) ? BM_POUCH : x > 0.05 && zipF(x, y, z) < 0 ? BM_ZIP : m);
+    L.push(group([
+      tube([0.004, 1.45, 0], [0.058, 1.72, 0], 0.104, 0.122, { mat: BM_COLLAR, paint: collarPaint }),
+      tube([0.01, 1.52, 0], [0.064, 1.76, 0], 0.084, 0.104, { op: 'sub', k: 0.006 }),
+      plane([0.17, 1.632, 0], vn([0.3, 1, 0]), { op: 'int', k: 0.01 }),
+    ], { bone: BN.spine, mat: BM_COLLAR, paint: collarPaint }));
+
     // ---- neck (inside the collar)
     L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN }));
     L.push(tube([0.018, 1.6, 0], [0.032, 1.69, 0], 0.053, 0.052, { k: 0.02, bone: BN.head, mat: BM_SKIN }));
@@ -1052,7 +1056,7 @@
       L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.094 - 0.005 * t, k: 0.035, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
       L.push(ell(el, [0.09, 0.09, 0.09], { k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
       const wr = vadd(ha, vsc(df, -0.07));
-      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.088 - 0.01 * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
+      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.088 - 0.026 * t * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
       const hinge = hingeOf(sj, ha, R0['ab' + k]);
       const v = vn(perp(hinge, df));
       let w = vx(df, v);
@@ -1060,7 +1064,7 @@
       const mc = vadd(ha, vsc(df, 0.03));
       L.push(ell(mc, [0.074, 0.046, 0.058], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
       L.push(tube(vadd(vadd(ha, vsc(df, -0.01)), vsc(w, 0.04)), vadd(vadd(ha, vsc(df, 0.04)), vsc(w, 0.072)), 0.026, 0.022, { k: 0.018, bone: BN['fore' + k], mat: BM_GLOVE }));
-      L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.058, 0.06, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.066, 0.064, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
     }
     // ---- straight, wide pants down over the boots
     L.push(ell([-0.03, 0.84, 0], [0.12, 0.11, 0.19], { bone: BN.pelvis, mat: BM_PANTS }));
@@ -1101,8 +1105,7 @@
     L.push(ell([0.05, -0.088, 0], [0.054, 0.04, 0.056], { k: 0.035, mat: skinMat }));
     L.push(tube([-0.018, -0.07, 0], [-0.026, -0.16, 0], 0.05, 0.052, { k: 0.03, mat: skinMat }));
     // ---- the face below the goggles: a nose and cheeks; the collar comes up over the mouth
-    L.push(ell([0.098, -0.04, 0], [0.024, 0.032, 0.017], { k: 0.022, mat: HM_SKIN }));
-    for (const sd of [1, -1]) L.push(ell([0.07, -0.045, 0.045 * sd], [0.036, 0.032, 0.03], { k: 0.03, mat: HM_SKIN }));
+    L.push(ell([0.094, -0.04, 0], [0.019, 0.026, 0.014], { k: 0.022, mat: HM_SKIN }));
     // ---- a ponytail out the back, under the helmet
     if (r.hairStyle === 'pony') {
       const strand = (x, y, z) => 0.0016 * Math.sin(Math.atan2(z, x + 0.16) * 22 + y * 30);
@@ -1214,12 +1217,13 @@
         for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
       }
       cuts.push((x, y, z) => (x > 0.03 && Math.abs(z + 0.092) < 0.06 ? tagF[0](x, y, z) : 1), (x, y, z) => (x > 0.03 && Math.abs(y - 1.338) < 0.05 ? tagF[1](x, y, z) : 1));
-      cuts.push((x, y, z) => (x > 0.05 && y > 0.8 && y < 1.71 ? zipF(x, y, z) : 1), (x, y, z) => (x > 0.06 ? pocketF(x, y, z) : 1));
+      cuts.push((x, y, z) => (x > 0.05 && y > 0.8 && y < 1.71 ? zipF(x, y, z) : 1));
       const box = { min: [-0.3, 0.06, -0.5], max: [0.34, 1.74, 0.5], nb: NB, sigma: 0.022, cuts, ao: 0.022 };
       // the jacket, the pants and the gloves are separate pieces of clothing, each built on its own,
       // so where they meet is a real overlap with a clean edge, not one surface painted two colours
       const parts = [
-        nodes.filter((n) => n.mat !== BM_GLOVE && n.mat !== BM_PANTS && n.mat !== BM_SKIN),
+        nodes.filter((n) => n.mat !== BM_GLOVE && n.mat !== BM_PANTS && n.mat !== BM_SKIN && n.mat !== BM_COLLAR),
+        nodes.filter((n) => n.mat === BM_COLLAR),
         nodes.filter((n) => n.mat === BM_PANTS || n.mat === BM_SKIN),
         nodes.filter((n) => n.mat === BM_GLOVE),
       ];
@@ -1334,6 +1338,7 @@
     part(BM_JACKET, pal.jacket, SH_NYLON);
     engine.cloth(0);
     part(BM_YOKE, yoke, SH_NYLON);
+    part(BM_COLLAR, pal.jacket, SH_NYLON);
     part(BM_BAND, band, SH_NYLON);
     part(BM_HOOD, yoke, SH_NYLON);
     part(BM_POUCH, HEM, SH_NYLON);

@@ -229,7 +229,10 @@ void main() {
       float onPiste = 1.0 - smoothstep(uCurveP.w - 1.5, uCurveP.w - 0.3, abs(off));
       if (onPiste > 0.0) {
         float pass = smoothstep(0.46, 0.54, fract(off / 4.6 + 0.25)) - smoothstep(0.96, 1.0, fract(off / 4.6 + 0.25));
-        c *= 1.0 + onPiste * (pass - 0.5) * 0.022 * (1.0 - smoothstep(60.0, 180.0, dCam));
+        c *= 1.0 + onPiste * (pass - 0.5) * 0.05 * (1.0 - smoothstep(60.0, 180.0, dCam));
+        // fresh corduroy: fine ridges along the fall line, the way the groomer's comb leaves them
+        float cord = abs(sin(off * 34.9));
+        c *= 1.0 + onPiste * (cord - 0.62) * 0.07 * (1.0 - smoothstep(6.0, 30.0, dCam));
       }
     }
     // sun glare off the snow when you look toward it
