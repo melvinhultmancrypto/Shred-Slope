@@ -314,7 +314,7 @@ void main() {
 }`;
 
   const VS_LIT = `
-attribute vec3 aPos; attribute vec3 aNorm; attribute vec3 aRest; uniform float uSkin;
+attribute vec3 aPos; attribute vec3 aNorm; attribute vec3 aRest; uniform float uSkin; attribute float aAO; uniform float uAOk; varying float vAO;
 uniform mat4 uVP; uniform mat4 uModel; uniform mat3 uNM; uniform vec3 uCam; uniform vec2 uFog; uniform mat4 uShadowVP;
 varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy;
 void main() {
@@ -323,6 +323,8 @@ void main() {
   vN = uNM * aNorm;
   // skinned meshes keep their patterns and folds where they were sculpted, not where they've moved to
   vObj = uSkin > 0.5 ? aRest : aPos;
+  // baked occlusion: armpits, folds and the gap under a hat sit in a little shade
+  vAO = mix(1.0, aAO, uAOk);
   vTy = normalize((uModel * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
   vRel = w.xyz - uCam;
   // nudge along the normal before looking up the shadow, so curved cloth doesn't shadow itself in stripes
@@ -331,8 +333,8 @@ void main() {
   vFog = f * (2.0 - f);
 }`;
   const FS_LIT = HEAD + NOISE + SHADOW + `
-varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy;
-uniform float uPat; uniform vec3 uPatCol; uniform float uFold; uniform float uDust; uniform float uLimb;
+varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy; varying float vAO;
+uniform float uSkin; uniform float uPat; uniform vec3 uPatCol; uniform float uFold; uniform float uDust; uniform float uLimb;
 uniform vec3 uColor; uniform float uEmissive; uniform vec3 uFogCol;
 uniform vec3 uSky; uniform vec3 uGround; uniform vec3 uMoonDir; uniform vec3 uMoonCol;
 uniform vec3 uLP[4]; uniform vec3 uLC[4]; uniform vec3 uRim; uniform float uAlpha; uniform vec2 uSpec; uniform float uMat;
@@ -392,6 +394,8 @@ void main() {
     float d = clamp((low * low * 1.1 + smoothstep(0.6, 0.95, n.y) * 0.5) * uDust, 0.0, 1.0) * smoothstep(0.5, 0.6, sp);
     base = mix(base, vec3(0.9, 0.93, 0.98), d);
   }
+  // fleece and denim aren't perfectly even: a faint grain across sculpted cloth
+  if (uSkin > 0.5 && uMat < 0.5 && uFold > 0.0) base *= 0.94 + 0.12 * vnoise(vObj.xy * 150.0 + vObj.zx * 95.0);
   float ndv = max(dot(n, v), 0.0);
   float fres = pow(1.0 - ndv, 4.0);
   float lit = 1.0 - shadowAt(vSh) * 0.9;
@@ -401,7 +405,7 @@ void main() {
   float diff = max((ndl + wrapK) / (1.0 + wrapK), 0.0);
   // sky above, light bounced off the snow below (snow throws a lot of light back up)
   vec3 amb = mix(uGround * 1.25, uSky, smoothstep(-0.6, 0.8, n.y));
-  vec3 light = amb + uMoonCol * diff * lit * 1.2 + uRim * pow(1.0 - ndv, 2.5) * (0.6 + 0.4 * lit);
+  vec3 light = amb * vAO + uMoonCol * diff * lit * 1.2 * mix(1.0, vAO, 0.55) + uRim * pow(1.0 - ndv, 2.5) * (0.6 + 0.4 * lit) * vAO;
   if (uMat > 1.5) light += vec3(0.16, 0.05, 0.02) * (1.0 - max(ndl, 0.0)) * smoothstep(-0.4, 0.2, ndl); // skin glow
   vec3 spec = vec3(0.0);
   if (uSpec.x > 0.0) {
@@ -423,7 +427,7 @@ void main() {
     light += uLC[i] * max((dot(n, ld) + wrapK) / (1.0 + wrapK), 0.0) * fall;
     if (uSpec.x > 0.0) spec += uLC[i] * pow(max(dot(n, normalize(ld + v)), 0.0), uSpec.y) * fall;
   }
-  vec3 c = base * light + base * uEmissive + spec * max(uSpec.x, 1.0);
+  vec3 c = base * light + base * uEmissive + spec * max(uSpec.x, 1.0) * vAO;
   if (uMat > 2.5) {
     // mirrored goggle lens: dark at the top, bright at the bottom, sky and snow reflected across it
     float g = smoothstep(-0.05, 0.016, vObj.y);
@@ -639,6 +643,7 @@ void main() {
     gl.bindAttribLocation(p, 2, 'aNorm');
     gl.bindAttribLocation(p, 3, 'aSize');
     gl.bindAttribLocation(p, 4, 'aRest');
+    gl.bindAttribLocation(p, 5, 'aAO');
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('Link error: ' + gl.getProgramInfoLog(p));
     const u = {};
@@ -787,7 +792,7 @@ void main() {
     }
 
     // an indexed mesh: vertices [x,y,z, nx,ny,nz] (dynamic ones get rewritten every frame) and 16-bit indices
-    indexed(verts, idx, dynamic, rest) {
+    indexed(verts, idx, dynamic, rest, ao) {
       const gl = this.gl;
       const b = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, b);
@@ -801,7 +806,13 @@ void main() {
         gl.bindBuffer(gl.ARRAY_BUFFER, rb);
         gl.bufferData(gl.ARRAY_BUFFER, rest, gl.STATIC_DRAW);
       }
-      return { b, ib, rest: rb, count: idx.length, first: 0 };
+      let ab = null;
+      if (ao) {
+        ab = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, ab);
+        gl.bufferData(gl.ARRAY_BUFFER, ao, gl.STATIC_DRAW);
+      }
+      return { b, ib, rest: rb, ao: ab, count: idx.length, first: 0 };
     }
     upload(b, data) {
       const gl = this.gl;
@@ -1276,11 +1287,21 @@ void main() {
           gl.bindBuffer(gl.ARRAY_BUFFER, mesh.rest);
           gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 12, 0);
         }
+        if (mesh.ao) {
+          gl.uniform1f(u.uAOk, 1);
+          gl.enableVertexAttribArray(5);
+          gl.bindBuffer(gl.ARRAY_BUFFER, mesh.ao);
+          gl.vertexAttribPointer(5, 1, gl.FLOAT, false, 4, 0);
+        }
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
         gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, mesh.first * 2);
         if (mesh.rest) {
           gl.disableVertexAttribArray(4);
           gl.uniform1f(u.uSkin, 0);
+        }
+        if (mesh.ao) {
+          gl.disableVertexAttribArray(5);
+          gl.uniform1f(u.uAOk, 0);
         }
       } else gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
     }

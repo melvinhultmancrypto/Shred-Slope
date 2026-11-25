@@ -488,11 +488,11 @@
     },
     // the one course for now: a sunny resort run from the top of the chairlift down into the village
     resort: {
-      id: 'resort', name: 'Pine Valley', time: 'SUNNY DAY', diff: 'MEDIUM', resort: true,
-      sub: 'A sunny resort run from the top of the chairlift: side hits on the blue run, a banked cat track, a mogul field, the red run, the fun park, then down through the village to the lifts.',
+      id: 'resort', name: 'Pine Valley', time: 'BLUEBIRD', diff: 'MEDIUM', resort: true,
+      sub: 'Top of the chair to the bottom of the village. Side hits off Lynx, the Traverse, bumps under the hut, Wolf Ridge, Pete\'s Park and Main Street.',
       half: 22, curve: [30, 250, 11, 92], slope: 0.215, alt: 2480, length: 2520,
-      zones: [Z('BLUE RUN', 'sidehits', 400), Z('CAT TRACK', 'cattrack', 250), Z('MOGUL FIELD', 'moguls', 230),
-        Z('RED RUN', 'sidehits', 380, { red: true }), Z('FUN PARK', 'funpark', 380), Z('VILLAGE RUN', 'village', 660)],
+      zones: [Z('LYNX · BLUE 4', 'sidehits', 400), Z('THE TRAVERSE', 'cattrack', 250), Z('HUT BUMPS', 'moguls', 230),
+        Z('WOLF RIDGE · RED 7', 'sidehits', 380, { red: true }), Z('PETE\'S PARK', 'funpark', 380), Z('MAIN STREET', 'village', 660)],
       first: 'TOP STATION', firstLen: 220,
       light: { sky: [0.38, 0.46, 0.64], ground: [0.27, 0.28, 0.33], sunDir: norm3([-0.42, 0.55, 0.72]), sun: [0.68, 0.64, 0.55], fog: [0.74, 0.84, 0.96], rim: [0.26, 0.3, 0.38], snow: [0.92, 0.94, 0.98], powder: [0.88, 0.91, 0.97] },
       sky: { zen: [0.07, 0.33, 0.82], hor: [0.66, 0.82, 0.97], dir: norm3([-0.42, 0.55, 0.72]), col: [1.0, 0.95, 0.82], disk: 0.9993, glow: [8, 0.35, 120, 0.6], aurora: 0, cloudDark: [0.72, 0.78, 0.9], cloudLit: [1.0, 1.0, 1.0], clouds: 0.55, stars: 0 },
@@ -1667,6 +1667,8 @@
           const lx = this.liftX(t.z);
           if (t.z > lt[0].z - 10 && t.z < lt[lt.length - 1].z + 10 && Math.abs(t.x - lx) < 6) return false;
           for (const b of this.buntings) if (Math.abs(t.z - b.z) < 3 && (Math.abs(t.x - b.x0) < 3 || Math.abs(t.x - b.x1) < 3)) return false;
+          for (const g of this.guns) if (Math.hypot(t.x - g.x, t.z - g.z) < 3.5) return false;
+          for (const g of this.signs) if (Math.hypot(t.x - g.x, t.z - g.z) < 2.5) return false;
           return true;
         });
       }
@@ -1748,6 +1750,13 @@
           }
         }
       }
+      // the resort fences off the Traverse, where the banks drop away
+      if (M.resort) {
+        for (const zn of this.zones) {
+          if (zn.type !== 'cattrack') continue;
+          for (let z = zn.z0 + 10; z < zn.z1 - 10; z += 6) for (const sd of [-1, 1]) this.nets.push({ z0: z, z1: z + 6, side: sd });
+        }
+      }
       // grandstands full of fans along the finish
       this.stands = [];
       const standRanges = Array.isArray(M.stands) ? M.stands : M.stands ? [[C.LENGTH - 150, C.LENGTH + 30]] : [];
@@ -1809,6 +1818,7 @@
         { x: this.center(C.LENGTH + 55) + (HALF + 9), z: C.LENGTH + 55, yaw: -0.3, sign: 'lodge' },
       ];
       for (const h of this.chalets) this.colliders.push({ x: h.x, z: h.z, r: h.rad, top: 1e4 });
+      for (const g of this.guns || []) this.colliders.push({ x: g.x, z: g.z, r: 0.7, top: 1e4 });
       for (const t of this.liftTowers) this.colliders.push({ x: t.x, z: t.z, r: t.station ? 5 : 0.6, top: 1e4 });
       for (const h of this.huts) this.colliders.push({ x: h.x, z: h.z, r: 3.2, top: 1e4 });
 
@@ -1897,6 +1907,22 @@
       // a little hut at the top of the fun park
       const fz = this.zones.find((zn) => zn.type === 'funpark');
       if (fz) spot(-ls, 9, fz.z0 + 8, { w: 4.2, d: 4, floors: 1 });
+      // snow guns down the lift side, pointing out over the piste
+      this.guns = [];
+      for (let z = 70; z < (vz ? vz.z0 : C.LENGTH) - 20; z += R(95, 135)) {
+        const side = Math.abs(sx(z) - this.center(z)) < HALF + 10 ? -ls : ls;
+        const x = this.center(z) + side * (HALF + 3.4);
+        if (this.chalets.some((h) => Math.hypot(h.x - x, h.z - z) < h.rad + 4)) continue;
+        this.guns.push({ x, z, side, gy: this.ground(x, z) });
+      }
+      // piste signs where each run starts: the run's colour and shape, like the real thing
+      this.signs = [];
+      for (const zn of this.zones) {
+        if (!['sidehits', 'cattrack', 'moguls', 'funpark', 'village'].includes(zn.type)) continue;
+        const z = zn.z0 + 6, x = this.center(z) - ls * (HALF + 2.6);
+        const shape = zn.type === 'moguls' || zn.type === 'cattrack' ? 'diamond' : zn.type === 'funpark' ? 'park' : 'square';
+        this.signs.push({ x, z, gy: this.ground(x, z), col: this.pisteCol(z + 2), shape, face: ls });
+      }
     }
 
     // glowing snowflake tokens: along kicker arcs, over boxes and rails, through gates and in slalom lines
@@ -2268,6 +2294,8 @@
       for (const h of this.huts) add(h.z, { k: 'hut', o: h });
       for (const h of this.chalets || []) add(h.z, { k: 'chalet', o: h });
       for (const b of this.buntings || []) add(b.z, { k: 'bunting', o: b });
+      for (const g of this.guns || []) add(g.z, { k: 'gun', o: g });
+      for (const g of this.signs || []) add(g.z, { k: 'sign', o: g });
       for (const st of this.stands) add(st.z, { k: 'stand', o: st });
       for (const c of this.cliffs || []) add(c.z, { k: 'cliff', o: c });
       for (const sc of this.scaffold || []) add(sc.z, { k: 'scaffold', o: sc });
@@ -2317,6 +2345,8 @@
           case 'hut': B.hut(o); break;
           case 'chalet': B.chalet(o); ch.maxZ = Math.max(ch.maxZ, o.z + 12); ch.minZ = Math.min(ch.minZ, o.z - 12); break;
           case 'bunting': B.bunting(o); break;
+          case 'gun': B.gun(o); break;
+          case 'sign': B.sign(o); break;
           case 'stand': B.stand(o); ch.maxZ = Math.max(ch.maxZ, o.z + 14); ch.minZ = Math.min(ch.minZ, o.z - 14); break;
           case 'mouth': B.mouth(o); break;
           case 'cliff': B.cliff(o); break;
@@ -3777,6 +3807,43 @@
           for (const q of [-0.9, 0.9]) B(x + q, 1.3, D + 3.2, 0.18, 0.4, 0.4, [0.55, 0.36, 0.2]);
         }
       }
+    }
+
+    // a fan snow gun on a tall mast, its barrel aimed out over the piste
+    gun(g) {
+      const w = this.w;
+      const yaw = g.side > 0 ? -Math.PI / 2 : Math.PI / 2;
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      const P = (x, y, z) => [g.x + x * c + z * s, g.gy + y, g.z - x * s + z * c];
+      const yel = [0.95, 0.74, 0.1], dark = [0.16, 0.17, 0.2], grey = [0.55, 0.57, 0.6];
+      this.box(g.x, g.gy + 0.15, g.z, 0.5, 0.15, 0.5, yaw, grey);
+      this.cyl(g.x, g.gy, g.z, 0.09, 0.07, 4.2, 6, yel);
+      const hd = P(0, 4.35, 0.25);
+      this.box(hd[0], hd[1], hd[2], 0.5, 0.5, 0.55, yaw, yel);
+      const fr = P(0, 4.35, 0.82);
+      this.box(fr[0], fr[1], fr[2], 0.42, 0.42, 0.03, yaw, dark);
+      const rr = P(0, 4.35, -0.32);
+      this.box(rr[0], rr[1], rr[2], 0.38, 0.38, 0.05, yaw, grey);
+      // a hose and a power box at the foot
+      const pb = P(0.35, 0.55, -0.2);
+      this.box(pb[0], pb[1], pb[2], 0.18, 0.25, 0.12, yaw, [0.85, 0.86, 0.88]);
+    }
+
+    // a piste sign: a post with the run's colour plate (square for blue and red, diamond for black)
+    sign(g) {
+      const pole = [0.2, 0.21, 0.24];
+      this.cyl(g.x, g.gy, g.z, 0.05, 0.05, 2.4, 6, pole);
+      const yaw = g.face > 0 ? -Math.PI / 2 + 0.3 : Math.PI / 2 - 0.3;
+      const y = g.gy + 2.2;
+      this.box(g.x, y, g.z, 0.32, 0.32, 0.03, yaw, [0.97, 0.97, 0.97]);
+      if (g.shape === 'diamond') {
+        const c = Math.cos(yaw), s = Math.sin(yaw), r = 0.24;
+        const P = (u, v, d) => [g.x + u * c + d * s, y + v, g.z - u * s + d * c];
+        for (const d of [0.035, -0.035]) this.quad(P(0, r, d), P(r, 0, d), P(0, -r, d), P(-r, 0, d), g.col, [g.x, y, g.z]);
+      } else if (g.shape === 'park') {
+        this.box(g.x, y, g.z, 0.26, 0.26, 0.04, yaw, g.col);
+        this.box(g.x, y, g.z, 0.26, 0.05, 0.05, yaw, [0.1, 0.1, 0.12]);
+      } else this.box(g.x, y, g.z, 0.24, 0.24, 0.04, yaw, g.col);
     }
 
     // bunting: a line of little flags strung across the piste between two poles

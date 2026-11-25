@@ -397,6 +397,27 @@
       out.b0 = b0; out.b1 = b1; out.w = w;
     }
     tick('bones');
+    // ambient occlusion: how buried each vertex is, probed a few steps out along its normal
+    if (opts.ao) {
+      const ao = new Float32Array(nv);
+      const st = opts.ao;
+      for (let v = 0; v < nv; v++) {
+        const x = posA[v * 3], y = posA[v * 3 + 1], z = posA[v * 3 + 2];
+        const nx = nrmA[v * 3], ny = nrmA[v * 3 + 1], nz = nrmA[v * 3 + 2];
+        let occ = 0, wsum = 0;
+        for (let i = 1; i <= 4; i++) {
+          const d = st * i;
+          const qx = x + nx * d, qy = y + ny * d, qz = z + nz * d;
+          const l = blockOf(qx, qy, qz);
+          const f = l ? Math.min(evalCull(l, qx, qy, qz, d * 1.5), d) : d;
+          const w = 1 / i;
+          occ += w * Math.max(0, d - f) / d;
+          wsum += w;
+        }
+        ao[v] = clamp(1 - 1.5 * occ / wsum, 0.4, 1);
+      }
+      out.ao = ao;
+    }
     out.field = fieldAt;
     tick('end'); if (TT) out.prof = TT.join(' ');
     return out;

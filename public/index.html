@@ -7,7 +7,7 @@
   <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Ride a sunny resort run with side hits, moguls and a fun park, throw corks, rodeos and misties, and ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800;1,900&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800;1,900&family=Barlow:wght@500;600;700;800&display=swap" rel="stylesheet">
   <link rel="icon" type="image/png" href="img/icon-64.png">
   <meta name="theme-color" content="#0d1016">
   <link rel="apple-touch-icon" href="img/icon-180.png">
@@ -95,11 +95,11 @@
     <!-- PLAY -->
     <div class="page page-ride" data-page="ride">
       <div class="stage stage-ride" data-yaw="0.36" aria-label="Your rider: drag to turn">
-        <button id="riderTag" class="nameplate" type="button" data-goto="locker"><span id="riderName">RIDER</span><em id="riderWho" class="rider-who"></em><span id="riderStats" class="rider-stats"></span><small>CHANGE RIDER</small></button>
+        <button id="riderTag" class="nameplate" type="button" data-goto="locker"><span id="riderName">RIDER</span><em id="riderWho" class="rider-who"></em><span id="riderStats" class="rider-stats"></span><small>SWITCH RIDER</small></button>
       </div>
       <div class="play-col">
         <div class="course-card">
-          <span class="kicker">THE COURSE</span>
+          <span class="kicker">NOW RIDING</span>
           <h2 class="brush">Pine Valley</h2>
           <div class="cc-meta"><span>Side hits</span><span>Cat track</span><span>Moguls</span><span>Fun park</span><span>The village</span></div>
           <div class="cc-foot"><span class="cc-stars" id="courseStars"></span><span>BEST <b id="bestScore">0</b></span></div>
@@ -110,7 +110,7 @@
           <span id="passSub" class="pc-sub">Sign in to save your stars</span>
         </button>
         <button id="spBtn" class="btn primary drop-btn" type="button"><span class="brush">Drop in</span><kbd>ENTER</kbd><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h13M13 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
-        <button id="mpBtn" class="btn outline mp-btn" type="button"><span><b>MULTIPLAYER</b><small>Race up to 10 riders, with voice chat</small></span><i>&rsaquo;</i></button>
+        <button id="mpBtn" class="btn outline mp-btn" type="button"><span><b>MULTIPLAYER</b><small>Online &middot; 3 servers &middot; voice</small></span><i>&rsaquo;</i></button>
         <div class="play-links">
           <a href="https://discord.gg/eW5FGXt4pj" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.3 5.3A16 16 0 0 0 15.4 4l-.5 1a15 15 0 0 0-5.8 0l-.5-1a16 16 0 0 0-3.9 1.3C2.2 9 1.5 12.6 1.8 16.2A16 16 0 0 0 6.6 18.6l1-1.6c-.6-.2-1.1-.5-1.6-.8l.4-.3a11.5 11.5 0 0 0 11.2 0l.4.3c-.5.3-1 .6-1.6.8l1 1.6a16 16 0 0 0 4.8-2.4c.4-4.2-.6-7.8-2.9-10.9zM8.7 14c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2z" fill="currentColor"/></svg>Discord</a>
           <button type="button" data-open="help">How to ride</button>
@@ -124,7 +124,7 @@
       <aside class="locker-panel scroll">
         <div class="lk-head"><div class="lk-tabs"><span class="brush sel">Rider &amp; gear</span></div><span id="lockerSaved" class="saved">&#10003; Saved</span></div>
         <label class="field"><span class="kicker">RIDER NAME</span><input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
-        <div class="kicker lk-label">RIDER AND GEAR</div>
+        <div class="kicker lk-label">LOADOUT</div>
         <div id="slotTiles" class="slot-tiles"></div>
         <div class="kicker lk-label" id="lockerListLabel">SUITS</div>
         <div id="lockerGrid" class="lk-grid"></div>
@@ -189,18 +189,18 @@
         <article class="upd-hero">
           <div class="upd-pic" style="background-image:url('img/maps/resort.jpg')"></div>
           <div class="upd-txt">
-            <small class="kicker">NEW SEASON</small>
-            <h3 class="brush">Pine Valley is open</h3>
-            <div class="chips"><span>NEW COURSE</span><span>5 RIDERS</span><span>STREETWEAR</span><span>NEW RIDING</span></div>
-            <p>A sunny resort run from the top of the chairlift down into the village: side hits, a banked cat track, a mogul field, the red run and the fun park. Pick one of five riders, each with their own stats, in baggy streetwear.</p>
+            <small class="kicker">SEASON 2 &middot; THE RESORT</small>
+            <h3 class="brush">Lifts are open in Pine Valley</h3>
+            <div class="chips"><span>NEW COURSE</span><span>5 RIDERS</span><span>HARDER LANDINGS</span></div>
+            <p>Take the chair to the top and ride it all the way into the village. Side hits off Lynx, the Traverse (bring speed), bumps under the hut, Wolf Ridge, Pete's Park, then down Main Street to the lifts.</p>
           </div>
         </article>
         <div class="kicker upd-month">LATEST</div>
         <div class="upd-grid">
-          <article class="upd"><small class="kicker">RIDERS</small><h4 class="brush">Kai, Mia, Dre, Yuki and Rio</h4><p>Every rider has speed, air, spin and balance. Mia spins fastest, Dre has the top speed, Yuki pops the biggest airs and Rio forgives a sloppy landing.</p></article>
-          <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Snappier, but honest</h4><p>Faster spins and bigger pops, but land sideways at speed and you catch an edge. Deep snow off the piste slows you down, and the cat track needs speed.</p></article>
-          <article class="upd"><small class="kicker">TRICKS</small><h4 class="brush">Corks, rodeos, bios, misties</h4><p>Spin and flip together for off-axis tricks. Ride in switch for SWITCH and CAB tricks, and stack flips for doubles, triples and quads.</p></article>
-          <article class="upd"><small class="kicker">SHOP</small><h4 class="brush">Coins and gear</h4><p>Every run pays coins (play money). Spend them on suits, boards, hats and goggles. Your look shows in multiplayer too.</p></article>
+          <article class="upd"><small class="kicker">RIDERS</small><h4 class="brush">Five riders</h4><p>Kai rides everything. Mia spins faster than anyone. Dre just goes fast. Yuki boosts the biggest airs, and Rio lands the stuff the rest of us bail. Pick yours in the Locker.</p></article>
+          <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Harder landings</h4><p>Spins and pops come round quicker now, but come down sideways at speed and you will catch an edge. Stay on the groomers: the deep stuff slows you right down.</p></article>
+          <article class="upd"><small class="kicker">TRICKS</small><h4 class="brush">Corks, rodeos, bios, misties</h4><p>Spin and flip at the same time and you go off-axis. Ride switch for SWITCH and CAB names, stack flips for doubles.</p></article>
+          <article class="upd"><small class="kicker">SHOP</small><h4 class="brush">Coins and gear</h4><p>Runs pay out coins (play money, nothing to buy). Spend them on suits, boards, hats and goggles. Other riders see your fit online.</p></article>
           <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Better jumps</h4><p>Smoother take-offs, no more slow motion off kickers, and the giant kickers land clean again.</p></article>
           <article class="upd"><small class="kicker">CAMERA</small><h4 class="brush">High camera</h4><p>A new HIGH camera hangs up in the sky behind you, so you see the course coming. Pick it in Settings.</p></article>
           <article class="upd"><small class="kicker">MULTIPLAYER</small><h4 class="brush">Voice chat</h4><p>Talk with up to nine other riders on a server: open mic or push to talk.</p></article>
@@ -226,7 +226,7 @@
   <section id="servers" class="overlay hidden modal-ov">
     <div class="modal wide">
       <div class="modal-head"><h2 class="brush">Multiplayer</h2><button id="backBtn" class="x" type="button" aria-label="Back">&times;</button></div>
-      <p class="lead">Up to 10 riders per server race the same course. Vote for the next mountain, and talk with voice chat.</p>
+      <p class="lead">Ten riders a server, everyone on the same course. Jump on voice if you want to talk.</p>
       <div id="mpAcct" class="mp-acct hidden">
         <div class="mp-acct-txt"><b class="brush">Create an account to play multiplayer</b><span>It's free and takes a few seconds. Your name is saved and your stars and best runs come with you.</span></div>
         <div class="mp-acct-btns"><button id="mpSignUp" class="btn primary" type="button">CREATE ACCOUNT</button><button id="mpSignIn" class="btn outline" type="button">SIGN IN</button></div>
@@ -281,10 +281,10 @@
       <div id="setTabs" class="set-tabs" role="tablist"><button type="button" data-tab="camera" class="sel">CAMERA</button><button type="button" data-tab="graphics">GRAPHICS</button><button type="button" data-tab="sound">SOUND</button><button type="button" data-tab="controls">CONTROLS</button></div>
       <div class="set-body scroll">
         <div class="set-pane" data-tab="camera">
-          <div class="set"><span>Camera<small>Chase rides low over your shoulder and pulls back in the air; far sits further back; high hangs up like a drone</small></span><div class="seg" data-key="camera"><button data-v="close" type="button">CHASE</button><button data-v="far" type="button">FAR</button><button data-v="high" type="button">HIGH</button></div></div>
+          <div class="set"><span>Camera<small>Chase: low, over your shoulder. Far: further back. High: drone shot.</small></span><div class="seg" data-key="camera"><button data-v="close" type="button">CHASE</button><button data-v="far" type="button">FAR</button><button data-v="high" type="button">HIGH</button></div></div>
         </div>
         <div class="set-pane hidden" data-tab="graphics">
-          <div class="set"><span>Quality<small>Low runs best on older school computers</small></span><div class="seg" data-key="quality"><button data-v="low" type="button">LOW</button><button data-v="medium" type="button">MEDIUM</button><button data-v="high" type="button">HIGH</button></div></div>
+          <div class="set"><span>Quality<small>Go Low on older computers</small></span><div class="seg" data-key="quality"><button data-v="low" type="button">LOW</button><button data-v="medium" type="button">MEDIUM</button><button data-v="high" type="button">HIGH</button></div></div>
           <div class="set"><span>Frame rate<small>90 needs a screen that runs at 90 Hz or more</small></span><div class="seg" data-key="fps"><button data-v="30" type="button">30</button><button data-v="60" type="button">60</button><button data-v="90" type="button">90</button></div></div>
         </div>
         <div class="set-pane hidden" data-tab="sound">
@@ -385,7 +385,7 @@
 
   <div id="loading">
     <div class="ld-logo"><img src="img/logo.png" alt=""><span class="brush"><b>Shred</b> Slope</span></div>
-    <div class="ld-foot"><div class="ld-row"><span id="loadingText" class="kicker">PREPARING THE MOUNTAIN</span><span class="kicker">LOADING</span></div><div class="ld-bar"><i></i></div><p id="loadingTip"></p></div>
+    <div class="ld-foot"><div class="ld-row"><span id="loadingText" class="kicker">GROOMING THE PISTE</span><span class="kicker">LOADING</span></div><div class="ld-bar"><i></i></div><p id="loadingTip"></p></div>
   </div>
 
   <section id="nogl" class="overlay hidden modal-ov">

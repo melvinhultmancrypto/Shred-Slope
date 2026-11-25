@@ -2366,9 +2366,10 @@
   }
 
   // the loading screen, with a riding tip
-  const TIPS = ['Hold SPACE into the lip of a kicker and let go at the top to pop.', 'Land straight and flat for a perfect landing: it keeps your speed up.',
-    'Hold SHIFT in the air to grab. Tap it to switch grabs.', 'Mix your tricks: the same trick twice scores less.', 'Tricks fill your boost. Press F to use it.',
-    'On a rail, tap A and D to keep your balance.', 'Collect the snowflakes on the way down for points and a star.', 'Drag your rider in the lobby to turn them round.'];
+  const TIPS = ['Load up SPACE on the way into a kicker, let go at the lip.', 'Land it flat and straight. Perfect landings keep your speed.',
+    'SHIFT in the air grabs. Tap it again to switch grabs mid-air.', 'Same trick twice scores less. Mix it up.', 'Tricks fill boost. F burns it.',
+    'On rails, tap A and D to stay on.', 'Grab the snowflakes on the way down.', 'Carry speed into the Traverse or you will be skating.',
+    'Mia spins fastest. Dre is the quickest. Rio forgives a sketchy landing.', 'Come down sideways at speed and you catch an edge.'];
   function showLoading(txt) {
     ui.loadingText.textContent = txt;
     $('loadingTip').textContent = TIPS[(Math.random() * TIPS.length) | 0];
@@ -3810,7 +3811,7 @@
   function setStageLook(look) { stage.look = look || null; }
   function drawStage() {
     const fx = stage.fx;
-    engine.backdrop(fx ? +fx.dataset.blur || 0 : 0, fx ? +fx.dataset.dim || 0 : 0, [0.9, 0.94, 0.99]);
+    engine.backdrop(fx ? +fx.dataset.blur || 0 : 0, fx ? +fx.dataset.dim || 0 : 0);
     const el = stage.el;
     if (!el) return;
     const r = el.getBoundingClientRect();

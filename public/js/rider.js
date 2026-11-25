@@ -994,7 +994,9 @@
   }
 
   // body materials
-  const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7;
+  const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7, BM_LOGO = 8;
+  // the woven brand tag on the left chest
+  const tagF = [(x, y) => Math.abs(y - 1.338) - 0.019, (x, y, z) => Math.abs(z + 0.092) - 0.034];
   function bodyNodes() {
     const { ell, tube, box, torus, plane, group } = S3;
     const L = [];
@@ -1002,6 +1004,7 @@
     // ---- the hoodie: long, wide, dropped shoulders, ribbed hem, kangaroo pocket, the hood down
     const hoodiePaint = (x, y, z, m) => {
       if (y < 0.805) return BM_POUCH;                                    // ribbed hem
+      if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
       if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)) return BM_YOKE; // shoulders
       if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
       return m;
@@ -1236,7 +1239,8 @@
         const sj = R0['sj' + k], du = vn(vsub(R0['el' + k], sj));
         for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
       }
-      const box = { min: [-0.3, 0.06, -0.5], max: [0.34, 1.74, 0.5], nb: NB, sigma: 0.022, cuts };
+      cuts.push((x, y, z) => (x > 0.03 && Math.abs(z + 0.092) < 0.06 ? tagF[0](x, y, z) : 1), (x, y, z) => (x > 0.03 && Math.abs(y - 1.338) < 0.05 ? tagF[1](x, y, z) : 1));
+      const box = { min: [-0.3, 0.06, -0.5], max: [0.34, 1.74, 0.5], nb: NB, sigma: 0.022, cuts, ao: 0.022 };
       BODY = [S3.build(nodes, Object.assign({ h: 0.014 }, box)), S3.build(nodes, Object.assign({ h: 0.026 }, box))];
       BODY.gpu = [null, null];
       BODY.pool = [];
@@ -1252,8 +1256,9 @@
       const nodes = headNodes(r);
       const cuts = nodes.cuts.slice();
       if (r.hat === 'hood') cuts.push((x, y, z) => ((x + 0.034) / 0.152) ** 2 + (y / 0.165) ** 2 + (z / 0.145) ** 2 - 0.86);
-      const m = S3.build(nodes, { min: [-0.19, -0.19, -0.22], max: [0.225, 0.215, 0.22], h: (lod ? 0.011 : 0.0054) * (r.hat === 'hood' ? 1.2 : 1), cuts });
-      H[lod] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null) };
+      const m = S3.build(nodes, {
+        ao: 0.007, min: [-0.19, -0.19, -0.22], max: [0.225, 0.215, 0.22], h: (lod ? 0.011 : 0.0054) * (r.hat === 'hood' ? 1.2 : 1), cuts });
+      H[lod] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null, m.ao) };
     }
     return H[lod];
   }
@@ -1271,11 +1276,11 @@
     let s = null;
     if (pool.length < 6) {
       s = { lod, bones: new Float32Array(NB * 16), data: new Float32Array(src.n * 6), b: null, used: 0 };
-      s.b = engine.indexed(s.data, src.idx, true, src.pos);
+      s.b = engine.indexed(s.data, src.idx, true, src.pos, src.ao);
       pool.push(s);
     } else {
       s = pool.filter((q) => q.lod === lod).sort((a, b) => a.used - b.used)[0];
-      if (!s) { s = pool.sort((a, b) => a.used - b.used)[0]; s.lod = lod; s.data = new Float32Array(src.n * 6); s.b = engine.indexed(s.data, src.idx, true, src.pos); }
+      if (!s) { s = pool.sort((a, b) => a.used - b.used)[0]; s.lod = lod; s.data = new Float32Array(src.n * 6); s.b = engine.indexed(s.data, src.idx, true, src.pos, src.ao); }
     }
     s.bones.set(BONES);
     S3.skin(src, BONES, s.data);
@@ -1326,22 +1331,25 @@
     const yoke = pal.pat === 4 ? pal.patCol : pal.jacket, band = pal.pat === 3 ? pal.patCol : pal.jacket;
     const part = (mat, col, spec, m) => { const r = R[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], s.b), base, col, 0, spec, m); };
     const cp = pal.pat === 1 || pal.pat === 2 ? pal.pat : 0;
+    // brushed fleece and cotton twill: matte, no plastic sheen
     engine.cloth(cp, pal.patCol, 0.55, 0, 0);
-    part(BM_JACKET, pal.jacket, SH_HOODIE);
+    part(BM_JACKET, pal.jacket, null);
     engine.cloth(0, null, 0.45, 0, 0);
-    part(BM_YOKE, yoke, SH_HOODIE);
-    part(BM_BAND, band, SH_HOODIE);
-    part(BM_HOOD, yoke, SH_HOODIE);
+    part(BM_YOKE, yoke, null);
+    part(BM_BAND, band, null);
+    part(BM_HOOD, yoke, null);
     engine.cloth(0, null, 0.25, 0, 0);
-    part(BM_POUCH, pal.pouch, SH_HOODIE);
+    part(BM_POUCH, pal.pouch, null);
+    part(BM_LOGO, pal.pat === 0 ? pal.patCol : TAG, null);
     engine.cloth(0, null, 0.9, 0.35, 1);
-    part(BM_PANTS, pal.pants, SH_PANTS);
+    part(BM_PANTS, pal.pants, null);
     engine.cloth(0, null, 0.2, 0.2, 0);
     part(BM_GLOVE, pal.glove, SH_BOOT);
     engine.cloth(0);
     part(BM_SKIN, pal.skin, SH_SKIN, 2);
   }
   const EYES = { w: null, i: null };
+  const TAG = [0.93, 0.93, 0.9];
   const GAITER = [0.13, 0.135, 0.15];
   function drawHeadS(engine, pal, HFm, far) {
     const H = headMesh(engine, pal, far ? 1 : 0);
