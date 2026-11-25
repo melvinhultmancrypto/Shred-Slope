@@ -41,7 +41,7 @@
   const RIDER_LOOKS = {
     kai: { helmet: 'vent', mask: 'gaiter', maskCol: '#2a2d33', size: 1.0 },
     mia: { helmet: 'vent', mask: 'gaiter', maskCol: '#d8d1c4', hairStyle: 'pony', hair: '#8a4a22', size: 0.95 },
-    dre: { helmet: 'vent', mask: 'gaiter', maskCol: '#111214', hood: true, size: 1.05 },
+    dre: { helmet: 'vent', mask: 'gaiter', maskCol: '#111214', size: 1.05 },
     yuki: { helmet: 'peak', mask: 'balaclava', maskCol: '#34404f', size: 0.98 },
     rio: { helmet: 'pads', mask: 'gaiter', maskCol: '#5b3d2b', size: 1.02 },
   };
@@ -82,7 +82,7 @@
     // goggle frame: black, unless the goggles bring their own colour
     p.frameCol = typeof p.frame === 'string' ? hex(p.frame) : [0.07, 0.075, 0.085];
     // the goggle strap: the jacket's accent, so it stands out on the helmet
-    p.strapCol = p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? (p.patCol && p.patCol[0] + p.patCol[1] + p.patCol[2] > 0.9 ? p.patCol : p.jacket) : [0.12, 0.13, 0.15];
+    p.strapCol = p.helmet[0] + p.helmet[1] + p.helmet[2] < 1.2 ? [0.88, 0.89, 0.91] : [0.12, 0.13, 0.15];
     return p;
   }
   const RAW = PALETTE.map((p) => Object.assign({}, p)); // the free outfits as #hex, for building looks
@@ -983,7 +983,7 @@
     for (let b = 0; b < NB; b++) RI.push(M4.create());
     M4.identity(T); M4.translate(T, R0.P0[0], R0.P0[1], R0.P0[2]); inv4(T, RI[BN.pelvis]);
     inv4(torsoFrame(R0.W0, R0.N0, [0, 0, 1], T), RI[BN.spine]);
-    M4.identity(T); M4.translate(T, R0.H0[0], R0.H0[1], R0.H0[2]); M4.scale(T, 1.2, 1.2, 1.2); inv4(T, RI[BN.head]);
+    M4.identity(T); M4.translate(T, R0.H0[0], R0.H0[1], R0.H0[2]); M4.scale(T, 1.1, 1.1, 1.1); inv4(T, RI[BN.head]);
     for (const k of ['F', 'B']) {
       const hL = hingeOf(R0['hj' + k], R0['an' + k], R0['lb' + k]);
       inv4(frame(R0['hj' + k], vsub(R0['kn' + k], R0['hj' + k]), hL, T), RI[BN['thigh' + k]]);
@@ -997,46 +997,36 @@
   // body materials
   const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7, BM_LOGO = 8, BM_ZIP = 9;
   // the zipped hand pockets: a slanted slit low on each side of the front
-  const pocketF = (x, y, z) => (y < 0.89 || y > 1.05 ? 1 : Math.abs(Math.abs(z) - (0.075 + 0.045 * clamp((y - 0.9) / 0.14, 0, 1))) * 0.95 - 0.0055);
+  const pocketF = (x, y, z) => (y < 0.87 || y > 0.99 ? 1 : Math.abs(Math.abs(z) - 0.118) - 0.0045);
   const zipF = (x, y, z) => Math.abs(z) - 0.0075;
   // the woven brand tag on the left chest
   const tagF = [(x, y) => Math.abs(y - 1.338) - 0.019, (x, y, z) => Math.abs(z + 0.092) - 0.034];
   function bodyNodes() {
-    const { ell, tube, box, torus, plane, group } = S3;
+    const { ell, tube, box, plane, group } = S3;
     const L = [];
-    const sm = (a, b, t) => { const x = clamp((t - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
-    // ---- the jacket: a long, roomy shell with dropped shoulders, a front zip up into a tall collar,
-    // zipped hand pockets and a drawcord hem; the hood rolled down behind the neck
+    // ---- the jacket: clean and roomy, straight down to a thin dark hem; a tall funnel collar zipped
+    // up under the goggles, a front zip, two pocket slits, the hood lying flat behind the collar
+    const onCollar = (x, z) => Math.hypot(x - 0.01, z) < 0.118;
     const hoodiePaint = (x, y, z, m) => {
-      if (y < 0.805) return BM_POUCH;                                    // drawcord hem
-      if (x > 0.05 && y < 1.61 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
-      if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket zips
+      if (y < 0.795) return BM_POUCH;                                    // hem band
+      if (x > 0.05 && y < 1.69 && zipF(x, y, z) < 0) return BM_ZIP;      // front zip
+      if (x > 0.06 && pocketF(x, y, z) < 0) return BM_ZIP;               // pocket slits
       if (x > 0.03 && tagF[0](x, y, z) < 0 && tagF[1](x, y, z) < 0) return BM_LOGO; // brand tag
-      if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)) return BM_YOKE; // shoulders
+      if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2) && !onCollar(x, z) && x > -0.09) return BM_YOKE; // shoulders
       if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
       return m;
     };
-    // soft folds: fabric bunching above the hem, easing out up the chest
-    const drape = (x, y, z) => 0.003 * Math.sin(y * 52 + 2.4 * Math.sin(Math.atan2(z, x) * 3 + y * 6)) * sm(1.2, 0.86, y);
     L.push(group([
-      ell([0.002, 1.29, 0], [0.144, 0.2, 0.228], { mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.004, 1.03, 0], [0.154, 0.28, 0.226], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.012, 0.84, 0], [0.156, 0.13, 0.224], { k: 0.07, mat: BM_JACKET, paint: hoodiePaint }),
-      tube([-0.012, 1.43, -0.168], [-0.012, 1.43, 0.168], 0.074, 0.074, { k: 0.08, mat: BM_JACKET, paint: hoodiePaint }),
-      // a soft roll of fabric bunched above the hem
-      torus([-0.008, 0.835, 0], [0, 1, 0], 0.15, 0.016, { Rz: 0.214, k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
-      // the hood, down, piled behind the neck
-      ell([-0.112, 1.505, 0], [0.072, 0.07, 0.125], { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.146, 1.43, 0], [0.058, 0.085, 0.1], { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
-      // a tall collar, zipped right up under the face mask
-      tube([0.004, 1.46, 0], [0.024, 1.63, 0], 0.09, 0.084, { k: 0.02, mat: BM_JACKET, paint: hoodiePaint }),
-      plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.018 }),
-    ], { bone: BN.spine, mat: BM_JACKET, disp: drape }));
-    // ---- neck
-    const collarF = (x, y) => (y - 1.528) + 0.3 * x;
-    L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN, paint: (x, y, z, m) => (collarF(x, y) < 0 ? hoodiePaint(x, y, z, BM_JACKET) : m) }));
+      box([-0.024, 1.105, 0], [0.176, 0.335, 0.232], 0.1, { mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.012, 1.4, -0.168], [-0.012, 1.4, 0.168], 0.07, 0.07, { k: 0.07, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([0.0, 1.4, 0], [0.022, 1.69, 0], 0.104, 0.098, { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.1, 1.55, 0], [0.05, 0.125, 0.115], { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
+      plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
+    ], { bone: BN.spine, mat: BM_JACKET }));
+    // ---- neck (inside the collar)
+    L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN }));
     L.push(tube([0.018, 1.6, 0], [0.032, 1.69, 0], 0.053, 0.052, { k: 0.02, bone: BN.head, mat: BM_SKIN }));
-    // ---- sleeves and mitts
+    // ---- smooth sleeves, a dark cuff and chunky mitts
     for (const k of ['F', 'B']) {
       const sj = R0['sj' + k], el = R0['el' + k], ha = R0['ha' + k];
       const du = vn(vsub(el, sj)), df = vn(vsub(ha, el));
@@ -1046,37 +1036,29 @@
         if (Math.abs(t - 0.62) < 0.13) return BM_BAND;
         return m;
       };
-      L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.092 + 0.008 * Math.sin(t * Math.PI) - 0.008 * t, k: 0.04, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
-      L.push(ell(el, [0.088, 0.088, 0.088], { k: 0.04, bone: BN['fore' + k], mat: BM_JACKET }));
-      const wr = vadd(ha, vsc(df, -0.06));
-      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.088 - 0.008 * t + 0.01 * Math.exp(-(((t - 0.8) / 0.09) ** 2)) + 0.004 * Math.sin(t * 30), k: 0.035, bone: BN['fore' + k], mat: BM_JACKET }));
-      // ribbed cuff
-      L.push(tube(vadd(ha, vsc(df, -0.07)), vadd(ha, vsc(df, -0.025)), 0.064, 0.06, { k: 0.012, bone: BN['fore' + k], mat: BM_POUCH }));
-      // the mitt: a padded paddle with a thumb, palm facing the body
+      L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.09 - 0.005 * t, k: 0.04, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
+      L.push(ell(el, [0.085, 0.085, 0.085], { k: 0.035, bone: BN['fore' + k], mat: BM_JACKET }));
+      const wr = vadd(ha, vsc(df, -0.07));
+      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.085 - 0.004 * t, k: 0.03, bone: BN['fore' + k], mat: BM_JACKET }));
+      L.push(tube(vadd(ha, vsc(df, -0.085)), vadd(ha, vsc(df, -0.045)), 0.074, 0.072, { k: 0.01, bone: BN['fore' + k], mat: BM_POUCH }));
       const hinge = hingeOf(sj, ha, R0['ab' + k]);
       const v = vn(perp(hinge, df));
       let w = vx(df, v);
       if (w[0] < 0) w = vsc(w, -1);
-      const mc = vadd(ha, vsc(df, 0.035));
-      L.push(ell(mc, [0.074, 0.036, 0.052], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
-      L.push(tube(vadd(vadd(ha, vsc(df, -0.005)), vsc(w, 0.03)), vadd(vadd(ha, vsc(df, 0.045)), vsc(w, 0.062)), 0.02, 0.017, { k: 0.018, bone: BN['fore' + k], mat: BM_GLOVE }));
-      L.push(tube(vadd(ha, vsc(df, -0.03)), vadd(ha, vsc(df, 0.0)), 0.056, 0.058, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
+      const mc = vadd(ha, vsc(df, 0.03));
+      L.push(ell(mc, [0.082, 0.05, 0.064], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(vadd(ha, vsc(df, -0.01)), vsc(w, 0.04)), vadd(vadd(ha, vsc(df, 0.04)), vsc(w, 0.072)), 0.026, 0.022, { k: 0.018, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(ha, vsc(df, -0.05)), vadd(ha, vsc(df, -0.005)), 0.064, 0.066, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
     }
-    // ---- baggy pants: seat, thighs, knees, wide legs stacked in folds over the boots
-    // where the pants come out from under the jacket: one clean line all the way round
-    const hemPaint = (x, y, z, m) => (y > 0.776 ? BM_POUCH : m);
-    L.push(ell([-0.05, 0.865, 0], [0.152, 0.14, 0.218], { bone: BN.pelvis, mat: BM_PANTS, paint: hemPaint }));
-    L.push(ell([0.03, 0.85, 0], [0.12, 0.12, 0.2], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS, paint: hemPaint }));
+    // ---- straight, wide pants down over the boots
+    L.push(ell([-0.05, 0.865, 0], [0.152, 0.14, 0.218], { bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([0.03, 0.85, 0], [0.12, 0.12, 0.2], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
     for (const k of ['F', 'B']) {
       const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
       const dl = vn(vsub(an, kn));
-      L.push(tube(hj, kn, 0, 0, { prof: (t) => 0.122 + 0.012 * Math.sin(t * Math.PI), k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS, paint: hemPaint }));
-      L.push(ell(kn, [0.112, 0.112, 0.112], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
-      const bot = vadd(an, vsc(dl, 0.045));
-      L.push(tube(kn, bot, 0, 0, {
-        prof: (t) => 0.114 + 0.018 * t + (t > 0.55 ? 0.011 * Math.max(0, Math.sin((t - 0.55) * 34)) * sm(0.55, 0.7, t) : 0),
-        k: 0.04, bone: BN['shin' + k], mat: BM_PANTS,
-      }));
+      L.push(tube(hj, kn, 0, 0, { prof: () => 0.124, k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
+      L.push(ell(kn, [0.116, 0.116, 0.116], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
+      L.push(tube(kn, vadd(an, vsc(dl, 0.04)), 0, 0, { prof: (t) => 0.116 + 0.008 * t, k: 0.04, bone: BN['shin' + k], mat: BM_PANTS }));
     }
     return L;
   }
@@ -1179,7 +1161,7 @@
   function bodyMesh(engine, lod) {
     if (!BODY) {
       const nodes = bodyNodes();
-      const cuts = [(x, y) => (y - 1.528) + 0.3 * x, (x, y) => y - 0.805, (x, y) => y - 0.776, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
+      const cuts = [(x, y) => y - 0.795, (x, y) => y - 0.776, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
       for (const k of ['F', 'B']) {
         const sj = R0['sj' + k], du = vn(vsub(R0['el' + k], sj));
         for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
@@ -1276,26 +1258,26 @@
     const part = (mat, col, spec, m) => { const r = R[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], s.b), base, col, 0, spec, m); };
     const cp = pal.pat === 1 || pal.pat === 2 ? pal.pat : 0;
     // a nylon shell with a soft sheen, and cotton twill pants
-    engine.cloth(cp, pal.patCol, 0.45, 0, 0);
+    engine.cloth(cp, pal.patCol, 0, 0, 0);
     part(BM_JACKET, pal.jacket, SH_NYLON);
-    engine.cloth(0, null, 0.4, 0, 0);
+    engine.cloth(0);
     part(BM_YOKE, yoke, SH_NYLON);
     part(BM_BAND, band, SH_NYLON);
     part(BM_HOOD, yoke, SH_NYLON);
-    engine.cloth(0, null, 0.25, 0, 0);
-    part(BM_POUCH, pal.pouch, null);
+    part(BM_POUCH, HEM, SH_NYLON);
     part(BM_LOGO, pal.pat === 0 ? pal.patCol : TAG, null);
     engine.cloth(0);
     part(BM_ZIP, ZIP, [0.35, 30]);
-    engine.cloth(0, null, 0.9, 0.35, 1);
+    engine.cloth(0, null, 0, 0.25, 1);
     part(BM_PANTS, pal.pants, null);
-    engine.cloth(0, null, 0.2, 0.2, 0);
+    engine.cloth(0);
     part(BM_GLOVE, pal.glove, [0.08, 10]);
     engine.cloth(0);
     part(BM_SKIN, pal.skin, SH_SKIN, 2);
   }
-  const SH_NYLON = [0.07, 9];
-  const SH_LID = [0.32, 28]; // a semi-gloss helmet shell
+  const SH_NYLON = [0.05, 5]; // matte fabric: only a broad, soft sheen
+  const HEM = [0.1, 0.105, 0.115];
+  const SH_LID = [0.12, 12]; // a matte helmet shell
   const PAD = [0.1, 0.1, 0.11];
   const TAG = [0.93, 0.93, 0.9];
   const GAITER = [0.13, 0.135, 0.15];
@@ -1377,7 +1359,7 @@
     M4.translate(SHL, head[0], head[1], head[2]);
     M4.rotY(SHL, Math.sin(t * 0.37) * 0.1 + 0.04);
     M4.rotZ(SHL, -0.04 + Math.sin(t * 0.29) * 0.025);
-    M4.scale(SHL, 1.2, 1.2, 1.2);
+    M4.scale(SHL, 1.1, 1.1, 1.1);
     M4.mul(HF, M, SHL);
     setTorso(J);
     // board-side hand grips the board's edge at hip height; the other hangs loose
@@ -1532,7 +1514,7 @@
     M4.translate(RHL, head[0], head[1], head[2]);
     M4.rotY(RHL, twist + spinV * 0.55 + (mode === 'ride' ? cv * 0.35 : 0));
     M4.rotZ(RHL, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
-    M4.scale(RHL, 1.2, 1.2, 1.2);
+    M4.scale(RHL, 1.1, 1.1, 1.1);
     M4.mul(HF, M, RHL);
     setTorso(J);
 
@@ -1625,18 +1607,73 @@
   };
   const RHL = M4.create();
 
-  // glowing snowflake token
+  // the coin you collect on the way down: a silver minted coin with a raised rim, a ridged edge
+  // and a snowflake standing up off each face (built once; radius 1, faces along y)
+  const COIN = {};
+  function coinMeshes(engine) {
+    const out = [], fl = [];
+    const N = 120, REED = 60;
+    const tri = (o, a, b, c) => { for (const v of [a, b, c]) o.push(v[0], v[1], v[2], v[3], v[4], v[5]); };
+    // the profile from the middle of the top face out over the rim and down the edge, mirrored below
+    const top = [[0, 0.06], [0.7, 0.06], [0.75, 0.105], [0.94, 0.105], [1, 0.07]];
+    const prof = top.concat(top.slice().reverse().map(([r, y]) => [r, -y]));
+    for (let i = 0; i < prof.length - 1; i++) {
+      const [r0, y0] = prof[i], [r1, y1] = prof[i + 1];
+      if (r0 === r1 && y0 === y1) continue;
+      const len = Math.hypot(r1 - r0, y1 - y0);
+      const nr = (y1 - y0) / len * -1, ny = (r1 - r0) / len; // outward normal of this band
+      const edge = r0 === 1 && r1 === 1;
+      for (let j = 0; j < N; j++) {
+        const v = [];
+        for (const [jj, rr, yy] of [[j, r0, y0], [j + 1, r0, y0], [j + 1, r1, y1], [j, r1, y1]]) {
+          const th = (jj / N) * Math.PI * 2, c = Math.cos(th), sn = Math.sin(th);
+          // the ridged edge: the radius ripples, and the normal leans with it
+          const rp = edge ? rr + 0.008 * Math.cos(th * REED) : rr;
+          const tl = edge ? 0.45 * Math.sin(th * REED) : 0;
+          const nx = nr * c - tl * sn, nz = nr * sn + tl * c;
+          const nl = Math.hypot(nx, ny, nz) || 1;
+          v.push([rp * c, yy, rp * sn, nx / nl, (edge ? 0 : ny) / nl, nz / nl]);
+        }
+        tri(out, v[0], v[2], v[1]); tri(out, v[0], v[3], v[2]);
+      }
+    }
+    // the snowflake: six arms with a V near each tip, raised off both faces
+    const bar = (o, x0, z0, x1, z1, w, yb, yt, sg) => {
+      const dx = x1 - x0, dz = z1 - z0, l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l, px = -uz * w, pz = ux * w;
+      const P = (x, z, y) => [x, y * sg, z];
+      const c = [P(x0 + px, z0 + pz, yb), P(x1 + px, z1 + pz, yb), P(x1 - px, z1 - pz, yb), P(x0 - px, z0 - pz, yb)];
+      const t = c.map((q) => [q[0], yt * sg, q[2]]);
+      const face = (A, B, C, D, n) => { tri(o, A.concat(n), B.concat(n), C.concat(n)); tri(o, A.concat(n), C.concat(n), D.concat(n)); };
+      face(t[0], t[1], t[2], t[3], [0, sg, 0]);
+      face(c[0], t[0], t[3], c[3], [-ux, 0, -uz]);
+      face(c[1], c[2], t[2], t[1], [ux, 0, uz]);
+      face(c[0], c[1], t[1], t[0], [-uz * Math.sign(w), 0, ux * Math.sign(w)]);
+      face(c[3], t[3], t[2], c[2], [uz * Math.sign(w), 0, -ux * Math.sign(w)]);
+    };
+    for (const sg of [1, -1]) {
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+        bar(fl, 0, 0, ca * 0.6, sa * 0.6, 0.042, 0.055, 0.088, sg);
+        const bx = ca * 0.36, bz = sa * 0.36;
+        for (const d of [0.75, -0.75]) bar(fl, bx, bz, bx + Math.cos(a + d) * 0.2, bz + Math.sin(a + d) * 0.2, 0.034, 0.055, 0.082, sg);
+      }
+    }
+    COIN.body = engine.mesh(new Float32Array(out), 6);
+    COIN.flake = engine.mesh(new Float32Array(fl), 6);
+  }
   SS.drawToken = function (engine, x, y, z, t) {
     if (!meshes) build(engine);
+    if (!COIN.body) coinMeshes(engine);
     M4.identity(M);
     M4.translate(M, x, y + Math.sin(t * 2.2 + x) * 0.12, z);
     M4.rotY(M, t * 2.4 + z * 0.3);
     M4.rotX(M, Math.PI / 2);
-    M4.scale(M, 0.78, 0.07, 0.78);
-    engine.drawLit(meshes.cyl, M, [0.25, 0.8, 1.0], 1.6);
-    M4.scale(M, 0.55, 1.6, 0.55);
-    engine.drawLit(meshes.cyl, M, [0.9, 0.98, 1.0], 1.2);
+    M4.scale(M, 0.4, 0.4, 0.4);
+    // chrome: bright highlights, and a little glow of its own so it reads under the floodlights
+    engine.drawLit(COIN.body, M, [0.74, 0.77, 0.82], 0.28, [1.3, 70]);
+    engine.drawLit(COIN.flake, M, [0.96, 0.97, 1.0], 0.5, [1.5, 90]);
   };
+
 
   const S = M4.create();
   SS.drawShadow = function (engine, world, x, z, heading, height, alpha) {
