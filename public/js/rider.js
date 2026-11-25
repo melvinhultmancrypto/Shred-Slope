@@ -904,6 +904,483 @@
     engine.cloth(0);
   }
 
+  // ================================================================== sculpted riders
+  // One continuous body (hoodie, sleeves, mitts, baggy pants, neck) sculpted in a rest pose and
+  // skinned to 11 bones, and a sculpted head per rider (face, hat, hair, goggles) that rides on the
+  // head bone. Built the first time they're needed. Rest pose: standing on the board, body frame
+  // (x toward the toes, y up, z toward the nose; the front arm and leg are on +z).
+  const S3 = SS.Sculpt;
+  const BN = { pelvis: 0, spine: 1, head: 2, thighF: 3, shinF: 4, thighB: 5, shinB: 6, upF: 7, foreF: 8, upB: 9, foreB: 10 };
+  const NB = 11;
+  const vsub = (a, b) => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
+  const vadd = (a, b) => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
+  const vsc = (a, k) => [a[0] * k, a[1] * k, a[2] * k];
+  const vdot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const vlen = (a) => Math.hypot(a[0], a[1], a[2]);
+  const vn = (a) => { const l = vlen(a) || 1; return [a[0] / l, a[1] / l, a[2] / l]; };
+  const vx = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+  const perp = (v, d) => vsub(v, vsc(d, vdot(v, d)));
+  // the rest skeleton
+  const R0 = (() => {
+    const r = { P0: [-0.03, 0.94, 0], W0: [-0.035, 0.91, 0], N0: [0.012, 1.595, 0], H0: [0.045, 1.735, 0] };
+    for (const [k, s] of [['F', 1], ['B', -1]]) {
+      const hj = [-0.03, 0.92, 0.115 * s], an = [-0.03, 0.145, 0.26 * s];
+      r['hj' + k] = hj; r['an' + k] = an;
+      r['kn' + k] = vadd(hj, vsc(vn(vsub(an, hj)), LEG_T));
+      r['lb' + k] = [1, 0.1, 0.276 * s];
+      const sj = [0, 1.445, 0.205 * s], hand = vadd(sj, [0.07, -0.535, 0.1 * s]), ab = [-0.55, -0.6, 0.75 * s];
+      r['sj' + k] = sj; r['ha' + k] = hand; r['ab' + k] = ab;
+      r['el' + k] = ik(sj, hand, ARM_U, ARM_F, ab);
+    }
+    return r;
+  })();
+  // a bone frame: origin o, y along d, z the joint's hinge (columns, like M4)
+  function frame(o, d, hinge, out) {
+    const y = vn(d);
+    let z = perp(hinge, y);
+    if (vlen(z) < 1e-5) z = perp([0, 0, 1], y);
+    z = vn(z);
+    const x = vx(y, z);
+    out[0] = x[0]; out[1] = x[1]; out[2] = x[2]; out[3] = 0;
+    out[4] = y[0]; out[5] = y[1]; out[6] = y[2]; out[7] = 0;
+    out[8] = z[0]; out[9] = z[1]; out[10] = z[2]; out[11] = 0;
+    out[12] = o[0]; out[13] = o[1]; out[14] = o[2]; out[15] = 1;
+    return out;
+  }
+  // the torso frame, same as seg(): x across, y from waist to neck (scaled to its length)
+  function torsoFrame(w, n, across, out) {
+    const d = vsub(n, w), len = vlen(d) || 1e-4, y = vsc(d, 1 / len);
+    let s = perp(across, y);
+    if (vlen(s) < 1e-5) s = [0, 0, 1];
+    s = vn(s);
+    const z = vx(s, y);
+    out[0] = s[0]; out[1] = s[1]; out[2] = s[2]; out[3] = 0;
+    out[4] = y[0] * len; out[5] = y[1] * len; out[6] = y[2] * len; out[7] = 0;
+    out[8] = z[0]; out[9] = z[1]; out[10] = z[2]; out[11] = 0;
+    out[12] = w[0]; out[13] = w[1]; out[14] = w[2]; out[15] = 1;
+    return out;
+  }
+  function inv4(m, out) {
+    const a = m[0], b = m[1], c = m[2], d = m[4], e = m[5], f = m[6], g = m[8], h = m[9], i = m[10];
+    const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+    const det = a * A + b * B + c * C || 1e-9, k = 1 / det;
+    out[0] = A * k; out[1] = -(b * i - c * h) * k; out[2] = (b * f - c * e) * k; out[3] = 0;
+    out[4] = B * k; out[5] = (a * i - c * g) * k; out[6] = -(a * f - c * d) * k; out[7] = 0;
+    out[8] = C * k; out[9] = -(a * h - b * g) * k; out[10] = (a * e - b * d) * k; out[11] = 0;
+    const tx = m[12], ty = m[13], tz = m[14];
+    out[12] = -(out[0] * tx + out[4] * ty + out[8] * tz);
+    out[13] = -(out[1] * tx + out[5] * ty + out[9] * tz);
+    out[14] = -(out[2] * tx + out[6] * ty + out[10] * tz);
+    out[15] = 1;
+    return out;
+  }
+  const hingeOf = (a, b, bend) => { const d = vn(vsub(b, a)); return vn(vx(d, perp(bend, d))); };
+  // rest frames (inverted), so a bone's matrix = its current frame * this
+  const RI = [];
+  {
+    const T = M4.create();
+    for (let b = 0; b < NB; b++) RI.push(M4.create());
+    M4.identity(T); M4.translate(T, R0.P0[0], R0.P0[1], R0.P0[2]); inv4(T, RI[BN.pelvis]);
+    inv4(torsoFrame(R0.W0, R0.N0, [0, 0, 1], T), RI[BN.spine]);
+    M4.identity(T); M4.translate(T, R0.H0[0], R0.H0[1], R0.H0[2]); M4.scale(T, 1.1, 1.1, 1.1); inv4(T, RI[BN.head]);
+    for (const k of ['F', 'B']) {
+      const hL = hingeOf(R0['hj' + k], R0['an' + k], R0['lb' + k]);
+      inv4(frame(R0['hj' + k], vsub(R0['kn' + k], R0['hj' + k]), hL, T), RI[BN['thigh' + k]]);
+      inv4(frame(R0['kn' + k], vsub(R0['an' + k], R0['kn' + k]), hL, T), RI[BN['shin' + k]]);
+      const hA = hingeOf(R0['sj' + k], R0['ha' + k], R0['ab' + k]);
+      inv4(frame(R0['sj' + k], vsub(R0['el' + k], R0['sj' + k]), hA, T), RI[BN['up' + k]]);
+      inv4(frame(R0['el' + k], vsub(R0['ha' + k], R0['el' + k]), hA, T), RI[BN['fore' + k]]);
+    }
+  }
+
+  // body materials
+  const BM_SKIN = 0, BM_JACKET = 1, BM_YOKE = 2, BM_BAND = 3, BM_POUCH = 4, BM_PANTS = 5, BM_GLOVE = 6, BM_HOOD = 7;
+  function bodyNodes() {
+    const { ell, tube, box, torus, plane, group } = S3;
+    const L = [];
+    const sm = (a, b, t) => { const x = clamp((t - a) / (b - a), 0, 1); return x * x * (3 - 2 * x); };
+    // ---- the hoodie: long, wide, dropped shoulders, ribbed hem, kangaroo pocket, the hood down
+    const hoodiePaint = (x, y, z, m) => {
+      if (y < 0.805) return BM_POUCH;                                    // ribbed hem
+      if (y > 1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)) return BM_YOKE; // shoulders
+      if (Math.abs(y - 1.235) < 0.055) return BM_BAND;                    // band across the chest
+      return m;
+    };
+    // soft folds: fabric bunching above the hem, easing out up the chest
+    const drape = (x, y, z) => 0.0038 * Math.sin(y * 52 + 2.4 * Math.sin(Math.atan2(z, x) * 3 + y * 6)) * sm(1.2, 0.86, y);
+    L.push(group([
+      ell([0.002, 1.29, 0], [0.144, 0.2, 0.228], { mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.004, 1.03, 0], [0.154, 0.28, 0.226], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.012, 0.84, 0], [0.156, 0.13, 0.224], { k: 0.07, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.012, 1.43, -0.168], [-0.012, 1.43, 0.168], 0.074, 0.074, { k: 0.08, mat: BM_JACKET, paint: hoodiePaint }),
+      // a soft roll of fabric bunched above the hem
+      torus([-0.008, 0.835, 0], [0, 1, 0], 0.15, 0.016, { Rz: 0.214, k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
+      // the hood, down, piled behind the neck
+      ell([-0.112, 1.505, 0], [0.072, 0.07, 0.125], { k: 0.035, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.146, 1.43, 0], [0.058, 0.085, 0.1], { k: 0.03, mat: BM_JACKET, paint: hoodiePaint }),
+      // collar where the hood meets the front
+      torus([0.0, 1.51, 0], vn([0.3, 1, 0]), 0.07, 0.022, { Rz: 0.086, k: 0.02, mat: BM_JACKET, paint: hoodiePaint }),
+      // kangaroo pocket: a raised panel on the belly
+      box([0.143, 0.955, 0], [0.018, 0.098, 0.13], 0.014, { k: 0.016, mat: BM_POUCH, bias: 0.004 }),
+      plane([0, 0.77, 0], [0, -1, 0], { op: 'int', k: 0.018 }),
+    ], { bone: BN.spine, mat: BM_JACKET, disp: drape }));
+    // ---- neck
+    const collarF = (x, y) => (y - 1.528) + 0.3 * x;
+    L.push(tube([0.004, 1.47, 0], [0.018, 1.6, 0], 0.056, 0.054, { k: 0.014, bone: BN.spine, mat: BM_SKIN, paint: (x, y, z, m) => (collarF(x, y) < 0 ? hoodiePaint(x, y, z, BM_JACKET) : m) }));
+    L.push(tube([0.018, 1.6, 0], [0.032, 1.69, 0], 0.053, 0.052, { k: 0.02, bone: BN.head, mat: BM_SKIN }));
+    // ---- sleeves and mitts
+    for (const k of ['F', 'B']) {
+      const sj = R0['sj' + k], el = R0['el' + k], ha = R0['ha' + k];
+      const du = vn(vsub(el, sj)), df = vn(vsub(ha, el));
+      const upPaint = (x, y, z, m) => {
+        const t = vdot(vsub([x, y, z], sj), du) / ARM_U;
+        if (t < 0.4) return BM_YOKE;
+        if (Math.abs(t - 0.62) < 0.13) return BM_BAND;
+        return m;
+      };
+      L.push(tube(vadd(sj, vsc(du, -0.03)), el, 0, 0, { prof: (t) => 0.1 + 0.01 * Math.sin(t * Math.PI) - 0.008 * t, k: 0.075, bone: BN['up' + k], mat: BM_JACKET, paint: upPaint }));
+      L.push(ell(el, [0.088, 0.088, 0.088], { k: 0.04, bone: BN['fore' + k], mat: BM_JACKET }));
+      const wr = vadd(ha, vsc(df, -0.06));
+      L.push(tube(el, wr, 0, 0, { prof: (t) => 0.088 - 0.008 * t + 0.01 * Math.exp(-(((t - 0.8) / 0.09) ** 2)) + 0.004 * Math.sin(t * 30), k: 0.035, bone: BN['fore' + k], mat: BM_JACKET }));
+      // ribbed cuff
+      L.push(tube(vadd(ha, vsc(df, -0.07)), vadd(ha, vsc(df, -0.025)), 0.064, 0.06, { k: 0.012, bone: BN['fore' + k], mat: BM_POUCH }));
+      // the mitt: a padded paddle with a thumb, palm facing the body
+      const hinge = hingeOf(sj, ha, R0['ab' + k]);
+      const v = vn(perp(hinge, df));
+      let w = vx(df, v);
+      if (w[0] < 0) w = vsc(w, -1);
+      const mc = vadd(ha, vsc(df, 0.035));
+      L.push(ell(mc, [0.074, 0.036, 0.052], { ax: [df, v, w], k: 0.025, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(vadd(ha, vsc(df, -0.005)), vsc(w, 0.03)), vadd(vadd(ha, vsc(df, 0.045)), vsc(w, 0.062)), 0.02, 0.017, { k: 0.018, bone: BN['fore' + k], mat: BM_GLOVE }));
+      L.push(tube(vadd(ha, vsc(df, -0.03)), vadd(ha, vsc(df, 0.0)), 0.056, 0.058, { k: 0.02, bone: BN['fore' + k], mat: BM_GLOVE }));
+    }
+    // ---- baggy pants: seat, thighs, knees, wide legs stacked in folds over the boots
+    L.push(ell([-0.05, 0.865, 0], [0.152, 0.14, 0.218], { bone: BN.pelvis, mat: BM_PANTS }));
+    L.push(ell([0.03, 0.85, 0], [0.12, 0.12, 0.2], { k: 0.06, bone: BN.pelvis, mat: BM_PANTS }));
+    for (const k of ['F', 'B']) {
+      const hj = R0['hj' + k], kn = R0['kn' + k], an = R0['an' + k];
+      const dl = vn(vsub(an, kn));
+      L.push(tube(hj, kn, 0, 0, { prof: (t) => 0.122 + 0.012 * Math.sin(t * Math.PI), k: 0.07, bone: BN['thigh' + k], mat: BM_PANTS }));
+      L.push(ell(kn, [0.112, 0.112, 0.112], { k: 0.05, bone: BN['shin' + k], mat: BM_PANTS }));
+      const bot = vadd(an, vsc(dl, 0.045));
+      L.push(tube(kn, bot, 0, 0, {
+        prof: (t) => 0.114 + 0.018 * t + (t > 0.55 ? 0.011 * Math.max(0, Math.sin((t - 0.55) * 34)) * sm(0.55, 0.7, t) : 0),
+        k: 0.04, bone: BN['shin' + k], mat: BM_PANTS,
+      }));
+    }
+    return L;
+  }
+
+  // head materials
+  const HM_SKIN = 0, HM_LIPS = 1, HM_HAIR = 2, HM_HAT = 3, HM_CUFF = 4, HM_POM = 5, HM_HOOD = 6, HM_HOODIN = 7, HM_FRAME = 8, HM_LENS = 9, HM_STRAP = 10, HM_GAITER = 11, HM_TIE = 12;
+  function headNodes(r) {
+    const { ell, tube, torus, plane, group, custom, moved } = S3;
+    const L = [];
+    const cuts = [];
+    L.cuts = cuts;
+    const ang = (x, z) => Math.atan2(z, x);
+    const planeF = (c, nn) => { const n2 = vn(nn); return (x, y, z) => (x - c[0]) * n2[0] + (y - c[1]) * n2[1] + (z - c[2]) * n2[2]; };
+    // the lips are painted onto the face, inside a soft oval round the mouth
+    const lipF = (x, y, z) => ((y + 0.0822) / 0.0105) ** 2 + (z / (0.0185 - 0.25 * Math.abs(y + 0.0822))) ** 2 - 1;
+    const facePaint = r.gaiter ? null : (x, y, z, m) => (x > 0.085 && lipF(x, y, z) < 0 ? HM_LIPS : m);
+    if (facePaint) cuts.push((x, y, z) => (x > 0.08 ? lipF(x, y, z) : 1));
+    const sk = (o) => Object.assign({ mat: HM_SKIN, paint: facePaint }, o);
+    // ---- the face
+    L.push(ell([-0.012, 0.012, 0], [0.1, 0.108, 0.088], sk({})));
+    L.push(ell([0.026, -0.045, 0], [0.08, 0.075, 0.074], sk({ k: 0.04 })));
+    L.push(ell([0.052, -0.09, 0], [0.052, 0.036, 0.054], sk({ k: 0.035 })));
+    L.push(ell([0.083, -0.102, 0], [0.022, 0.02, 0.03], sk({ k: 0.022 })));
+    for (const s of [1, -1]) L.push(ell([0.07, -0.043, 0.046 * s], [0.034, 0.028, 0.03], sk({ k: 0.025 })));
+    L.push(tube([0.086, 0.015, -0.046], [0.086, 0.015, 0.046], 0.012, 0.012, { k: 0.025, mat: HM_SKIN }));
+    for (const s of [1, -1]) L.push(ell([0.1, -0.009, 0.033 * s], [0.019, 0.013, 0.018], { op: 'sub', k: 0.01 }));
+    // upper lids, so the eyes look relaxed rather than staring
+    if (r.eyes === 'up') for (const s of [1, -1]) L.push(ell([0.0905, 0.0025, 0.033 * s], [0.0155, 0.0085, 0.0185], { k: 0.004, mat: HM_SKIN }));
+    // nose: bridge, tip and the wings
+    L.push(tube([0.096, 0.0, 0], [0.12, -0.044, 0], 0.01, 0.015, { k: 0.016, mat: HM_SKIN }));
+    L.push(ell([0.117, -0.047, 0], [0.0145, 0.0135, 0.0155], { k: 0.01, mat: HM_SKIN }));
+    for (const s of [1, -1]) L.push(ell([0.106, -0.052, 0.014 * s], [0.012, 0.01, 0.012], { k: 0.008, mat: HM_SKIN }));
+    // lips and the line between them
+    if (!r.gaiter) {
+      L.push(ell([0.104, -0.0775, 0], [0.0085, 0.0048, 0.018], sk({ k: 0.006 })));
+      L.push(ell([0.1005, -0.0865, 0], [0.0095, 0.006, 0.016], sk({ k: 0.006 })));
+    }
+    // ears
+    for (const s of [1, -1]) {
+      L.push(ell([-0.012, -0.02, 0.086 * s], [0.021, 0.031, 0.012], { k: 0.008, mat: HM_SKIN }));
+      L.push(ell([-0.006, -0.02, 0.096 * s], [0.012, 0.019, 0.007], { op: 'sub', k: 0.003 }));
+    }
+    // neck
+    L.push(tube([-0.018, -0.07, 0], [-0.026, -0.16, 0], 0.05, 0.052, { k: 0.03, mat: HM_SKIN }));
+    // ---- hair under the hat
+    if (r.hairStyle === 'short') {
+      L.push(ell([-0.094, -0.052, 0], [0.032, 0.03, 0.068], { k: 0.012, mat: HM_HAIR, disp: (x, y, z) => 0.0012 * Math.sin(y * 260 + z * 40) }));
+      for (const s of [1, -1]) L.push(ell([0.036, -0.032, 0.087 * s], [0.012, 0.024, 0.006], { k: 0.004, mat: HM_HAIR, bias: 0.003 }));
+    } else if (r.hairStyle === 'pony') {
+      const strand = (x, y, z) => 0.0016 * Math.sin(ang(x + 0.14, z) * 22 + y * 30);
+      L.push(tube([-0.1, -0.025, 0], [-0.142, -0.085, 0], 0.03, 0.026, { k: 0.02, mat: HM_HAIR, disp: strand }));
+      L.push(tube([-0.142, -0.085, 0], [-0.15, -0.22, 0], 0.026, 0.008, { k: 0.02, mat: HM_HAIR, disp: strand }));
+      L.push(torus([-0.108, -0.036, 0], vn([-0.6, -0.8, 0]), 0.029, 0.008, { k: 0.004, mat: HM_TIE }));
+    } else if (r.hairStyle === 'bob') {
+      L.push(group([
+        ell([-0.016, -0.02, 0], [0.122, 0.132, 0.112], { mat: HM_HAIR }),
+        plane([0.05, 0, 0], vn([1, 0.35, 0]), { op: 'int', k: 0.01 }),
+        plane([0, -0.11, 0], [0, -1, 0], { op: 'int', k: 0.01 }),
+      ], { k: 0.006, mat: HM_HAIR, bias: -0.002, disp: (x, y, z) => 0.0018 * Math.sin(ang(x, z) * 46) }));
+      cuts.push(planeF([0.05, 0, 0], [1, 0.35, 0]), planeF([0, -0.11, 0], [0, -1, 0]));
+    } else if (r.hairStyle === 'curls') {
+      for (let i = 0; i < 20; i++) {
+        const a = 0.9 + (i / 19) * (Math.PI * 2 - 1.8);
+        const rr = 0.021 + 0.005 * Math.sin(i * 2.7);
+        L.push(ell([Math.cos(a) * 0.1 - 0.01, -0.03 + 0.012 * Math.sin(i * 1.9), Math.sin(a) * 0.093], [rr, rr, rr], { k: 0.008, mat: HM_HAIR }));
+      }
+    }
+    if (r.beard) {
+      L.push(group([
+        ell([0.036, -0.078, 0], [0.09, 0.068, 0.088], { mat: HM_HAIR }),
+        plane([0.06, -0.05, 0], vn([0.2, 1, 0]), { op: 'int', k: 0.01 }),
+        ell([0.11, -0.083, 0], [0.016, 0.0095, 0.021], { op: 'sub', k: 0.005 }),
+      ], { k: 0.006, mat: HM_HAIR, bias: -0.002, disp: (x, y, z) => 0.0012 * Math.sin(y * 300 + z * 90) }));
+      cuts.push(planeF([0.06, -0.05, 0], [0.2, 1, 0]));
+      L.push(ell([0.113, -0.07, 0], [0.012, 0.007, 0.03], { k: 0.006, mat: HM_HAIR, bias: 0.004 }));
+    }
+    // ---- the hat
+    const knit = (x, y, z) => 0.0011 * Math.sin(ang(x + 0.012, z) * 38);
+    const rimPlane = (lift) => plane([0, -0.006 + lift, 0], vn([0.35, -1, 0]), { op: 'int', k: 0.006 });
+    if (r.hat === 'beanie' || r.hat === 'hood') {
+      const cap = [ell([-0.014, 0.02, 0], [0.116, 0.124, 0.104], { mat: HM_HAT }), rimPlane(0)];
+      if (r.slouch) cap.splice(1, 0, ell([-0.07, 0.098, 0], [0.086, 0.07, 0.092], { k: 0.04, mat: HM_HAT }));
+      L.push(group(cap, { k: 0.004, mat: HM_HAT, disp: knit }));
+      if (r.hat !== 'hood') cuts.push(planeF([0, -0.006, 0], [0.35, -1, 0]));
+      if (r.cuff) {
+        L.push(group([
+          ell([-0.014, 0.02, 0], [0.124, 0.132, 0.112], { mat: HM_CUFF }),
+          rimPlane(-0.004),
+          plane([0, 0.032, 0], vn([-0.35, 1, 0]), { op: 'int', k: 0.006 }),
+        ], { k: 0.004, mat: HM_CUFF, bias: 0.004, disp: knit }));
+        cuts.push(planeF([0, 0.032, 0], [-0.35, 1, 0]));
+      }
+      if (r.pom) L.push(ell([-0.018, 0.158, 0], [0.04, 0.038, 0.04], { k: 0.012, mat: HM_POM, bias: 0.01, disp: (x, y, z) => 0.003 * Math.sin(x * 310) * Math.sin(y * 290) * Math.sin(z * 330) }));
+    }
+    if (r.hat === 'hood') {
+      const C = [-0.034, 0.0, 0], RO = [0.152, 0.165, 0.145];
+      L.push(group([
+        ell(C, RO, { mat: HM_HOOD, paint: (x, y, z) => (((x - C[0]) / RO[0]) ** 2 + ((y - C[1]) / RO[1]) ** 2 + ((z - C[2]) / RO[2]) ** 2 < 0.86 ? HM_HOODIN : HM_HOOD) }),
+        ell([-0.03, -0.006, 0], [0.134, 0.148, 0.127], { op: 'sub', k: 0.006 }),
+        ell([0.14, -0.045, 0], [0.12, 0.13, 0.098], { op: 'sub', k: 0.02 }),
+        plane([0, -0.17, 0], [0, -1, 0], { op: 'int', k: 0.02 }),
+      ], { k: 0.006, mat: HM_HOOD, disp: (x, y, z) => 0.0016 * Math.sin(y * 70 + ang(x, z) * 5) }));
+    }
+    if (r.hat === 'bucket') {
+      L.push(group([
+        tube([-0.014, 0.0, 0], [-0.016, 0.125, 0], 0.122, 0.108, { mat: HM_HAT }),
+        ell([-0.016, 0.125, 0], [0.106, 0.034, 0.1], { k: 0.03, mat: HM_HAT }),
+      ], { k: 0.006, mat: HM_HAT, disp: (x, y, z) => 0.0008 * Math.sin(y * 160) }));
+      // the brim: a thin, drooping ring
+      L.push(custom((x, y, z) => {
+        const px = x + 0.012, rho = Math.hypot(px, z * 1.04);
+        const yb = 0.016 - 0.24 * Math.max(0, rho - 0.115);
+        return Math.max(Math.abs(y - yb) * 0.97 - 0.0065, rho - 0.205, 0.108 - rho);
+      }, [-0.22, -0.04, -0.22, 0.2, 0.03, 0.22], { k: 0.01, mat: HM_HAT }));
+    }
+    if (r.gaiter) {
+      L.push(group([
+        ell([0.016, -0.096, 0], [0.108, 0.09, 0.102], { mat: HM_GAITER }),
+        ell([0.016, -0.096, 0], [0.094, 0.076, 0.088], { op: 'sub', k: 0.004 }),
+        plane([0, -0.056, 0], vn([-0.25, 1, 0]), { op: 'int', k: 0.01 }),
+      ], { k: 0.006, mat: HM_GAITER, bias: 0.004, disp: (x, y, z) => 0.0014 * Math.sin(y * 120) }));
+      cuts.push(planeF([0, -0.056, 0], [-0.25, 1, 0]));
+    }
+    // ---- goggles: frame, lens and strap, over the eyes or pushed up on the hat
+    const gog = [];
+    const big = r.hat === 'hood';
+    // the frame: a soft rubber rim with a window cut through the front for the lens
+    gog.push(group([
+      ell([0.012, -0.01, 0], [0.122, 0.04, 0.128], { mat: HM_FRAME }),
+      plane([0.035, 0, 0], [-1, 0, 0], { op: 'int', k: 0.01 }),
+      ell([-0.004, -0.01, 0], [0.104, 0.06, 0.114], { op: 'sub', k: 0.004 }),
+      ell([0.04, -0.01, 0], [0.1, 0.027, 0.112], { op: 'sub', k: 0.005 }),
+    ], { k: 0.003, mat: HM_FRAME }));
+    // the lens, set just inside the frame
+    gog.push(group([
+      ell([0.012, -0.01, 0], [0.1185, 0.031, 0.124], { mat: HM_LENS }),
+      ell([0.0, -0.01, 0], [0.104, 0.05, 0.108], { op: 'sub', k: 0.004 }),
+      plane([0.05, 0, 0], [-1, 0, 0], { op: 'int', k: 0.006 }),
+    ], { k: 0.002, mat: HM_LENS }));
+    const sr = big ? [0.158, 0.015, 0.15] : [0.124, 0.015, 0.114];
+    gog.push(group([
+      ell([-0.012, -0.01, 0], sr, { mat: HM_STRAP }),
+      ell([-0.012, -0.01, 0], [sr[0] - 0.007, 0.03, sr[2] - 0.007], { op: 'sub', k: 0.002 }),
+      plane([0.03, 0, 0], [1, 0, 0], { op: 'int', k: 0.004 }),
+    ], { k: 0.002, mat: HM_STRAP }));
+    for (const g of gog) {
+      if (r.eyes === 'up') L.push(r.hat === 'bucket' ? moved(g, 0.04, [-0.012, 0.094, 0], 1.04) : moved(g, 0.3, [-0.01, 0.07, 0], 0.93));
+      else L.push(g);
+    }
+    return L;
+  }
+
+  SS.riderSculpt = { headNodes, bodyNodes };
+  // ---- building and drawing
+  let BODY = null;
+  const HEADS = {};
+  function meshFrom(engine, m, dynamic) {
+    const v = S3.interleave(m);
+    const g = engine.indexed(v, m.idx, dynamic, dynamic ? m.pos : null);
+    return { src: m, gpu: g, ranges: m.ranges };
+  }
+  function bodyMesh(engine, lod) {
+    if (!BODY) {
+      const nodes = bodyNodes();
+      const cuts = [(x, y) => (y - 1.528) + 0.3 * x, (x, y) => y - 0.805, (x, y, z) => y - (1.372 - 0.02 * Math.cos(Math.atan2(z, x) * 2)), (x, y) => y - 1.18, (x, y) => y - 1.29];
+      for (const k of ['F', 'B']) {
+        const sj = R0['sj' + k], du = vn(vsub(R0['el' + k], sj));
+        for (const t0 of [0.4, 0.49, 0.75]) cuts.push((x, y, z) => ((x - sj[0]) * du[0] + (y - sj[1]) * du[1] + (z - sj[2]) * du[2]) / ARM_U - t0);
+      }
+      const box = { min: [-0.3, 0.06, -0.5], max: [0.34, 1.74, 0.5], nb: NB, sigma: 0.022, cuts };
+      BODY = [S3.build(nodes, Object.assign({ h: 0.014 }, box)), S3.build(nodes, Object.assign({ h: 0.026 }, box))];
+      BODY.gpu = [null, null];
+      BODY.pool = [];
+    }
+    return BODY[lod];
+  }
+  function headMesh(engine, pal, lod) {
+    const id = pal.riderId || 'kai';
+    let H = HEADS[id];
+    if (!H) H = HEADS[id] = [null, null];
+    if (!H[lod]) {
+      const r = { hat: pal.hat, cuff: pal.cuffOn, pom: pal.pomOn, slouch: pal.slouch, eyes: pal.eyes, gaiter: pal.gaiterOn, hairStyle: pal.hairStyle, beard: pal.beard };
+      const nodes = headNodes(r);
+      const cuts = nodes.cuts.slice();
+      if (r.hat === 'hood') cuts.push((x, y, z) => ((x + 0.034) / 0.152) ** 2 + (y / 0.165) ** 2 + (z / 0.145) ** 2 - 0.86);
+      const m = S3.build(nodes, { min: [-0.19, -0.19, -0.22], max: [0.225, 0.215, 0.22], h: (lod ? 0.011 : 0.0054) * (r.hat === 'hood' ? 1.2 : 1), cuts });
+      H[lod] = { m, gpu: engine.indexed(S3.interleave(m), m.idx, false, null) };
+    }
+    return H[lod];
+  }
+  // a few skinned copies are kept, so a rider drawn twice in a frame (shadow, then colour) is skinned once
+  const BONES = new Float32Array(NB * 16);
+  function skinned(engine, lod) {
+    const src = BODY[lod];
+    const pool = BODY.pool;
+    for (const s of pool) {
+      if (s.lod !== lod) continue;
+      let same = true;
+      for (let i = 0; i < BONES.length; i++) if (s.bones[i] !== BONES[i]) { same = false; break; }
+      if (same) { s.used = ++BODY.tick; return s; }
+    }
+    let s = null;
+    if (pool.length < 6) {
+      s = { lod, bones: new Float32Array(NB * 16), data: new Float32Array(src.n * 6), b: null, used: 0 };
+      s.b = engine.indexed(s.data, src.idx, true, src.pos);
+      pool.push(s);
+    } else {
+      s = pool.filter((q) => q.lod === lod).sort((a, b) => a.used - b.used)[0];
+      if (!s) { s = pool.sort((a, b) => a.used - b.used)[0]; s.lod = lod; s.data = new Float32Array(src.n * 6); s.b = engine.indexed(s.data, src.idx, true, src.pos); }
+    }
+    s.bones.set(BONES);
+    S3.skin(src, BONES, s.data);
+    engine.upload(s.b.b, s.data);
+    s.used = BODY.tick = (BODY.tick || 0) + 1;
+    return s;
+  }
+  // the bones from a pose (body frame): hips, torso and head first (the shoulders hang off the
+  // torso), then the legs and arms
+  const TMPF = M4.create();
+  const B = (i) => BONES.subarray(i * 16, i * 16 + 16);
+  function setTorso(J) {
+    M4.identity(TMPF); M4.translate(TMPF, J.hip[0] - R0.P0[0], J.hip[1] - R0.P0[1], J.hip[2] - R0.P0[2]);
+    B(BN.pelvis).set(TMPF);
+    M4.mul(B(BN.spine), torsoFrame(J.waist, J.neck, J.across, TMPF), RI[BN.spine]);
+    M4.mul(B(BN.head), J.HL, RI[BN.head]);
+  }
+  function setLimbs(J) {
+    for (const k of ['F', 'B']) {
+      const hp = J['hp' + k], kn = J['kn' + k], an = J['an' + k];
+      const hL = hingeOf(hp, an, J['lb' + k]);
+      M4.mul(B(BN['thigh' + k]), frame(hp, vsub(kn, hp), hL, TMPF), RI[BN['thigh' + k]]);
+      M4.mul(B(BN['shin' + k]), frame(kn, vsub(an, kn), hL, TMPF), RI[BN['shin' + k]]);
+      const s0 = J['s' + k], el = J['el' + k], ha = J['ha' + k];
+      const hA = hingeOf(s0, ha, J['ab' + k]);
+      M4.mul(B(BN['up' + k]), frame(s0, vsub(el, s0), hA, TMPF), RI[BN['up' + k]]);
+      M4.mul(B(BN['fore' + k]), frame(el, vsub(ha, el), hA, TMPF), RI[BN['fore' + k]]);
+    }
+  }
+  // where a rest-pose point on the torso has moved to
+  function onTorso(p) {
+    const m = BONES.subarray(BN.spine * 16, BN.spine * 16 + 16);
+    return [m[0] * p[0] + m[4] * p[1] + m[8] * p[2] + m[12], m[1] * p[0] + m[5] * p[1] + m[9] * p[2] + m[13], m[2] * p[0] + m[6] * p[1] + m[10] * p[2] + m[14]];
+  }
+  // the arm: hand target -> hand and elbow
+  function armJoints(J, k, s0, h1, bend) {
+    const hand = reach(s0, h1, ARM_U + ARM_F - 0.005);
+    J['s' + k] = s0; J['ha' + k] = hand; J['ab' + k] = bend;
+    J['el' + k] = ik(s0, hand, ARM_U, ARM_F, bend);
+  }
+  const sub_ = (m, first, count, gpu) => ({ b: gpu.b, ib: gpu.ib, rest: gpu.rest, first, count });
+  const SH_SKIN = [0.07, 10];
+  function drawBody(engine, pal, base, far) {
+    const lod = far ? 1 : 0;
+    bodyMesh(engine, lod);
+    const s = skinned(engine, lod);
+    const R = BODY[lod].ranges;
+    const yoke = pal.pat === 4 ? pal.patCol : pal.jacket, band = pal.pat === 3 ? pal.patCol : pal.jacket;
+    const part = (mat, col, spec, m) => { const r = R[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], s.b), base, col, 0, spec, m); };
+    const cp = pal.pat === 1 || pal.pat === 2 ? pal.pat : 0;
+    engine.cloth(cp, pal.patCol, 0.55, 0, 0);
+    part(BM_JACKET, pal.jacket, SH_HOODIE);
+    engine.cloth(0, null, 0.45, 0, 0);
+    part(BM_YOKE, yoke, SH_HOODIE);
+    part(BM_BAND, band, SH_HOODIE);
+    part(BM_HOOD, yoke, SH_HOODIE);
+    engine.cloth(0, null, 0.25, 0, 0);
+    part(BM_POUCH, pal.pouch, SH_HOODIE);
+    engine.cloth(0, null, 0.9, 0.35, 1);
+    part(BM_PANTS, pal.pants, SH_PANTS);
+    engine.cloth(0, null, 0.2, 0.2, 0);
+    part(BM_GLOVE, pal.glove, SH_BOOT);
+    engine.cloth(0);
+    part(BM_SKIN, pal.skin, SH_SKIN, 2);
+  }
+  const EYES = { w: null, i: null };
+  const GAITER = [0.13, 0.135, 0.15];
+  function drawHeadS(engine, pal, HFm, far) {
+    const H = headMesh(engine, pal, far ? 1 : 0);
+    const R = H.m.ranges, g = H.gpu;
+    const part = (mat, col, spec, m) => { const r = R[mat]; if (r) engine.drawLit(sub_(null, r[0], r[1], g), HFm, col, 0, spec, m); };
+    part(HM_SKIN, pal.skin, SH_SKIN, 2);
+    part(HM_LIPS, pal.lips, [0.25, 30], 2);
+    engine.cloth(0, null, 0.3, 0, 0);
+    part(HM_HAIR, pal.hair, [0.22, 24]);
+    part(HM_TIE, pal.trim, SH_JACKET);
+    engine.cloth(0);
+    part(HM_HAT, pal.hatCol, pal.helmetSh || SH_PANTS);
+    part(HM_CUFF, pal.hatDark, pal.helmetSh || SH_PANTS);
+    part(HM_POM, pal.cordCol, SH_PANTS);
+    engine.cloth(0, null, 0.5, 0, 0);
+    part(HM_HOOD, pal.jacket, SH_HOODIE);
+    part(HM_GAITER, GAITER, SH_PANTS);
+    engine.cloth(0);
+    part(HM_HOODIN, pal.hoodIn, null);
+    part(HM_FRAME, pal.frameCol, SH_SHELL);
+    part(HM_STRAP, pal.strapCol, SH_JACKET);
+    part(HM_LENS, pal.lens, SH_LENS, pal.eyes === 'up' ? 1 : 3);
+    // eyes, when the goggles are up
+    if (pal.eyes === 'up' && !far) {
+      if (!EYES.w) {
+        const w = [], i = [], br = [];
+        for (const z of [0.033, -0.033]) {
+          w.push(...sphere(8, 12, 0.0125, 0.0118, 0.0135, 0.0855, -0.0095, z));
+          i.push(...sphere(6, 10, 0.0035, 0.0066, 0.0066, 0.0975, -0.011, z * 0.98));
+          br.push(...sphere(5, 10, 0.006, 0.0036, 0.019, 0.1, 0.022, z * 1.06));
+        }
+        EYES.w = engine.mesh(new Float32Array(w), 6); EYES.i = engine.mesh(new Float32Array(i), 6); EYES.b = engine.mesh(new Float32Array(br), 6);
+      }
+      engine.drawLit(EYES.w, HFm, [0.94, 0.94, 0.93], 0, [0.5, 60]);
+      engine.drawLit(EYES.i, HFm, pal.eyeCol, 0, [0.7, 80]);
+      engine.drawLit(EYES.b, HFm, pal.hair, 0, null);
+    }
+  }
+
   // the board standing on its tail: top sheet facing +x, nose up (frame `out`, from body frame `base`)
   function standingBoard(base, c, lean, turn, out) {
     M4.identity(L);
@@ -937,8 +1414,8 @@
 
     // feet a little apart, toes out
     const hip = [-0.03 + sway * 0.4, 0.94 + br * 0.5, sway];
-    const knees = [];
-    for (const [fz, yaw, hz] of [[0.15, -0.16, 0.1], [-0.15, 0.16, -0.1]]) {
+    const J = { hip, across: [0, 0, 1], HL: SHL };
+    for (const [fz, yaw, hz, k] of [[0.15, -0.16, 0.1, 'F'], [-0.15, 0.16, -0.1, 'B']]) {
       M4.identity(L);
       M4.translate(L, 0.02, 0.008, fz);
       M4.rotY(L, yaw);
@@ -946,40 +1423,32 @@
       drawBoot(engine, pal, FB, false);
       const ank = [-0.005, 0.2, fz * 0.96];
       const hp = add(hip, [0, -0.02, hz]);
-      const knee = ik(ank, hp, LEG_S, LEG_T, [1, 0.05, hz * 1.5]);
-      knees.push(knee);
-      engine.cloth(0, null, 1.1, 0.25, 1);
-      limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
-      engine.cloth(0, null, 0.9, 0.04, 1);
-      limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
-      engine.cloth(0);
-      ball(engine, M, knee, 0.122, pal.pants, SH_PANTS);
+      const bend = [1, 0.05, hz * 1.5];
+      J['hp' + k] = hp; J['an' + k] = ank; J['lb' + k] = bend;
+      J['kn' + k] = ik(ank, hp, LEG_S, LEG_T, bend);
     }
-    engine.drawLit(meshes.sph, at(M, add(hip, [-0.01, -0.03, 0]), 0.33, 0.27, 0.41), pal.pants, 0, SH_PANTS);
-
     // upright torso, shoulders square to the front
     const sh = add(hip, [0.03, 0.545 + br, 0.004]);
-    const waist = add(hip, [-0.005, -0.03, 0]);
-    const neck = add(sh, [0.012, 0.11, 0]);
-    seg(M, waist, neck, 1, 1, [0, 0, 1], TF);
-    drawJacket(engine, pal, false);
-
+    J.waist = add(hip, [-0.005, -0.03, 0]);
+    J.neck = add(sh, [0.012, 0.11, 0]);
     const head = add(sh, [0.045, 0.25, 0]);
-    M4.identity(L);
-    M4.translate(L, head[0], head[1], head[2]);
-    M4.rotY(L, Math.sin(t * 0.37) * 0.1 + 0.04);
-    M4.rotZ(L, -0.04 + Math.sin(t * 0.29) * 0.025);
-    M4.scale(L, 1.1, 1.1, 1.1);
-    M4.mul(HF, M, L);
-    drawHead(engine, pal, false);
-
+    M4.identity(SHL);
+    M4.translate(SHL, head[0], head[1], head[2]);
+    M4.rotY(SHL, Math.sin(t * 0.37) * 0.1 + 0.04);
+    M4.rotZ(SHL, -0.04 + Math.sin(t * 0.29) * 0.025);
+    M4.scale(SHL, 1.1, 1.1, 1.1);
+    M4.mul(HF, M, SHL);
+    setTorso(J);
     // board-side hand grips the board's edge at hip height; the other hangs loose
-    const sf = add(sh, [0, -0.04, 0.205]), sb = add(sh, [0, -0.04, -0.205]);
+    const sf = onTorso(R0.sjF), sb = onTorso(R0.sjB);
     M4.point(SB, -0.17, 0.03, 0.12, PT);
-    const grip = [PT[0], PT[1], PT[2]];
-    drawArm(engine, pal, M, sf, grip, [-0.4, -0.5, 0.9], false);
-    drawArm(engine, pal, M, sb, add(sb, [0.04, -0.53 - br, -0.07]), [-0.6, -0.2, -0.6], false);
+    armJoints(J, 'F', sf, [PT[0], PT[1], PT[2]], [-0.4, -0.5, 0.9]);
+    armJoints(J, 'B', sb, add(sb, [0.04, -0.53 - br, -0.07]), [-0.6, -0.2, -0.6]);
+    setLimbs(J);
+    drawBody(engine, pal, M, false);
+    drawHeadS(engine, pal, HF, false);
   }
+  const SHL = M4.create();
 
   /*
    * st: { x, y, z, heading, spin, stance, flip, lean, crouch, comp, grab, grabK, grabType, tuck, slide, air, airT,
@@ -996,7 +1465,10 @@
     // far away (or a see-through ghost) gets the lighter version
     if (st.pose) { drawStanding(engine, st, pal); engine.setLitAlpha(1); return; }
     const eye = engine.eye;
-    const far = a < 1 || Math.hypot(st.x - eye[0], st.z - eye[2]) > 48;
+    const dist = Math.hypot(st.x - eye[0], st.z - eye[2]);
+    const far = a < 1 || dist > 48;
+    // the sculpted body and head drop to their lighter versions a little way off
+    const lod = far || dist > 14;
 
     M4.identity(M);
     M4.translate(M, st.x, st.y, st.z);
@@ -1066,19 +1538,14 @@
     // ---- legs: knees found from the hips and the boots ----
     const ankF = boardPt([-0.025, 0.2, 0.25]), ankB = boardPt([-0.025, 0.2, -0.25]);
     const knees = [];
-    for (const [ank, hz] of [[ankF, 0.115], [ankB, -0.115]]) {
+    const J = { hip, HL: RHL };
+    for (const [ank, hz, kk] of [[ankF, 0.115, 'F'], [ankB, -0.115, 'B']]) {
       const hp = add(hip, [0, -0.02, hz]);
-      const knee = ik(ank, hp, LEG_S, LEG_T, [1, 0.1, hz * 2.4]);
+      const bend = [1, 0.1, hz * 2.4];
+      const knee = ik(ank, hp, LEG_S, LEG_T, bend);
       knees.push(knee);
-      engine.cloth(0, null, 1.1, 0.55, 1);
-      limb(engine, M, meshes.shin, ank, knee, pal.pants, SH_PANTS);
-      engine.cloth(0, null, 0.9, 0.06, 1);
-      limb(engine, M, meshes.thigh, knee, hp, pal.pants, SH_PANTS);
-      engine.cloth(0);
-      ball(engine, M, knee, 0.122, pal.pants, SH_PANTS);
+      J['hp' + kk] = hp; J['kn' + kk] = knee; J['an' + kk] = ank; J['lb' + kk] = bend;
     }
-    // seat
-    engine.drawLit(meshes.sph, at(M, add(hip, [-0.01, -0.03, 0]), 0.33, 0.27, 0.41), pal.pants, 0, SH_PANTS);
 
     // ---- upper body: shoulders lead a spin, lean into a grab ----
     let twist = -0.42 + (air ? spinV * 0.85 : (st.wind || 0) * 0.5);
@@ -1095,24 +1562,22 @@
       const k2 = gk * Math.min(0.32, need * 0.75) / (dl || 1);
       sh = add(sh, [d[0] * k2, d[1] * k2 - gk * 0.04, d[2] * k2 * 0.6]);
     }
-    const waist = add(hip, tw([-0.005, -0.03, 0], twist));
-    const neck = add(sh, tw([0.012, 0.11, 0], twist));
-    const across = tw([0, 0, 1], twist);
-    seg(M, waist, neck, 1, 1, across, TF);
-    drawJacket(engine, pal, far);
+    J.waist = add(hip, tw([-0.005, -0.03, 0], twist));
+    J.neck = add(sh, tw([0.012, 0.11, 0], twist));
+    J.across = tw([0, 0, 1], twist);
 
     // ---- head: looks ahead into the spin, down at a grab ----
     const head = add(sh, tw([0.05, 0.25, 0], twist));
-    M4.identity(L);
-    M4.translate(L, head[0], head[1], head[2]);
-    M4.rotY(L, twist + spinV * 0.55 + (mode === 'ride' ? cv * 0.35 : 0));
-    M4.rotZ(L, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
-    M4.scale(L, 1.1, 1.1, 1.1);
-    M4.mul(HF, M, L);
-    drawHead(engine, pal, far);
+    M4.identity(RHL);
+    M4.translate(RHL, head[0], head[1], head[2]);
+    M4.rotY(RHL, twist + spinV * 0.55 + (mode === 'ride' ? cv * 0.35 : 0));
+    M4.rotZ(RHL, -0.3 * gk - 0.15 * Math.abs(flipV) + (st.bail ? Math.sin(t * 9.1) * 0.35 * bk + 0.25 * (1 - bk) * (1 - bu) : 0));
+    M4.scale(RHL, 1.1, 1.1, 1.1);
+    M4.mul(HF, M, RHL);
+    setTorso(J);
 
     // ---- arms: hands go to targets, elbows find themselves ----
-    const sf = add(sh, tw([0, -0.04, 0.205], twist)), sb = add(sh, tw([0, -0.04, -0.205], twist));
+    const sf = onTorso(R0.sjF), sb = onTorso(R0.sjB);
     const sway = Math.sin(t * 2.6) * 0.03;
     const carve = st.lean || 0;
     let hf, hb;
@@ -1158,8 +1623,8 @@
         }
         if (gp) {
           // the grabbing hand goes to the board, the other one is thrown out for style
-          if (G.hand > 0) { hf = mix(hf, gp, gk); hb = mix(hb, add(sb, tw([-0.08, 0.3, -0.38], twist)), gk); }
-          else { hb = mix(hb, gp, gk); hf = mix(hf, add(sf, tw([0.02, 0.3, 0.4], twist)), gk); }
+          if (G.hand > 0) { hf = mix(hf, gp, gk); hb = mix(hb, add(sb, tw([-0.1, 0.08, -0.46], twist)), gk); }
+          else { hb = mix(hb, gp, gk); hf = mix(hf, add(sf, tw([0.04, 0.08, 0.47], twist)), gk); }
         }
         break;
       }
@@ -1189,9 +1654,14 @@
       hf = add(hf, [0.12 * Math.cos(t * 14) * w, 0.25 * Math.sin(t * 14) * w, 0.1 * w]);
       hb = add(hb, [0.12 * Math.cos(t * 14 + 2) * w, 0.25 * Math.sin(t * 14 + 2) * w, -0.1 * w]);
     }
-    for (const [s0, h1, side] of [[sf, hf, 1], [sb, hb, -1]]) drawArm(engine, pal, M, s0, h1, tw([-0.55, -0.6, side * 0.75], twist), far);
+    armJoints(J, 'F', sf, hf, tw([-0.55, -0.6, 0.75], twist));
+    armJoints(J, 'B', sb, hb, tw([-0.55, -0.6, -0.75], twist));
+    setLimbs(J);
+    drawBody(engine, pal, M, lod);
+    drawHeadS(engine, pal, HF, lod);
     engine.setLitAlpha(1);
   };
+  const RHL = M4.create();
 
   // glowing snowflake token
   SS.drawToken = function (engine, x, y, z, t) {

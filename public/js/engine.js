@@ -314,14 +314,15 @@ void main() {
 }`;
 
   const VS_LIT = `
-attribute vec3 aPos; attribute vec3 aNorm;
+attribute vec3 aPos; attribute vec3 aNorm; attribute vec3 aRest; uniform float uSkin;
 uniform mat4 uVP; uniform mat4 uModel; uniform mat3 uNM; uniform vec3 uCam; uniform vec2 uFog; uniform mat4 uShadowVP;
 varying vec3 vN; varying vec3 vRel; varying float vFog; varying vec4 vSh; varying vec3 vObj; varying vec3 vTy;
 void main() {
   vec4 w = uModel * vec4(aPos, 1.0);
   gl_Position = uVP * w;
   vN = uNM * aNorm;
-  vObj = aPos;
+  // skinned meshes keep their patterns and folds where they were sculpted, not where they've moved to
+  vObj = uSkin > 0.5 ? aRest : aPos;
   vTy = normalize((uModel * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
   vRel = w.xyz - uCam;
   // nudge along the normal before looking up the shadow, so curved cloth doesn't shadow itself in stripes
@@ -637,6 +638,7 @@ void main() {
     gl.bindAttribLocation(p, 1, 'aCol');
     gl.bindAttribLocation(p, 2, 'aNorm');
     gl.bindAttribLocation(p, 3, 'aSize');
+    gl.bindAttribLocation(p, 4, 'aRest');
     gl.linkProgram(p);
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error('Link error: ' + gl.getProgramInfoLog(p));
     const u = {};
@@ -782,6 +784,29 @@ void main() {
       gl.bindBuffer(gl.ARRAY_BUFFER, b);
       gl.bufferData(gl.ARRAY_BUFFER, data, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
       return { b, count: data.length / stride, stride, mode: mode === undefined ? gl.TRIANGLES : mode };
+    }
+
+    // an indexed mesh: vertices [x,y,z, nx,ny,nz] (dynamic ones get rewritten every frame) and 16-bit indices
+    indexed(verts, idx, dynamic, rest) {
+      const gl = this.gl;
+      const b = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferData(gl.ARRAY_BUFFER, verts, dynamic ? gl.DYNAMIC_DRAW : gl.STATIC_DRAW);
+      const ib = gl.createBuffer();
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
+      gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, idx, gl.STATIC_DRAW);
+      let rb = null;
+      if (rest) {
+        rb = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, rb);
+        gl.bufferData(gl.ARRAY_BUFFER, rest, gl.STATIC_DRAW);
+      }
+      return { b, ib, rest: rb, count: idx.length, first: 0 };
+    }
+    upload(b, data) {
+      const gl = this.gl;
+      gl.bindBuffer(gl.ARRAY_BUFFER, b);
+      gl.bufferSubData(gl.ARRAY_BUFFER, 0, data);
     }
 
     free(m) {
@@ -1227,7 +1252,10 @@ void main() {
         gl.uniformMatrix4fv(this.shd.u.uModel, false, model);
         gl.bindBuffer(gl.ARRAY_BUFFER, mesh.b);
         gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
-        gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+        if (mesh.ib) {
+          gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
+          gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, mesh.first * 2);
+        } else gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
         return;
       }
       const u = this.lit.u;
@@ -1241,7 +1269,20 @@ void main() {
       gl.bindBuffer(gl.ARRAY_BUFFER, mesh.b);
       gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 24, 0);
       gl.vertexAttribPointer(2, 3, gl.FLOAT, false, 24, 12);
-      gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
+      if (mesh.ib) {
+        if (mesh.rest) {
+          gl.uniform1f(u.uSkin, 1);
+          gl.enableVertexAttribArray(4);
+          gl.bindBuffer(gl.ARRAY_BUFFER, mesh.rest);
+          gl.vertexAttribPointer(4, 3, gl.FLOAT, false, 12, 0);
+        }
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, mesh.ib);
+        gl.drawElements(gl.TRIANGLES, mesh.count, gl.UNSIGNED_SHORT, mesh.first * 2);
+        if (mesh.rest) {
+          gl.disableVertexAttribArray(4);
+          gl.uniform1f(u.uSkin, 0);
+        }
+      } else gl.drawArrays(gl.TRIANGLES, 0, mesh.count);
     }
 
     // ---- points: data = [x,y,z, r,g,b,a, size] per point ----

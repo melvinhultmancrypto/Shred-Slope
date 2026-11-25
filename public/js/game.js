@@ -4099,7 +4099,10 @@
       studio(o) {
         const cv = document.createElement('canvas');
         cv.width = o.w || 400; cv.height = o.h || 560;
+        const keep = Object.assign({}, STAND);
+        if (o.st) Object.assign(STAND, o.st);
         studioShot(cv, Object.assign({ look: myLook(), yaw: 0.62, d: 4.1, cy: 1.15, ty: 0.83, fov: 0.6, floor: 0.905 }, o));
+        Object.assign(STAND, keep);
         return cv.toDataURL('image/png');
       },
       get ghost() { return bestGhost && { seed: bestGhost.seed, n: bestGhost.frames.length, first: bestGhost.frames[0], worldSeed: world.seed, state: ghostState() }; },
