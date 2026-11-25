@@ -5,9 +5,10 @@
  * Coins are play money: you earn them by riding (runs, new stars, multiplayer races, cups) and
  * spend them here. They can't be bought or cashed out.
  *
- * Four slots: a suit (jacket, band and pants), a board, a helmet and goggles. "stock" in the board,
- * helmet and goggles slots means "whatever comes with the suit". The first ten suits are the free
- * outfits everyone has (same order as the outfit picker, rider.js PALETTE).
+ * Five slots: the rider (who you are, with their own stats), a suit (hoodie and pants), a board,
+ * a hat and goggles. "stock" in the board, hat and goggles slots means "whatever comes with the suit".
+ * The first ten suits are the free outfits everyone has (same order as the outfit picker, rider.js
+ * PALETTE). The hat slot keeps its old id, "helmet", so saved looks still load.
  */
 (function (root, make) {
   const ITEMS = make();
@@ -17,6 +18,18 @@
   'use strict';
   const FREE = ['forest', 'blaze', 'glacier', 'bubblegum', 'lemon', 'ultraviolet', 'lagoon', 'inferno', 'whiteout', 'acid'];
   const FREE_NAMES = ['Forest', 'Blaze', 'Glacier', 'Bubblegum', 'Lemon', 'Ultraviolet', 'Lagoon', 'Inferno', 'Whiteout', 'Acid'];
+
+  // the riders: everyone can pick any of them. Stats run 1 to 5 and add up to 12:
+  // speed (top speed and glide), air (pop and hang time), spin (how fast you rotate and flip)
+  // and balance (how forgiving landings, rails and edges are)
+  const riders = [
+    { id: 'kai', slot: 'rider', name: 'Kai', price: 0, tier: 'free', tag: 'All-rounder', stats: { speed: 3, air: 3, spin: 3, balance: 3 } },
+    { id: 'mia', slot: 'rider', name: 'Mia', price: 0, tier: 'free', tag: 'Spinner', stats: { speed: 2, air: 3, spin: 5, balance: 2 } },
+    { id: 'dre', slot: 'rider', name: 'Dre', price: 0, tier: 'free', tag: 'Speed', stats: { speed: 5, air: 3, spin: 2, balance: 2 } },
+    { id: 'yuki', slot: 'rider', name: 'Yuki', price: 0, tier: 'free', tag: 'Big air', stats: { speed: 2, air: 5, spin: 3, balance: 2 } },
+    { id: 'rio', slot: 'rider', name: 'Rio', price: 0, tier: 'free', tag: 'Steady', stats: { speed: 3, air: 2, spin: 2, balance: 5 } },
+  ];
+  const RIDER_IDS = riders.map((r) => r.id);
 
   // tiers colour the cards in the shop
   const suits = FREE.map((id, i) => ({ id, slot: 'suit', name: FREE_NAMES[i], price: 0, tier: 'free', pal: i }));
@@ -46,13 +59,13 @@
 
   const helmets = [
     { id: 'stock', slot: 'helmet', name: 'Suit colours', price: 0, tier: 'free' },
-    { id: 'h_white', slot: 'helmet', name: 'Arctic White', price: 300, tier: 'common', helmet: '#f2f2f4' },
-    { id: 'h_black', slot: 'helmet', name: 'Matte Black', price: 300, tier: 'common', helmet: '#16171b', shine: [0.25, 20] },
-    { id: 'h_red', slot: 'helmet', name: 'Race Red', price: 500, tier: 'rare', helmet: '#d9271f' },
+    { id: 'h_white', slot: 'helmet', name: 'Snow White', price: 300, tier: 'common', helmet: '#f2f2f4' },
+    { id: 'h_black', slot: 'helmet', name: 'Jet Black', price: 300, tier: 'common', helmet: '#16171b' },
+    { id: 'h_red', slot: 'helmet', name: 'Cherry', price: 500, tier: 'rare', helmet: '#d9271f' },
     { id: 'h_blue', slot: 'helmet', name: 'Cobalt', price: 500, tier: 'rare', helmet: '#2f6dff' },
-    { id: 'h_olive', slot: 'helmet', name: 'Olive', price: 600, tier: 'rare', helmet: '#55603a', shine: [0.25, 20] },
-    { id: 'h_chrome', slot: 'helmet', name: 'Chrome', price: 1500, tier: 'epic', helmet: '#c9ced8', shine: [1.3, 80] },
-    { id: 'h_gold', slot: 'helmet', name: 'Gold Chrome', price: 2500, tier: 'legendary', helmet: '#e0b030', shine: [1.3, 80] },
+    { id: 'h_olive', slot: 'helmet', name: 'Olive', price: 600, tier: 'rare', helmet: '#55603a' },
+    { id: 'h_chrome', slot: 'helmet', name: 'Silver Knit', price: 1500, tier: 'epic', helmet: '#c9ced8', shine: [0.6, 30] },
+    { id: 'h_gold', slot: 'helmet', name: 'Gold Knit', price: 2500, tier: 'legendary', helmet: '#e0b030', shine: [0.7, 30] },
   ];
 
   const goggles = [
@@ -66,18 +79,24 @@
     { id: 'g_gold', slot: 'goggles', name: '24K', price: 800, tier: 'epic', lens: '#ffc93d', frame: '#2a2a2a' },
   ];
 
-  const all = [...suits, ...boards, ...helmets, ...goggles];
+  const all = [...riders, ...suits, ...boards, ...helmets, ...goggles];
   const byKey = {};
   for (const it of all) byKey[it.slot + ':' + it.id] = it;
 
   return {
-    SLOTS: ['suit', 'board', 'helmet', 'goggles'],
-    SLOT_NAMES: { suit: 'Suits', board: 'Boards', helmet: 'Helmets', goggles: 'Goggles' },
+    SLOTS: ['rider', 'suit', 'board', 'helmet', 'goggles'],
+    SLOT_NAMES: { rider: 'Riders', suit: 'Suits', board: 'Boards', helmet: 'Hats', goggles: 'Goggles' },
     FREE_SUITS: FREE,
-    suits, boards, helmets, goggles, all,
+    RIDER_IDS,
+    riders, suits, boards, helmets, goggles, all,
     get(slot, id) { return byKey[slot + ':' + id] || null; },
-    // the starting look: a free suit and its own board, helmet and goggles
-    defaultLook(i) { return { suit: FREE[((i | 0) % FREE.length + FREE.length) % FREE.length], board: 'stock', helmet: 'stock', goggles: 'stock' }; },
+    // a rider's stats (an unknown id gets the all-rounder's)
+    stats(id) { const r = byKey['rider:' + id] || riders[0]; return r.stats; },
+    // the starting look: a rider, a free suit and its own board, hat and goggles
+    defaultLook(i, rider) {
+      const n = i | 0;
+      return { rider: RIDER_IDS.includes(rider) ? rider : RIDER_IDS[(n % RIDER_IDS.length + RIDER_IDS.length) % RIDER_IDS.length], suit: FREE[(n % FREE.length + FREE.length) % FREE.length], board: 'stock', helmet: 'stock', goggles: 'stock' };
+    },
     // what you earn (the server pays out; the numbers are here so the game can explain them)
     STARTER: 500,
     STAR_COINS: 25,

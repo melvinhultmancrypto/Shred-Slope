@@ -17,13 +17,13 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const fmt = (n) => Math.round(n || 0).toLocaleString('en-US');
   const COIN = '<i class="coin" aria-hidden="true"></i>';
-  const LISTS = { suit: 'suits', board: 'boards', helmet: 'helmets', goggles: 'goggles' };
+  const LISTS = { rider: 'riders', suit: 'suits', board: 'boards', helmet: 'helmets', goggles: 'goggles' };
   const TIER = { free: 'FREE', common: 'COMMON', rare: 'RARE', epic: 'EPIC', legendary: 'LEGENDARY' };
 
   let hooks = null;
   let wallet = null;      // { coins, earned, owned, equip, inbox } while signed in
   let page = 'ride';      // the lobby page showing
-  let slot = 'suit';      // the locker's slot
+  let slot = 'rider';     // the locker's slot
   let shopSlot = 'all';   // the shop's filter
   let picked = null;      // the item you're trying on in the shop
   let confirmBuy = false;
@@ -52,7 +52,7 @@
   // what you wear: your locker when signed in, otherwise the free outfit you picked
   function currentLook() {
     if (wallet) return Object.assign({}, wallet.equip);
-    return I.defaultLook(hooks ? hooks.outfit() : 0);
+    return I.defaultLook(hooks ? hooks.outfit() : 0, hooks && hooks.rider ? hooks.rider() : 'kai');
   }
   const withItem = (it) => Object.assign(currentLook(), { [it.slot]: it.id });
 
@@ -99,8 +99,14 @@
   // ---- little pictures for the item cards
   const cssOf = (c) => (Array.isArray(c) ? `rgb(${c.map((v) => Math.round(Math.min(1, v) * 255)).join(',')})` : c);
   // ---- the pictures: 3D shots from game.js, cached; an <img data-k> waits for its shot
-  const SLOT_NAME = { suit: 'Suit', board: 'Board', helmet: 'Helmet', goggles: 'Goggles' };
-  const SLOT_PLURAL = { suit: 'SUITS', board: 'BOARDS', helmet: 'HELMETS', goggles: 'GOGGLES' };
+  const SLOT_NAME = { rider: 'Rider', suit: 'Suit', board: 'Board', helmet: 'Hat', goggles: 'Goggles' };
+  const SLOT_PLURAL = { rider: 'RIDERS', suit: 'SUITS', board: 'BOARDS', helmet: 'HATS', goggles: 'GOGGLES' };
+  // a rider's four stats as little bars (1 to 5)
+  const STAT_NAMES = [['speed', 'SPD'], ['air', 'AIR'], ['spin', 'SPN'], ['balance', 'BAL']];
+  function statBars(st) {
+    return `<span class="stats">${STAT_NAMES.map(([k, l]) => `<span class="st"><em>${l}</em><i>${[1, 2, 3, 4, 5].map((n) => `<b class="${n <= st[k] ? 'on' : ''}"></b>`).join('')}</i></span>`).join('')}</span>`;
+  }
+  SS.statBars = statBars;
   let picN = 0;
   function pic(look, sl) {
     const id = 'p' + ++picN;
@@ -122,15 +128,17 @@
       return `<button type="button" class="tile${sl === slot ? ' sel' : ''}" data-slot="${sl}">${pic(look, sl)}<span class="tl">${SLOT_NAME[sl]}</span><span class="tn">${esc(nameOf(it))}</span></button>`;
     }).join('');
     $('lockerListLabel').textContent = SLOT_PLURAL[slot];
+    $('lockerGrid').classList.toggle('riders', slot === 'rider');
     $('lockerGrid').innerHTML = I[LISTS[slot]].map((it) => {
       const own = owns(it), on = equipped(it);
       const l = withItem(it);
+      if (it.slot === 'rider') return `<button type="button" class="tile rider-tile${on ? ' on' : ''}" data-slot="rider" data-id="${esc(it.id)}" title="${esc(it.name)}">${pic(l, 'rider')}<span class="tl">${on ? 'RIDING' : esc(it.tag.toUpperCase())}</span><span class="tn">${esc(it.name)}</span>${statBars(it.stats)}</button>`;
       return `<button type="button" class="tile${on ? ' on' : ''}${own ? '' : ' locked'}" data-slot="${it.slot}" data-id="${esc(it.id)}" title="${esc(nameOf(it))}${own ? '' : ' · ' + fmt(it.price) + ' coins in the shop'}">${pic(l, it.slot)}<span class="tl">${own ? (on ? 'WEARING' : TIER[it.tier] || '') : fmt(it.price) + ' COINS'}</span><span class="tn">${esc(nameOf(it))}</span></button>`;
     }).join('');
     const hint = $('lockerHint');
     if (!signedIn()) hint.innerHTML = SS.Account && SS.Account.online
-      ? 'Guests can wear the ten free suits. <button type="button" class="linkbtn" data-a="up" style="display:inline;margin:0">Create an account</button> to earn coins and unlock the rest.'
-      : 'Wear any of the ten free suits. Drag your rider to turn them round.';
+      ? 'Pick any rider. Guests can wear the ten free suits. <button type="button" class="linkbtn" data-a="up" style="display:inline;margin:0">Create an account</button> to earn coins and unlock the rest.'
+      : 'Pick a rider and wear any of the ten free suits. Drag your rider to turn them round.';
     else hint.textContent = 'Tap anything you own to put it on. Locked gear is in the shop. Your look shows in multiplayer too.';
   }
 
@@ -144,7 +152,7 @@
   }
   function renderShop() {
     document.querySelectorAll('#shopSlots button').forEach((b) => b.classList.toggle('sel', b.dataset.slot === shopSlot));
-    const slots = shopSlot === 'all' ? I.SLOTS : [shopSlot];
+    const slots = (shopSlot === 'all' ? I.SLOTS : [shopSlot]).filter((sl) => sl !== 'rider');
     $('shopGrid').innerHTML = slots.map((sl) => {
       const items = I[LISTS[sl]].filter((it) => it.price > 0);
       return (shopSlot === 'all' ? `<div class="shop-sec"><h3 class="brush">${SLOT_NAME[sl]}s</h3><span class="kicker">${items.length} ITEMS</span></div>` : '')
@@ -214,6 +222,7 @@
     if (!signedIn()) {
       // guests: only the free outfits
       if (it.slot === 'suit' && it.pal !== undefined) { hooks.setOutfit(it.pal); flashSaved(); }
+      else if (it.slot === 'rider') { hooks.setRider(it.id); flashSaved(); }
       else if (owns(it) && it.id === 'stock') { /* stock is all a guest has */ }
       refresh();
       return;

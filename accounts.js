@@ -185,7 +185,7 @@ function cleanLook(w) {
   const out = {};
   for (const slot of ITEMS.SLOTS) {
     const id = w.equip && w.equip[slot];
-    out[slot] = id && owns(w, slot, id) ? id : slot === 'suit' ? ITEMS.FREE_SUITS[0] : 'stock';
+    out[slot] = id && owns(w, slot, id) ? id : slot === 'suit' ? ITEMS.FREE_SUITS[0] : slot === 'rider' ? ITEMS.RIDER_IDS[0] : 'stock';
   }
   return out;
 }

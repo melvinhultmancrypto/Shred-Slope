@@ -238,23 +238,21 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'giants', v: 3, t: 'Land all three giants' }, { k: 'score', v: 38000, t: 'Score 38,000' }],
       card: 'linear-gradient(180deg,#3a3c7a 0%,#d0688a 45%,#ffa45a 75%,#ffe08a 100%)', accent: '#ff8a3d',
     },
-    // the one course for now: a whole park at golden hour, ending on a giant kicker
     slopestyle: {
-      id: 'slopestyle', name: 'Sundown Park', time: 'GOLDEN HOUR', diff: 'HARD',
-      sub: 'A whole park at golden hour: a jib garden, three rail sections, step-ups, two jump lines, and the Send, a giant kicker into the finish.',
-      half: 26, curve: [9, 320, 4, 150], slope: 0.235, alt: 3100, length: 2360,
-      zones: [Z('JIB GARDEN', 'parkmix', 260), Z('RAIL SECTION 1', 'railStation', 170, { n: 1 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 3 }),
-        Z('STEP-UPS', 'jumpline', 330, { small: true }), Z('RAIL SECTION 3', 'railStation', 170, { n: 5 }),
-        Z('JUMP LINE', 'jumpStation', 300, { n: 1 }), Z('BIG LINE', 'jumpStation', 300, { n: 2 }), Z('THE SEND', 'giant', 300)],
-      first: 'DROP-IN', stands: true,
-      light: { sky: [0.38, 0.38, 0.48], ground: [0.18, 0.15, 0.14], sunDir: norm3([0.72, 0.3, 0.63]), sun: [1.08, 0.82, 0.55], fog: [0.88, 0.76, 0.62], rim: [0.46, 0.36, 0.3], snow: [0.97, 0.96, 0.95], powder: [0.93, 0.92, 0.94] },
-      sky: { zen: [0.16, 0.26, 0.52], hor: [1.0, 0.72, 0.46], dir: norm3([0.72, 0.24, 0.63]), col: [1.0, 0.74, 0.42], disk: 0.9992, glow: [5, 0.46, 60, 0.6], aurora: 0, cloudDark: [0.46, 0.38, 0.42], cloudLit: [1.0, 0.8, 0.58], clouds: 0.6, stars: 0 },
-      lamps: { every: 80, i: 0.75, col: [1, 0.86, 0.64] }, banners: true,
-      trees: { near: 0.7, far: 0.85, snow: 0.7, green: [0.07, 0.16, 0.12] },
+      id: 'slopestyle', name: 'Gold Medal Slopestyle', time: 'SUNNY DAY', diff: 'HARD',
+      sub: 'A competition course like the one at the Games: three rail sections with three lines each, then three jumps.',
+      half: 24, curve: [6, 360, 3, 160], slope: 0.23, alt: 2900, length: 1900,
+      zones: [Z('RAIL SECTION 1', 'railStation', 170, { n: 0 }), Z('RAIL SECTION 2', 'railStation', 170, { n: 1 }), Z('RAIL SECTION 3', 'railStation', 170, { n: 2 }),
+        Z('JUMP 1', 'jumpStation', 300, { n: 0 }), Z('JUMP 2', 'jumpStation', 300, { n: 1 }), Z('JUMP 3', 'jumpStation', 300, { n: 2 })],
+      first: 'START GATE', stands: true,
+      light: { sky: [0.38, 0.45, 0.6], ground: [0.27, 0.28, 0.33], sunDir: norm3([0.3, 0.6, 0.74]), sun: [0.6, 0.58, 0.52], fog: [0.76, 0.84, 0.95], rim: [0.25, 0.3, 0.38], snow: [0.9, 0.93, 0.97], powder: [0.87, 0.9, 0.96] },
+      sky: { zen: [0.12, 0.36, 0.8], hor: [0.7, 0.82, 0.96], dir: norm3([0.3, 0.6, 0.74]), col: [1.0, 0.96, 0.85], disk: 0.9993, glow: [8, 0.32, 120, 0.55], aurora: 0, cloudDark: [0.74, 0.8, 0.9], cloudLit: [1, 1, 1], clouds: 0.6, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.65, far: 0.85, snow: 0.6, green: [0.08, 0.2, 0.14] },
       snowfall: 0, nets: true, shadows: true,
-      mtn: { dark: [0.32, 0.26, 0.32], cap: [1.0, 0.84, 0.7], k: [0.42, 0.58] },
-      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 16000, t: 'Score 16,000' }, { k: 'giants', v: 1, t: 'Land the Send' }],
-      card: 'linear-gradient(180deg,#2c3470 0%,#c8688a 45%,#ffa45a 75%,#ffe08a 100%)', accent: '#c8ff3a',
+      mtn: { dark: [0.45, 0.54, 0.72], cap: [0.97, 0.98, 1.0], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 12000, t: 'Score 12,000' }, { k: 'perfects', v: 3, t: 'Land 3 perfect landings' }],
+      card: 'linear-gradient(180deg,#1c55c4 0%,#6fb0f2 55%,#f5f9ff 100%)', accent: '#ffd23f',
     },
     jumpline: {
       id: 'jumpline', name: 'Jump Line', time: 'NIGHT', diff: 'MEDIUM',
@@ -488,12 +486,29 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'air', v: 2.5, t: 'Stay in the air for 2.5 seconds' }],
       card: 'linear-gradient(180deg,#0b3aa8 0%,#5b97ea 55%,#ffe9f1 100%)', accent: '#1fb8e0',
     },
+    // the one course for now: a sunny resort run from the top of the chairlift down into the village
+    resort: {
+      id: 'resort', name: 'Pine Valley', time: 'SUNNY DAY', diff: 'MEDIUM', resort: true,
+      sub: 'A sunny resort run from the top of the chairlift: side hits on the blue run, a banked cat track, a mogul field, the red run, the fun park, then down through the village to the lifts.',
+      half: 22, curve: [30, 250, 11, 92], slope: 0.215, alt: 2480, length: 2520,
+      zones: [Z('BLUE RUN', 'sidehits', 400), Z('CAT TRACK', 'cattrack', 250), Z('MOGUL FIELD', 'moguls', 230),
+        Z('RED RUN', 'sidehits', 380, { red: true }), Z('FUN PARK', 'funpark', 380), Z('VILLAGE RUN', 'village', 660)],
+      first: 'TOP STATION', firstLen: 220,
+      light: { sky: [0.38, 0.46, 0.64], ground: [0.27, 0.28, 0.33], sunDir: norm3([-0.42, 0.55, 0.72]), sun: [0.68, 0.64, 0.55], fog: [0.74, 0.84, 0.96], rim: [0.26, 0.3, 0.38], snow: [0.92, 0.94, 0.98], powder: [0.88, 0.91, 0.97] },
+      sky: { zen: [0.07, 0.33, 0.82], hor: [0.66, 0.82, 0.97], dir: norm3([-0.42, 0.55, 0.72]), col: [1.0, 0.95, 0.82], disk: 0.9993, glow: [8, 0.35, 120, 0.6], aurora: 0, cloudDark: [0.72, 0.78, 0.9], cloudLit: [1.0, 1.0, 1.0], clouds: 0.55, stars: 0 },
+      lamps: null,
+      trees: { near: 0.85, far: 0.95, snow: 0.75, green: [0.08, 0.22, 0.14] },
+      snowfall: 0, nets: false, shadows: true,
+      mtn: { dark: [0.36, 0.46, 0.66], cap: [0.96, 0.98, 1.0], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'perfects', v: 6, t: 'Land 6 perfect landings' }],
+      card: 'linear-gradient(180deg,#1660d8 0%,#62a8f2 55%,#e6f2ff 100%)', accent: '#ff5a36',
+    },
   };
   SS.MAPS = MAPS;
   // every mountain that's built (their order seeds the courses, so it never changes) ...
-  SS.ALL_MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24'];
-  // ... and the ones you can ride: just the slopestyle course for now
-  SS.MAP_IDS = ['slopestyle'];
+  SS.ALL_MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24', 'resort'];
+  // ... and the ones you can ride: just the resort run for now
+  SS.MAP_IDS = ['resort'];
   // the courses built like the ones at the Games get an OLYMPIC STYLE badge
   for (const id of ['slopestyle', 'slopequal', 'bigairfinal', 'superpipe', 'sbx']) MAPS[id].oly = true;
   SS.GIANT = GIANT;
@@ -579,7 +594,7 @@
       const slope = new Float32Array(n), amp = new Float32Array(n);
       for (let i = 0; i < n; i++) {
         const z = C.Z0 + i;
-        const t = this.zoneAt(z).type;
+        const zq = this.zoneAt(z), t = zq.type;
         let s = this.map.slope + 0.05 * Math.sin(z / 160 + this.p3);
         if (t === 'kickers') s += 0.02;
         else if (t === 'bigair' || t === 'mega') s += 0.03;
@@ -593,10 +608,16 @@
         else if (t === 'pipe') s = this.map.slope;
         else if (t === 'sbxFinal') s += 0.04;
         else if (t === 'slalom') s -= 0.04;
+        // the resort run: a flat cat track you have to carry speed through, steeper moguls and red run
+        else if (t === 'cattrack') s = 0.12;
+        else if (t === 'moguls') s += 0.05;
+        else if (t === 'sidehits' && zq.opt && zq.opt.red) s += 0.045;
+        else if (t === 'village') s -= 0.05;
+        else if (t === 'funpark') s -= 0.015;
         if (z < 30) s = lerp(0.1, s, clamp((z + 30) / 60, 0, 1));
         if (z > C.LENGTH + 10) s = lerp(s, 0.025, clamp((z - C.LENGTH - 10) / 70, 0, 1));
         slope[i] = s;
-        amp[i] = t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' || t === 'yog' || t === 'yogStart' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
+        amp[i] = t === 'cattrack' || t === 'moguls' ? 0.03 : t === 'village' ? 0.08 : t === 'sidehits' ? 0.3 : t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' || t === 'yog' || t === 'yogStart' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
         if (z < 20) amp[i] = 0;
       }
       const blur = (src, w) => {
@@ -670,6 +691,23 @@
         }
         this.bermArr = blur(this.bermArr, 6);
       }
+      // the resort run: how much cat track, mogul field and village there is at each metre
+      this.catArr = this.mogArr = this.vilArr = null;
+      if (this.map.resort) {
+        const zoneK = (type, ramp, open) => {
+          const a = new Float32Array(n);
+          for (let i = 0; i < n; i++) {
+            const z = C.Z0 + i;
+            let v = 0;
+            for (const zn of this.zones) if (zn.type === type) v = Math.max(v, smooth(clamp((z - zn.z0) / ramp, 0, 1)) * (open ? 1 : smooth(clamp((zn.z1 - z) / ramp, 0, 1))));
+            a[i] = v;
+          }
+          return a;
+        };
+        this.catArr = zoneK('cattrack', 34);
+        this.mogArr = zoneK('moguls', 26);
+        this.vilArr = zoneK('village', 90, true);
+      }
       // how cave-like each metre is (steeper walls inside)
       this.kArr = new Float32Array(n);
       for (let i = 0; i < n; i++) this.kArr[i] = this.caveK(C.Z0 + i);
@@ -712,6 +750,22 @@
         const fade = e < 0 ? 1 : Math.max(0, 1 - e / 6);
         y += ra * Math.sin((z * TAU) / 26 + this.pr) * fade;
       }
+      let vk = 0;
+      if (this.catArr) {
+        // the cat track: a flat lane down the middle, banked walls curling up to the piste edges
+        const ck = this.sample(this.catArr, z);
+        if (ck > 0.001) {
+          const q = clamp((Math.abs(off) - 5.5) / (C.HALF - 5.5), 0, 1);
+          y += ck * Math.pow(q, 1.6) * 4.6;
+        }
+        // moguls: staggered bumps about 9 m apart in diagonal lines, only on the piste
+        const mk = this.sample(this.mogArr, z);
+        if (mk > 0.001 && e < 3) {
+          const u = off * 0.7 + z * 0.35, v = z * 0.7 - off * 0.28;
+          y += mk * (e < 0 ? 1 : 1 - e / 3) * 0.46 * (Math.sin(u) * Math.sin(v) + 0.2 * Math.sin(u * 0.5 + 1.3));
+        }
+        vk = this.sample(this.vilArr, z);
+      }
       if (e > 0 && this.map.open) {
         // a stadium: low banks, then a flat arena around the course
         const eb = Math.min(e, 30);
@@ -726,11 +780,13 @@
         const wall = 0.9 + 0.4 * Math.sin(z * 0.0115 + sd * 2.3 + this.pr) * (1 - ck);
         // how steep the bank climbs changes along the run and differs left and right: narrow gullies, open bowls
         const steep = 0.05 * (0.62 + 0.4 * Math.sin(z * 0.0083 + sd * 2.9 + this.pr) + 0.12 * Math.sin(z * 0.029 - sd));
-        y += lerp(steep, 0.13, ck) * ee * ee + (eb > 38 ? (eb - 38) * wall * lerp(steep / 0.05, 1, ck) : 0);
-        const k1 = Math.min(1, eb / 15) * (1 - ck * 0.7);
+        // in the village the valley floor opens out into gentle terraces for the chalets
+        const vf = vk > 0 ? 1 - vk * 0.78 * (eb < 45 ? 1 : Math.max(0, 1 - (eb - 45) / 40)) : 1;
+        y += vf * (lerp(steep, 0.13, ck) * ee * ee + (eb > 38 ? (eb - 38) * wall * lerp(steep / 0.05, 1, ck) : 0));
+        const k1 = Math.min(1, eb / 15) * (1 - ck * 0.7) * vf;
         y += k1 * (4 * Math.sin(x * 0.045 + z * 0.02) + 2.5 * Math.sin(z * 0.07 + x * 0.03));
         // ridges and gullies running down the banks, and big shoulders further out
-        y += Math.min(1, eb / 22) * (1 - ck) * 2.6 * Math.sin(x * 0.12 + z * 0.045) * Math.sin(z * 0.031 - x * 0.017 + sd);
+        y += vf * Math.min(1, eb / 22) * (1 - ck) * 2.6 * Math.sin(x * 0.12 + z * 0.045) * Math.sin(z * 0.031 - x * 0.017 + sd);
         if (eb > 24) y += Math.min(1, (eb - 24) / 30) * (1 - ck) * (9 * Math.sin(z * 0.0135 + x * 0.019 + sd) + 4 * Math.sin(z * 0.041 - x * 0.011));
         // the rim of the valley rises into peaks and drops into saddles, so it never runs dead straight
         if (eb > 50) {
@@ -1482,6 +1538,32 @@
             rail(z0 + 285, Math.min(6, HALF - 5), 'rail', 13);
             kicker(z0 + 330, R(-4, 4), 'S');
             break;
+          case 'sidehits': {
+            // natural hits along the edges of a groomed run: lips that lean up toward the trees,
+            // banks to slash, and rollers in the middle (more and bigger on the red run)
+            const red = zn.opt && zn.opt.red;
+            let side = r() < 0.5 ? -1 : 1;
+            for (let at = 28; at < L - 45; at += R(red ? 32 : 40, red ? 44 : 54)) {
+              const pick = r();
+              if (pick < 0.45) kicker(z0 + at, side * (HALF - R(3.6, 5.2)), 'S', { tw: side * 0.45, w: 2.3, Hk: R(1.0, red ? 1.8 : 1.4), noFlags: true });
+              else if (pick < 0.72) kicker(z0 + at, side * (HALF - 2.4), 'Q', { w: 2.2, ew: 1.4, Hk: R(2.0, red ? 3.0 : 2.5), noFlags: true });
+              else kicker(z0 + at, side * R(0, HALF - 9), red ? 'RK2' : 'RK', { w: R(3.2, 4.6) });
+              if (red && r() < 0.4) kicker(z0 + at + R(12, 18), -side * R(2, 7), 'M', { noFlags: true });
+              side = -side;
+            }
+            break;
+          }
+          case 'funpark': {
+            // the resort's little park: kickers down the middle, boxes and rails either side
+            const rows = [['S', ['box', 14, 0], ['rail', 12, 0]], ['M', ['box', 16, 0.7], ['box', 18, 0]], ['M', ['rail', 16, 0], ['rail', 14, 1.0]], ['L', ['box', 20, 0], ['rail', 18, 0]]];
+            rows.forEach(([k, a, b], i) => {
+              const at = z0 + 30 + i * 82;
+              kicker(at, 0, k);
+              rail(at + 6, -10, a[0], a[1], a[2]);
+              rail(at + 8, 10, b[0], b[1], b[2]);
+            });
+            break;
+          }
           default:
             break;
         }
@@ -1573,7 +1655,21 @@
         }
         return true;
       };
+      this.chalets = [];
+      this.buntings = [];
+      if (M.resort) this.layoutResort(R, HALF);
       this.trees = this.trees.filter(clear);
+      if (M.resort) {
+        // keep trees out of the chalets, off the lift line (it's cut through the forest) and away from the stations
+        const lt = this.liftTowers;
+        this.trees = this.trees.filter((t) => {
+          for (const h of this.chalets) if (Math.hypot(t.x - h.x, t.z - h.z) < h.rad + 3) return false;
+          const lx = this.liftX(t.z);
+          if (t.z > lt[0].z - 10 && t.z < lt[lt.length - 1].z + 10 && Math.abs(t.x - lx) < 6) return false;
+          for (const b of this.buntings) if (Math.abs(t.z - b.z) < 3 && (Math.abs(t.x - b.x0) < 3 || Math.abs(t.x - b.x1) < 3)) return false;
+          return true;
+        });
+      }
       this.pillars = this.pillars.filter(clear);
       this.treeBuckets = [];
       for (const t of this.trees) {
@@ -1626,14 +1722,14 @@
         for (const s of [-1, 1]) {
           if (this.lamps.some((l) => l.kind === 'lamp' && l.side === s && Math.abs(l.z - z) < 4)) continue;
           if (M.banners) this.banners.push({ x: this.center(z) + s * (HALF + 1.4), z, i: (z / 32 + (s > 0 ? 1 : 0)) | 0 });
-          else this.poles.push({ x: this.center(z) + s * (HALF + 0.9), z });
+          else this.poles.push({ x: this.center(z) + s * (HALF + 0.9), z, col: M.resort ? this.pisteCol(z) : null });
         }
       }
 
       // chairlift up one bank (not over the cave)
       const ls = r() < 0.5 ? -1 : 1;
-      this.liftSide = ls;
-      for (let z = C.Z0 + 20; z < C.ZMAX; z += 65) {
+      if (!M.resort) this.liftSide = ls;
+      for (let z = C.Z0 + 20; z < C.ZMAX && !M.resort; z += 65) {
         if (this.cave && z > this.cave[0] - 60 && z < this.cave[1] + 60) continue;
         const x = this.center(z) + ls * (HALF + 30);
         this.liftTowers.push({ x, z, gy: this.ground(x, z) });
@@ -1708,10 +1804,12 @@
           if (td > 1.2) for (const sd of [-1, 1]) this.scaffold.push({ z, side: sd, h: td });
         }
       }
-      this.huts = [
+      this.huts = M.resort ? [] : [
         { x: this.center(-14) - (HALF + 7), z: -14, yaw: 0.25, sign: 'start' },
         { x: this.center(C.LENGTH + 55) + (HALF + 9), z: C.LENGTH + 55, yaw: -0.3, sign: 'lodge' },
       ];
+      for (const h of this.chalets) this.colliders.push({ x: h.x, z: h.z, r: h.rad, top: 1e4 });
+      for (const t of this.liftTowers) this.colliders.push({ x: t.x, z: t.z, r: t.station ? 5 : 0.6, top: 1e4 });
       for (const h of this.huts) this.colliders.push({ x: h.x, z: h.z, r: 3.2, top: 1e4 });
 
       this.placeTokens(R);
@@ -1721,6 +1819,84 @@
         const b = ((col.z - C.Z0) / 10) | 0;
         (this.cb[b] = this.cb[b] || []).push(col);
       }
+    }
+
+    // the resort run's colour, like the marker poles on a real piste
+    pisteCol(z) {
+      const t = this.zoneAt(z);
+      if (t.type === 'moguls' || t.type === 'cattrack') return [0.1, 0.1, 0.12];
+      if (t.type === 'sidehits' && t.opt && t.opt.red) return [0.92, 0.16, 0.14];
+      if (t.type === 'funpark') return [1.0, 0.55, 0.05];
+      return [0.1, 0.38, 0.95];
+    }
+
+    // where the chairlift runs: up one side of the piste, crossing over it twice on the way
+    // (over the cat track and again above the village), so you ride right under the chairs
+    liftX(z) {
+      const zs = this.liftCross || [700, 1700];
+      const sg = 1 - 2 * smooth(clamp((z - zs[0] + 80) / 160, 0, 1)) + 2 * smooth(clamp((z - zs[1] + 80) / 160, 0, 1));
+      return this.center(z) + this.liftSide * (C.HALF + 16) * sg;
+    }
+
+    layoutResort(R, HALF) {
+      const r = this.rnd;
+      this.liftSide = r() < 0.5 ? -1 : 1;
+      const ls = this.liftSide;
+      const zc = this.zones.find((zn) => zn.type === 'cattrack'), zv = this.zones.find((zn) => zn.type === 'village');
+      this.liftCross = [zc ? zc.z0 + 90 : 700, zv ? zv.z0 - 60 : 1700];
+      // chairlift: a station at each end, towers every 55 to 70 m, never inside the piste
+      const zA = -48, zB = C.LENGTH + 70;
+      const sx = (z) => this.liftX(z);
+      this.liftTowers.push({ x: sx(zA), z: zA, gy: this.ground(sx(zA), zA), station: 'top' });
+      for (let z = zA + 60; z < zB - 40; z += R(55, 70)) {
+        let zz = null;
+        for (const d of [0, 6, -6, 12, -12, 18, -18, 24, -24]) {
+          const q = z + d;
+          if (Math.abs(sx(q) - this.center(q)) > HALF + 4) { zz = q; break; }
+        }
+        if (zz === null) continue;
+        const x = sx(zz);
+        this.liftTowers.push({ x, z: zz, gy: this.ground(x, zz) });
+        z = zz;
+      }
+      this.liftTowers.push({ x: sx(zB), z: zB, gy: this.ground(sx(zB), zB), station: 'bottom' });
+      // the village: rows of chalets on the terraces either side of the piste, facing it
+      const vz = this.zones.find((zn) => zn.type === 'village');
+      const pal = [
+        { wall: [0.95, 0.93, 0.88], wood: [0.46, 0.27, 0.14], shut: [0.16, 0.42, 0.24] },
+        { wall: [0.96, 0.86, 0.72], wood: [0.38, 0.22, 0.12], shut: [0.62, 0.16, 0.14] },
+        { wall: [0.88, 0.92, 0.96], wood: [0.5, 0.31, 0.17], shut: [0.14, 0.3, 0.55] },
+        { wall: [0.98, 0.95, 0.9], wood: [0.32, 0.19, 0.11], shut: [0.75, 0.5, 0.12] },
+      ];
+      const spot = (side, e, z, o) => {
+        const x = this.center(z) + side * (HALF + e);
+        if (Math.abs(x - sx(z)) < 9 && z > zA && z < zB + 12) return;
+        for (const h of this.chalets) if (Math.hypot(h.x - x, h.z - z) < h.rad + 6) return;
+        const ang = Math.atan2(this.center(z + 1) - this.center(z - 1), 2);
+        const w = o.w || R(4.6, 6.6), d = o.d || R(4.4, 6);
+        this.chalets.push({ x, z, side, yaw: (side > 0 ? -Math.PI / 2 : Math.PI / 2) + ang + R(-0.12, 0.12), w, d, floors: o.floors || (r() < 0.35 ? 3 : 2), pal: pal[(r() * pal.length) | 0], rad: Math.max(w, d) * 0.95, deck: !!o.deck, seed: r() });
+      };
+      if (vz) {
+        for (const side of [-1, 1]) {
+          for (let z = vz.z0 + 70 + R(0, 10); z < C.ZMAX - 30; z += R(17, 25)) {
+            if (z > C.LENGTH - 12 && z < C.LENGTH + 12) continue;
+            spot(side, R(6.5, 9), z, {});
+            if (r() < 0.75) spot(side, R(22, 30), z + R(-6, 6), {});
+            if (r() < 0.4) spot(side, R(38, 50), z + R(-8, 8), { floors: 2 });
+          }
+        }
+        // bunting strung across the piste through the village
+        for (let z = vz.z0 + 120; z < C.LENGTH - 30; z += R(55, 75)) {
+          const c = this.center(z);
+          this.buntings.push({ z, x0: c - HALF - 2.5, x1: c + HALF + 2.5, i: this.buntings.length });
+        }
+      }
+      // the mountain restaurant above the mogul field, with a sun terrace
+      const mz = this.zones.find((zn) => zn.type === 'moguls');
+      if (mz) spot(-ls, 13, mz.z0 - 18, { w: 9, d: 7, floors: 2, deck: true });
+      // a little hut at the top of the fun park
+      const fz = this.zones.find((zn) => zn.type === 'funpark');
+      if (fz) spot(-ls, 9, fz.z0 + 8, { w: 4.2, d: 4, floors: 1 });
     }
 
     // glowing snowflake tokens: along kicker arcs, over boxes and rails, through gates and in slalom lines
@@ -1777,7 +1953,7 @@
         }
       }
       for (const zn of this.zones) {
-        if (!['summit', 'rollers', 'trees', 'finish', 'pillars', 'pillows', 'cliffs'].includes(zn.type)) continue;
+        if (!['summit', 'rollers', 'trees', 'finish', 'pillars', 'pillows', 'cliffs', 'cattrack', 'moguls', 'village'].includes(zn.type)) continue;
         for (let z0 = Math.max(zn.z0, 40) + R(10, 40); z0 < Math.min(zn.z1, C.LENGTH - 30) - 50; z0 += R(80, 120)) {
           const off = R(-C.HALF + 5, C.HALF - 5), amp = R(2, 5), ph = R(0, Math.PI * 2);
           for (let i = 0; i < 6; i++) {
@@ -2086,9 +2262,12 @@
       for (const f of this.gateFlags) add(f.z, { k: 'gate', o: f });
       for (const p of this.pillars) add(p.z, { k: 'pillar', o: p });
       for (const ic of this.icicles) add(ic.z, { k: 'icicle', o: ic });
-      this.liftTowers.forEach((t, i) => add(t.z, { k: 'tower', o: t, next: this.liftTowers[i + 1] && this.liftTowers[i + 1].z - t.z < 70 ? this.liftTowers[i + 1] : null }));
+      const span = this.map.resort ? 140 : 70;
+      this.liftTowers.forEach((t, i) => add(t.z, { k: 'tower', o: t, next: this.liftTowers[i + 1] && this.liftTowers[i + 1].z - t.z < span ? this.liftTowers[i + 1] : null }));
       for (const n of this.nets) add(n.z0, { k: 'net', o: n });
       for (const h of this.huts) add(h.z, { k: 'hut', o: h });
+      for (const h of this.chalets || []) add(h.z, { k: 'chalet', o: h });
+      for (const b of this.buntings || []) add(b.z, { k: 'bunting', o: b });
       for (const st of this.stands) add(st.z, { k: 'stand', o: st });
       for (const c of this.cliffs || []) add(c.z, { k: 'cliff', o: c });
       for (const sc of this.scaffold || []) add(sc.z, { k: 'scaffold', o: sc });
@@ -2136,6 +2315,8 @@
           case 'tower': B.tower(o, it.next); if (it.next) ch.maxZ = Math.max(ch.maxZ, it.next.z); break;
           case 'net': B.net(o); break;
           case 'hut': B.hut(o); break;
+          case 'chalet': B.chalet(o); ch.maxZ = Math.max(ch.maxZ, o.z + 12); ch.minZ = Math.min(ch.minZ, o.z - 12); break;
+          case 'bunting': B.bunting(o); break;
           case 'stand': B.stand(o); ch.maxZ = Math.max(ch.maxZ, o.z + 14); ch.minZ = Math.min(ch.minZ, o.z - 14); break;
           case 'mouth': B.mouth(o); break;
           case 'cliff': B.cliff(o); break;
@@ -3297,7 +3478,7 @@
 
     pole(p) {
       const gy = this.w.ground(p.x, p.z);
-      this.box(p.x, gy + 0.85, p.z, 0.05, 0.95, 0.05, 0, [0.95, 0.28, 0.1]);
+      this.box(p.x, gy + 0.85, p.z, 0.05, 0.95, 0.05, 0, p.col || [0.95, 0.28, 0.1]);
       this.box(p.x, gy + 1.25, p.z, 0.055, 0.12, 0.055, 0, [0.12, 0.12, 0.14]);
     }
 
@@ -3398,21 +3579,224 @@
 
     tower(t, next) {
       const top = t.gy + 13;
-      this.box(t.x, t.gy + 6.5, t.z, 0.35, 6.8, 0.35, 0, [0.22, 0.23, 0.27]);
-      this.box(t.x, top, t.z, 3.0, 0.15, 0.25, 0, [0.22, 0.23, 0.27]);
+      const resort = this.w.map.resort;
+      if (t.station) this.station(t);
+      else if (resort) {
+        // a lattice-free steel tower: tapered post, a crossarm with sheave trains at each end, and a ladder
+        const steel = [0.32, 0.34, 0.4];
+        this.box(t.x, t.gy + 0.4, t.z, 0.9, 0.5, 0.9, 0, [0.62, 0.62, 0.64]);
+        this.cyl(t.x, t.gy, t.z, 0.42, 0.3, 13, 8, steel);
+        this.box(t.x, top + 0.1, t.z, 3.1, 0.16, 0.22, 0, steel);
+        for (const sx of [-2.6, 2.6]) this.box(t.x + sx, top - 0.12, t.z, 0.12, 0.14, 0.9, 0, [0.18, 0.19, 0.22]);
+        this.box(t.x + 0.42, t.gy + 6.5, t.z, 0.03, 6.4, 0.18, 0, [0.85, 0.75, 0.15]);
+      } else {
+        this.box(t.x, t.gy + 6.5, t.z, 0.35, 6.8, 0.35, 0, [0.22, 0.23, 0.27]);
+        this.box(t.x, top, t.z, 3.0, 0.15, 0.25, 0, [0.22, 0.23, 0.27]);
+      }
       if (!next) return;
       const ntop = next.gy + 13;
       const cable = this.w.map.lamps ? [0.08, 0.09, 0.12] : [0.25, 0.27, 0.32];
+      const len = Math.hypot(next.x - t.x, next.z - t.z);
+      const ax = (next.x - t.x) / len, az = (next.z - t.z) / len, yaw = Math.atan2(ax, az);
+      const px = az, pz = -ax;
+      const seatCols = [[0.12, 0.36, 0.86], [0.92, 0.22, 0.16], [0.98, 0.76, 0.12]];
+      const jackets = [[0.9, 0.3, 0.2], [0.15, 0.5, 0.9], [0.2, 0.7, 0.4], [0.95, 0.75, 0.2], [0.6, 0.3, 0.8], [0.12, 0.12, 0.14]];
       for (const s of [-2.6, 2.6]) {
-        this.line(t.x + s, top - 0.2, t.z, next.x + s, ntop - 0.2, next.z, cable);
-        const n = 4;
-        for (let i = 1; i < n; i++) {
-          const k = i / n;
-          const cx = lerp(t.x, next.x, k) + s, cz = lerp(t.z, next.z, k), cy = lerp(top, ntop, k) - 0.2 - Math.sin(k * Math.PI) * 0.6;
-          this.line(cx, cy, cz, cx, cy - 2.0, cz, cable);
-          this.box(cx, cy - 2.2, cz, 0.7, 0.07, 0.35, 0, [0.3, 0.32, 0.38]);
-          this.box(cx, cy - 1.85, cz + 0.32, 0.7, 0.32, 0.05, 0, [0.3, 0.32, 0.38]);
+        const x0 = t.x + px * s, z0 = t.z + pz * s, x1 = next.x + px * s, z1 = next.z + pz * s;
+        if (!resort) {
+          this.line(t.x + s, top - 0.2, t.z, next.x + s, ntop - 0.2, next.z, cable);
+          const n = 4;
+          for (let i = 1; i < n; i++) {
+            const k = i / n;
+            const cx = lerp(t.x, next.x, k) + s, cz = lerp(t.z, next.z, k), cy = lerp(top, ntop, k) - 0.2 - Math.sin(k * Math.PI) * 0.6;
+            this.line(cx, cy, cz, cx, cy - 2.0, cz, cable);
+            this.box(cx, cy - 2.2, cz, 0.7, 0.07, 0.35, 0, [0.3, 0.32, 0.38]);
+            this.box(cx, cy - 1.85, cz + 0.32, 0.7, 0.32, 0.05, 0, [0.3, 0.32, 0.38]);
+          }
+          continue;
         }
+        // the haul rope sags a little between towers; chairs hang off it every 12 m or so
+        const seg = 8;
+        let lx = x0, ly = top - 0.25, lz = z0;
+        for (let i = 1; i <= seg; i++) {
+          const k = i / seg;
+          const cx = lerp(x0, x1, k), cz = lerp(z0, z1, k), cy = lerp(top, ntop, k) - 0.25 - Math.sin(k * Math.PI) * 0.9;
+          this.line(lx, ly, lz, cx, cy, cz, cable);
+          lx = cx; ly = cy; lz = cz;
+        }
+        const nC = Math.max(2, Math.round(len / 12));
+        const face = s > 0 ? 1 : -1; // chairs going up face downhill, coming down face uphill
+        for (let i = 1; i < nC; i++) {
+          const k = (i + (s > 0 ? 0.5 : 0)) / nC;
+          if (k >= 1) continue;
+          const h = hash(t.z * 0.13 + i, s);
+          const cx = lerp(x0, x1, k), cz = lerp(z0, z1, k), cy = lerp(top, ntop, k) - 0.25 - Math.sin(k * Math.PI) * 0.9;
+          const sc = seatCols[(t.z / 7 + i) % 3 | 0] || seatCols[0];
+          this.line(cx, cy, cz, cx, cy - 2.3, cz, [0.2, 0.21, 0.25]);
+          const P = (u, v) => [cx + px * u + ax * v * face, cz + pz * u + az * v * face];
+          const seat = P(0, 0.12), back = P(0, -0.22), bar = P(0, 0.55);
+          this.box(seat[0], cy - 2.45, seat[1], 0.85, 0.06, 0.28, yaw, sc);
+          this.box(back[0], cy - 2.12, back[1], 0.85, 0.3, 0.05, yaw, sc);
+          this.box(bar[0], cy - 2.05, bar[1], 0.85, 0.025, 0.025, yaw, [0.2, 0.21, 0.25]);
+          // some chairs carry riders: a torso, legs dangling and a helmet
+          const riders = h < 0.45 ? 0 : h < 0.75 ? 1 : 2;
+          for (let q = 0; q < riders; q++) {
+            const u = riders === 1 ? (h > 0.6 ? 0.35 : -0.35) : q ? 0.42 : -0.42;
+            const jc = jackets[((h * 97 + q * 3) | 0) % jackets.length];
+            const bp = P(u, -0.02), lp = P(u, 0.38);
+            this.box(bp[0], cy - 2.05, bp[1], 0.2, 0.32, 0.14, yaw, jc);
+            this.box(bp[0], cy - 1.6, bp[1], 0.12, 0.13, 0.12, yaw, [0.85, 0.85, 0.88]);
+            this.box(lp[0], cy - 2.62, lp[1], 0.16, 0.24, 0.1, yaw, [0.16, 0.18, 0.24]);
+          }
+        }
+      }
+    }
+
+    // a chairlift station: a long roofed hall over the bullwheel, a terminal deck and the lift's sign
+    station(t) {
+      const w = this.w;
+      const gy = t.gy;
+      const yaw = Math.atan2(w.liftX(t.z + 1) - w.liftX(t.z - 1), 2);
+      const c = Math.cos(yaw), s = Math.sin(yaw);
+      const P = (x, y, z) => [t.x + x * c + z * s, gy + y, t.z - x * s + z * c];
+      const wall = [0.86, 0.88, 0.9], dark = [0.22, 0.23, 0.27], roof = [0.95, 0.97, 1.0];
+      // the hall on a concrete plinth that reaches down into the slope
+      this.box(t.x, gy - 1.5, t.z, 4.4, 2.5, 7.4, yaw, [0.6, 0.6, 0.62]);
+      this.box(t.x, gy + 2.4, t.z, 4.2, 1.6, 7.2, yaw, wall);
+      for (const z of [-5.4, -1.8, 1.8, 5.4]) { const p = P(4.22, 2.6, z); this.box(p[0], p[1], p[2], 0.04, 0.6, 1.2, yaw, [0.3, 0.42, 0.58]); const q = P(-4.22, 2.6, z); this.box(q[0], q[1], q[2], 0.04, 0.6, 1.2, yaw, [0.3, 0.42, 0.58]); }
+      // the terminal: the bullwheel deck on four legs, up at rope height
+      for (const [x, z] of [[-2.2, -3], [2.2, -3], [-2.2, 3], [2.2, 3]]) { const p = P(x, 8.6, z); this.box(p[0], p[1], p[2], 0.3, 4.6, 0.3, yaw, dark); }
+      const h0 = P(0, 12.7, 0);
+      this.box(h0[0], h0[1], h0[2], 3.3, 0.55, 4.2, yaw, [0.9, 0.22, 0.16]);
+      this.cyl(h0[0], gy + 12.05, h0[2], 2.75, 2.75, 0.12, 20, dark, true);
+      const rf = P(0, 13.35, 0);
+      this.box(rf[0], rf[1], rf[2], 3.5, 0.1, 4.4, yaw, roof);
+      // pitched roof over the hall
+      const o = P(0, 4.0, 0);
+      const r1 = P(-4.9, 4.0, -7.8), r2 = P(-4.9, 4.0, 7.8), r3 = P(0, 5.9, 7.8), r4 = P(0, 5.9, -7.8), r5 = P(4.9, 4.0, 7.8), r6 = P(4.9, 4.0, -7.8);
+      this.quad(r1, r2, r3, r4, roof, [o[0], o[1] - 2, o[2]]);
+      this.quad(r4, r3, r5, r6, roof, [o[0], o[1] - 2, o[2]]);
+      this.tri(r1[0], r1[1], r1[2], r4[0], r4[1], r4[2], r6[0], r6[1], r6[2], dark, o[0], o[1] - 2, o[2]);
+      this.tri(r2[0], r2[1], r2[2], r3[0], r3[1], r3[2], r5[0], r5[1], r5[2], dark, o[0], o[1] - 2, o[2]);
+      // the lift's name board
+      const sg = P(0, 7.3, t.station === 'top' ? 7.6 : -7.6);
+      this.box(sg[0], sg[1], sg[2], 2.4, 0.5, 0.06, yaw, [0.1, 0.36, 0.9]);
+      const sw = P(0, 7.3, t.station === 'top' ? 7.67 : -7.67);
+      this.box(sw[0], sw[1], sw[2], 1.9, 0.12, 0.02, yaw, [0.98, 0.98, 1.0]);
+    }
+
+    // an alpine chalet: stone plinth, a plastered ground floor, timber floors above, balconies,
+    // shutters and a deep snowy gable roof that faces the piste
+    chalet(h) {
+      const w = this.w;
+      const c = Math.cos(h.yaw), s = Math.sin(h.yaw);
+      const W = h.w / 2, D = h.d / 2, FH = 2.7, F = h.floors;
+      let lo = 1e9, hi = -1e9;
+      for (const [u, v] of [[-W, -D], [W, -D], [-W, D], [W, D], [0, 0]]) {
+        const g = w.ground(h.x + u * c + v * s, h.z - u * s + v * c);
+        lo = Math.min(lo, g); hi = Math.max(hi, g);
+      }
+      const gy = hi - 0.15;
+      const P = (x, y, z) => [h.x + x * c + z * s, gy + y, h.z - x * s + z * c];
+      const B = (x, y, z, hx, hy, hz, col) => { const p = P(x, y, z); this.box(p[0], p[1], p[2], hx, hy, hz, h.yaw, col); };
+      const pal = h.pal, stone = [0.55, 0.55, 0.56], dark = [0.2, 0.13, 0.08], snowc = [0.96, 0.98, 1.0];
+      const glass = [0.24, 0.34, 0.48], frame = [0.95, 0.94, 0.9];
+      const base = lo - gy - 0.4;
+      B(0, (base + 0.8) / 2, 0, W + 0.1, (0.8 - base) / 2, D + 0.1, stone);
+      B(0, 0.8 + FH / 2, 0, W, FH / 2, D, pal.wall);
+      if (F > 1) B(0, 0.8 + FH + ((F - 1) * FH) / 2, 0, W, ((F - 1) * FH) / 2, D, pal.wood);
+      const top = 0.8 + F * FH;
+      // timber boards: a dark line under each floor
+      for (let f = 1; f <= F; f++) B(0, 0.8 + f * FH, 0, W + 0.04, 0.06, D + 0.04, dark);
+      // the gable roof: ridge runs front to back, so the triangle faces the piste (+z local)
+      const ov = 0.9, pitch = 0.58, RH = (W + ov) * pitch;
+      const e1 = P(-W - ov, top - ov * pitch, -D - ov), e2 = P(-W - ov, top - ov * pitch, D + ov);
+      const k1 = P(0, top + W * pitch, D + ov), k2 = P(0, top + W * pitch, -D - ov);
+      const f1 = P(W + ov, top - ov * pitch, D + ov), f2 = P(W + ov, top - ov * pitch, -D - ov);
+      const ctr = P(0, top - 1, 0);
+      this.quad(e1, e2, k1, k2, snowc, ctr);
+      this.quad(k2, k1, f1, f2, snowc, ctr);
+      // eaves: the roof's thickness in dark timber
+      const dn = (p) => [p[0], p[1] - 0.28, p[2]];
+      this.quad(e2, k1, dn(k1), dn(e2), dark, ctr);
+      this.quad(k1, f1, dn(f1), dn(k1), dark, ctr);
+      this.quad(f2, k2, dn(k2), dn(f2), dark, ctr);
+      this.quad(k2, e1, dn(e1), dn(k2), dark, ctr);
+      this.quad(dn(e1), dn(e2), dn(k1), dn(k2), dark, [ctr[0], ctr[1] + 6, ctr[2]]);
+      this.quad(dn(k2), dn(k1), dn(f1), dn(f2), dark, [ctr[0], ctr[1] + 6, ctr[2]]);
+      // gable ends in timber
+      for (const zz of [D, -D]) {
+        const a = P(-W, top, zz), b = P(W, top, zz), t2 = P(0, top + W * pitch, zz);
+        this.tri(a[0], a[1], a[2], b[0], b[1], b[2], t2[0], t2[1], t2[2], pal.wood, ctr[0], ctr[1], ctr[2]);
+      }
+      // windows with shutters on the front, two or three per floor, and a door
+      const nw = W > 2.8 ? 3 : 2;
+      for (let f = 0; f < F; f++) {
+        const y = 0.8 + f * FH + 1.45;
+        for (let i = 0; i < nw; i++) {
+          const x = -W + ((i + 0.5) * 2 * W) / nw;
+          if (f === 0 && i === (nw === 3 ? 1 : 0)) {
+            B(x, 0.8 + 1.05, D + 0.03, 0.5, 1.05, 0.04, dark);
+            continue;
+          }
+          B(x, y, D + 0.03, 0.42, 0.5, 0.03, frame);
+          B(x, y, D + 0.06, 0.34, 0.42, 0.02, glass);
+          B(x - 0.62, y, D + 0.05, 0.17, 0.5, 0.03, pal.shut);
+          B(x + 0.62, y, D + 0.05, 0.17, 0.5, 0.03, pal.shut);
+          if (f > 0) B(x, y - 0.62, D + 0.18, 0.4, 0.09, 0.14, [0.75, 0.2, 0.22]);
+        }
+        // side windows
+        for (const sx of [-1, 1]) {
+          B(sx * (W + 0.03), y, D * 0.35, 0.03, 0.45, 0.4, frame);
+          B(sx * (W + 0.05), y, D * 0.35, 0.02, 0.38, 0.32, glass);
+        }
+      }
+      // a balcony across the front of the upper floor
+      if (F > 1) {
+        const by = 0.8 + FH + 0.08;
+        B(0, by, D + 0.65, W + 0.3, 0.08, 0.65, pal.wood);
+        B(0, by + 1.0, D + 1.27, W + 0.3, 0.05, 0.05, dark);
+        B(0, by + 0.5, D + 1.27, W + 0.3, 0.42, 0.025, pal.wood);
+        for (const sx of [-1, 1]) B(sx * (W + 0.27), by + 0.5, D + 0.65, 0.03, 0.5, 0.65, pal.wood);
+      }
+      // chimney
+      const chy = top + W * pitch * 0.55;
+      B(W * 0.45, chy + 0.5, -D * 0.4, 0.3, 0.9, 0.3, stone);
+      B(W * 0.45, chy + 1.45, -D * 0.4, 0.38, 0.06, 0.38, [0.35, 0.35, 0.36]);
+      // the mountain restaurant's sun terrace: a deck with tables and parasols
+      if (h.deck) {
+        B(0, 0.75, D + 3.2, W + 1, 0.1, 3, pal.wood);
+        B(0, 0.35, D + 3.2, W + 1, 0.4, 3, stone);
+        const cols = [[0.92, 0.2, 0.16], [0.98, 0.98, 1.0], [0.92, 0.2, 0.16]];
+        for (let i = 0; i < 3; i++) {
+          const x = -W + 1 + i * W;
+          const p = P(x, 0.85, D + 3.2);
+          this.cyl(p[0], p[1], p[2], 0.05, 0.05, 2.5, 5, [0.85, 0.85, 0.86]);
+          this.cyl(p[0], p[1] + 2.0, p[2], 1.5, 0.0, 0.75, 10, cols[i]);
+          B(x, 1.6, D + 3.2, 0.55, 0.04, 0.55, [0.55, 0.36, 0.2]);
+          for (const q of [-0.9, 0.9]) B(x + q, 1.3, D + 3.2, 0.18, 0.4, 0.4, [0.55, 0.36, 0.2]);
+        }
+      }
+    }
+
+    // bunting: a line of little flags strung across the piste between two poles
+    bunting(b) {
+      const w = this.w;
+      const g0 = w.ground(b.x0, b.z), g1 = w.ground(b.x1, b.z);
+      const y0 = g0 + 7.5, y1 = g1 + 7.5;
+      for (const [x, g] of [[b.x0, g0], [b.x1, g1]]) this.box(x, g + 3.9, b.z, 0.09, 4.0, 0.09, 0, [0.86, 0.86, 0.9]);
+      const cols = [[0.95, 0.2, 0.18], [1.0, 0.78, 0.1], [0.12, 0.5, 0.95], [0.2, 0.78, 0.38], [0.98, 0.98, 1.0]];
+      const n = Math.round((b.x1 - b.x0) / 0.9);
+      const yAt = (k) => lerp(y0, y1, k) - Math.sin(k * Math.PI) * 1.4;
+      let px = b.x0, py = y0;
+      for (let i = 1; i <= n; i++) {
+        const k = i / n, x = lerp(b.x0, b.x1, k), y = yAt(k);
+        this.line(px, py, b.z, x, y, b.z, [0.3, 0.3, 0.32]);
+        if (i < n) {
+          const xm = (px + x) / 2, ym = (py + y) / 2;
+          this.tri(px + 0.08, py - 0.02, b.z, x - 0.08, y - 0.02, b.z, xm, ym - 0.62, b.z, cols[(i + b.i) % cols.length], xm, ym, b.z - 1, 0.35);
+        }
+        px = x; py = y;
       }
     }
 

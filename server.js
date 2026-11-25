@@ -33,7 +33,7 @@ const LATE_JOIN_MS = 30000;
 
 // the mountains the servers ride (ids match public/js/world.js): one course for now
 const MAPS = [
-  { id: 'slopestyle', name: 'Sundown Park' },
+  { id: 'resort', name: 'Pine Valley' },
 ];
 
 accounts.init(MAPS);
@@ -597,5 +597,5 @@ setInterval(() => {
 }, 20000);
 
 server.listen(PORT, '0.0.0.0', () => {
-  log(`Sendline running on port ${PORT} with ${rooms.size} servers (max ${MAX_PLAYERS} riders each)`);
+  log(`Shred Slope running on port ${PORT} with ${rooms.size} servers (max ${MAX_PLAYERS} riders each)`);
 });

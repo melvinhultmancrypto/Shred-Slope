@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sendline</title>
-  <meta name="description" content="Sendline: a 3D snowboarding game in the browser. Drop into a slopestyle course with rails and big jumps, throw corks, rodeos and misties, and ride solo or race up to 10 friends.">
+  <title>Shred Slope</title>
+  <meta name="description" content="Shred Slope: a 3D snowboarding game in the browser. Ride a sunny resort run with side hits, moguls and a fun park, throw corks, rodeos and misties, and ride solo or race up to 10 friends.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,500;0,600;0,700;0,800;1,600;1,700;1,800;1,900&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
@@ -74,7 +74,7 @@
   <!-- The lobby: a rail of pages on the left, the rider, and what to do on the right -->
   <section id="title" class="overlay lobby" data-page="ride">
     <nav id="lobbyTabs" class="rail" aria-label="Lobby">
-      <div class="rail-logo"><img src="img/logo.svg" alt="Sendline"></div>
+      <div class="rail-logo"><img src="img/logo.png" alt="Shred Slope"></div>
       <button type="button" data-page="ride" class="sel"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 19 9.5 7l4 6 2.5-3.5L21 19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Play</span></button>
       <button id="lockerBtn" type="button" data-page="locker"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3 4 6v4l3 1v10h10V11l3-1V6l-4-3c-.5 1.6-2 2.6-4 2.6S8.5 4.6 8 3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span>Locker</span></button>
       <button id="shopBtn" type="button" data-page="shop"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.3 12H6.3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8" fill="none" stroke="currentColor" stroke-width="1.8"/></svg><span>Shop</span></button>
@@ -85,7 +85,7 @@
       <button id="settingsBtn" class="rail-gear" type="button" aria-label="Settings" title="Settings"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8.6a3.4 3.4 0 1 0 0 6.8 3.4 3.4 0 0 0 0-6.8zm8.2 4.7-1.9 1.1c-.1.5-.3 1-.6 1.4l.6 2.1-1.5 1.5-2.1-.6c-.4.3-.9.5-1.4.6l-1.1 1.9h-2.2l-1.1-1.9c-.5-.1-1-.3-1.4-.6l-2.1.6-1.5-1.5.6-2.1c-.3-.4-.5-.9-.6-1.4l-1.9-1.1v-2.2l1.9-1.1c.1-.5.3-1 .6-1.4l-.6-2.1 1.5-1.5 2.1.6c.4-.3.9-.5 1.4-.6L10.9 3h2.2l1.1 1.9c.5.1 1 .3 1.4.6l2.1-.6 1.5 1.5-.6 2.1c.3.4.5.9.6 1.4l1.9 1.1z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg></button>
     </nav>
     <header class="topbar">
-      <div class="wordmark brush"><b>Send</b>line</div>
+      <div class="wordmark brush"><b>Shred</b> Slope</div>
       <div class="top-right">
         <div id="passCoins" class="coins hidden" title="Your coins: play money you earn by riding"><i class="coin" aria-hidden="true"></i><b id="coinsTotal">0</b></div>
         <div id="passAcct" class="acct-chip hidden"></div>
@@ -95,13 +95,13 @@
     <!-- PLAY -->
     <div class="page page-ride" data-page="ride">
       <div class="stage stage-ride" data-yaw="0.36" aria-label="Your rider: drag to turn">
-        <button id="riderTag" class="nameplate" type="button" data-goto="locker"><span id="riderName">RIDER</span><small>EDIT LOOK</small></button>
+        <button id="riderTag" class="nameplate" type="button" data-goto="locker"><span id="riderName">RIDER</span><em id="riderWho" class="rider-who"></em><span id="riderStats" class="rider-stats"></span><small>CHANGE RIDER</small></button>
       </div>
       <div class="play-col">
         <div class="course-card">
           <span class="kicker">THE COURSE</span>
-          <h2 class="brush">Sundown Park</h2>
-          <div class="cc-meta"><span>Jib garden</span><span>3 rail sections</span><span>2 jump lines</span><span>The Send</span></div>
+          <h2 class="brush">Pine Valley</h2>
+          <div class="cc-meta"><span>Side hits</span><span>Cat track</span><span>Moguls</span><span>Fun park</span><span>The village</span></div>
           <div class="cc-foot"><span class="cc-stars" id="courseStars"></span><span>BEST <b id="bestScore">0</b></span></div>
         </div>
         <button id="passCard" class="pass-card" type="button" data-goto="pass">
@@ -122,9 +122,9 @@
     <!-- LOCKER -->
     <div class="page page-locker" data-page="locker" data-blur="1" data-dim="0.5">
       <aside class="locker-panel scroll">
-        <div class="lk-head"><div class="lk-tabs"><span class="brush sel">Outfit</span></div><span id="lockerSaved" class="saved">&#10003; Saved</span></div>
+        <div class="lk-head"><div class="lk-tabs"><span class="brush sel">Rider &amp; gear</span></div><span id="lockerSaved" class="saved">&#10003; Saved</span></div>
         <label class="field"><span class="kicker">RIDER NAME</span><input id="nameInput" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Your name"></label>
-        <div class="kicker lk-label">GEAR</div>
+        <div class="kicker lk-label">RIDER AND GEAR</div>
         <div id="slotTiles" class="slot-tiles"></div>
         <div class="kicker lk-label" id="lockerListLabel">SUITS</div>
         <div id="lockerGrid" class="lk-grid"></div>
@@ -142,7 +142,7 @@
         <div class="page-head">
           <h2 class="brush">Shop</h2>
           <span class="page-sub">Earn coins by riding &middot; play money only</span>
-          <div id="shopSlots" class="pills" role="tablist"><button type="button" data-slot="all" class="sel">ALL</button><button type="button" data-slot="suit">SUITS</button><button type="button" data-slot="board">BOARDS</button><button type="button" data-slot="helmet">HELMETS</button><button type="button" data-slot="goggles">GOGGLES</button></div>
+          <div id="shopSlots" class="pills" role="tablist"><button type="button" data-slot="all" class="sel">ALL</button><button type="button" data-slot="suit">SUITS</button><button type="button" data-slot="board">BOARDS</button><button type="button" data-slot="helmet">HATS</button><button type="button" data-slot="goggles">GOGGLES</button></div>
         </div>
         <div id="shopGrid"></div>
         <p id="shopHint" class="hint"></p>
@@ -187,18 +187,20 @@
     <div class="page page-updates" data-page="updates" data-blur="1" data-dim="0.7">
       <div class="upd-main scroll">
         <article class="upd-hero">
-          <div class="upd-pic" style="background-image:url('img/maps/slopestyle.jpg')"></div>
+          <div class="upd-pic" style="background-image:url('img/maps/resort.jpg')"></div>
           <div class="upd-txt">
             <small class="kicker">NEW SEASON</small>
-            <h3 class="brush">Welcome to Sendline</h3>
-            <div class="chips"><span>NEW NAME</span><span>NEW RIDER</span><span>CORKS &amp; RODEOS</span><span>SUNDOWN PARK</span></div>
-            <p>Shred Slope is now Sendline. Everything rides on one brand new course for now, Sundown Park (a whole park at golden hour that ends on a giant kicker), with a new rider, real trick names (cab double cork 1080, anyone?), a new HUD and a new camera.</p>
+            <h3 class="brush">Pine Valley is open</h3>
+            <div class="chips"><span>NEW COURSE</span><span>5 RIDERS</span><span>STREETWEAR</span><span>NEW RIDING</span></div>
+            <p>A sunny resort run from the top of the chairlift down into the village: side hits, a banked cat track, a mogul field, the red run and the fun park. Pick one of five riders, each with their own stats, in baggy streetwear.</p>
           </div>
         </article>
         <div class="kicker upd-month">LATEST</div>
         <div class="upd-grid">
+          <article class="upd"><small class="kicker">RIDERS</small><h4 class="brush">Kai, Mia, Dre, Yuki and Rio</h4><p>Every rider has speed, air, spin and balance. Mia spins fastest, Dre has the top speed, Yuki pops the biggest airs and Rio forgives a sloppy landing.</p></article>
+          <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Snappier, but honest</h4><p>Faster spins and bigger pops, but land sideways at speed and you catch an edge. Deep snow off the piste slows you down, and the cat track needs speed.</p></article>
           <article class="upd"><small class="kicker">TRICKS</small><h4 class="brush">Corks, rodeos, bios, misties</h4><p>Spin and flip together for off-axis tricks. Ride in switch for SWITCH and CAB tricks, and stack flips for doubles, triples and quads.</p></article>
-          <article class="upd"><small class="kicker">SHOP</small><h4 class="brush">Coins and gear</h4><p>Every run pays coins (play money). Spend them on suits, boards, helmets and goggles. Your look shows in multiplayer too.</p></article>
+          <article class="upd"><small class="kicker">SHOP</small><h4 class="brush">Coins and gear</h4><p>Every run pays coins (play money). Spend them on suits, boards, hats and goggles. Your look shows in multiplayer too.</p></article>
           <article class="upd"><small class="kicker">RIDING</small><h4 class="brush">Better jumps</h4><p>Smoother take-offs, no more slow motion off kickers, and the giant kickers land clean again.</p></article>
           <article class="upd"><small class="kicker">CAMERA</small><h4 class="brush">High camera</h4><p>A new HIGH camera hangs up in the sky behind you, so you see the course coming. Pick it in Settings.</p></article>
           <article class="upd"><small class="kicker">MULTIPLAYER</small><h4 class="brush">Voice chat</h4><p>Talk with up to nine other riders on a server: open mic or push to talk.</p></article>
@@ -257,7 +259,7 @@
 
   <!-- Results -->
   <section id="results" class="overlay hidden results" data-blur="1.3" data-dim="0.62">
-    <div class="res-brand" aria-hidden="true"><img src="img/logo.svg" alt=""><span class="brush"><b>Send</b>line</span></div>
+    <div class="res-brand" aria-hidden="true"><img src="img/logo.png" alt=""><span class="brush"><b>Shred</b> Slope</span></div>
     <div class="stage stage-results" data-yaw="-0.3" data-cy="1.25" data-ty="1.0" data-d="4.3" aria-label="Your rider"></div>
     <div class="res-main">
       <h2 id="resTitle" class="brush">RUN COMPLETE</h2>
@@ -382,14 +384,14 @@
   <div id="toast" class="hidden" role="status" aria-live="polite"></div>
 
   <div id="loading">
-    <div class="ld-logo"><img src="img/logo.svg" alt=""><span class="brush"><b>Send</b>line</span></div>
+    <div class="ld-logo"><img src="img/logo.png" alt=""><span class="brush"><b>Shred</b> Slope</span></div>
     <div class="ld-foot"><div class="ld-row"><span id="loadingText" class="kicker">PREPARING THE MOUNTAIN</span><span class="kicker">LOADING</span></div><div class="ld-bar"><i></i></div><p id="loadingTip"></p></div>
   </div>
 
   <section id="nogl" class="overlay hidden modal-ov">
     <div class="modal narrow">
       <h2 class="brush">No 3D</h2>
-      <p>This browser can't run WebGL, which Sendline needs for 3D. Try Chrome, Edge or Firefox.</p>
+      <p>This browser can't run WebGL, which Shred Slope needs for 3D. Try Chrome, Edge or Firefox.</p>
     </div>
   </section>
 
