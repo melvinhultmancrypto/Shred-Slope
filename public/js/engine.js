@@ -394,8 +394,8 @@ void main() {
     float d = clamp((low * low * 1.1 + smoothstep(0.6, 0.95, n.y) * 0.5) * uDust, 0.0, 1.0) * smoothstep(0.5, 0.6, sp);
     base = mix(base, vec3(0.9, 0.93, 0.98), d);
   }
-  // fleece and denim aren't perfectly even: a faint grain across sculpted cloth
-  if (uSkin > 0.5 && uMat < 0.5 && uFold > 0.0) base *= 0.94 + 0.12 * vnoise(vObj.xy * 150.0 + vObj.zx * 95.0);
+  // nylon and twill aren't perfectly even: soft mottling, plus a faint weave close up
+  if (uSkin > 0.5 && uMat < 0.5 && uFold > 0.0) base *= 0.955 + 0.06 * vnoise(vObj.xy * 55.0 + vObj.zx * 38.0) + 0.025 * vnoise(vObj.xy * 260.0 - vObj.zx * 190.0);
   float ndv = max(dot(n, v), 0.0);
   float fres = pow(1.0 - ndv, 4.0);
   float lit = 1.0 - shadowAt(vSh) * 0.9;

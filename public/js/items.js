@@ -8,7 +8,7 @@
  * Five slots: the rider (who you are, with their own stats), a suit (hoodie and pants), a board,
  * a hat and goggles. "stock" in the board, hat and goggles slots means "whatever comes with the suit".
  * The first ten suits are the free outfits everyone has (same order as the outfit picker, rider.js
- * PALETTE). The hat slot keeps its old id, "helmet", so saved looks still load.
+ * PALETTE). The helmet slot.
  */
 (function (root, make) {
   const ITEMS = make();
@@ -64,8 +64,8 @@
     { id: 'h_red', slot: 'helmet', name: 'Cherry', price: 500, tier: 'rare', helmet: '#d9271f' },
     { id: 'h_blue', slot: 'helmet', name: 'Cobalt', price: 500, tier: 'rare', helmet: '#2f6dff' },
     { id: 'h_olive', slot: 'helmet', name: 'Olive', price: 600, tier: 'rare', helmet: '#55603a' },
-    { id: 'h_chrome', slot: 'helmet', name: 'Silver Knit', price: 1500, tier: 'epic', helmet: '#c9ced8', shine: [0.6, 30] },
-    { id: 'h_gold', slot: 'helmet', name: 'Gold Knit', price: 2500, tier: 'legendary', helmet: '#e0b030', shine: [0.7, 30] },
+    { id: 'h_chrome', slot: 'helmet', name: 'Chrome', price: 1500, tier: 'epic', helmet: '#c9ced8', shine: [0.6, 30] },
+    { id: 'h_gold', slot: 'helmet', name: 'Gold Leaf', price: 2500, tier: 'legendary', helmet: '#e0b030', shine: [0.7, 30] },
   ];
 
   const goggles = [
@@ -85,7 +85,7 @@
 
   return {
     SLOTS: ['rider', 'suit', 'board', 'helmet', 'goggles'],
-    SLOT_NAMES: { rider: 'Riders', suit: 'Suits', board: 'Boards', helmet: 'Hats', goggles: 'Goggles' },
+    SLOT_NAMES: { rider: 'Riders', suit: 'Suits', board: 'Boards', helmet: 'Helmets', goggles: 'Goggles' },
     FREE_SUITS: FREE,
     RIDER_IDS,
     riders, suits, boards, helmets, goggles, all,

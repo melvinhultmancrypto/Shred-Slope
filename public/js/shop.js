@@ -99,8 +99,8 @@
   // ---- little pictures for the item cards
   const cssOf = (c) => (Array.isArray(c) ? `rgb(${c.map((v) => Math.round(Math.min(1, v) * 255)).join(',')})` : c);
   // ---- the pictures: 3D shots from game.js, cached; an <img data-k> waits for its shot
-  const SLOT_NAME = { rider: 'Rider', suit: 'Suit', board: 'Board', helmet: 'Hat', goggles: 'Goggles' };
-  const SLOT_PLURAL = { rider: 'RIDERS', suit: 'SUITS', board: 'BOARDS', helmet: 'HATS', goggles: 'GOGGLES' };
+  const SLOT_NAME = { rider: 'Rider', suit: 'Suit', board: 'Board', helmet: 'Helmet', goggles: 'Goggles' };
+  const SLOT_PLURAL = { rider: 'RIDERS', suit: 'SUITS', board: 'BOARDS', helmet: 'HELMETS', goggles: 'GOGGLES' };
   // a rider's four stats as little bars (1 to 5)
   const STAT_NAMES = [['speed', 'SPD'], ['air', 'AIR'], ['spin', 'SPN'], ['balance', 'BAL']];
   function statBars(st) {
