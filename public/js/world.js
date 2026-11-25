@@ -505,12 +505,30 @@
       goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 10000, t: 'Score 10,000' }, { k: 'perfects', v: 6, t: 'Land 6 perfect landings' }],
       card: 'linear-gradient(180deg,#1660d8 0%,#62a8f2 55%,#e6f2ff 100%)', accent: '#ff5a36',
     },
+    // the main course: Stellhorn, straight down through an alpine village on a grey winter day
+    village: {
+      id: 'village', name: 'Stellhorn Village', time: 'OVERCAST', diff: 'HARD', village: true,
+      sub: 'Straight down through the village: handrails down the stair sets, ledges to drop, gaps between the houses, the post office rails, two jump lines and the Sawmill Drop into the square.',
+      half: 28, curve: [9, 300, 4, 140], slope: 0.24, alt: 1450, length: 2210,
+      zones: [Z('01 / BAKERY LANE', 'street', 260), Z('02 / SCHOOLHOUSE STEPS', 'street', 260, { kinks: true }), Z('03 / FOUNTAIN JUMPS', 'jumpStation', 300, { n: 0 }),
+        Z('04 / POST OFFICE RAILS', 'railStation', 170, { n: 2 }), Z('05 / TANNERY ROW', 'street', 260, { kinks: true }),
+        Z('06 / CHURCHYARD GAP', 'jumpStation', 300, { n: 1 }), Z('07 / SAWMILL DROP', 'giant', 300)],
+      first: 'TOWN GATE', stands: true,
+      light: { sky: [0.5, 0.53, 0.6], ground: [0.38, 0.39, 0.43], sunDir: norm3([-0.3, 0.75, 0.6]), sun: [0.42, 0.42, 0.43], fog: [0.78, 0.81, 0.86], rim: [0.2, 0.22, 0.25], snow: [0.85, 0.87, 0.91], powder: [0.82, 0.84, 0.89] },
+      sky: { zen: [0.5, 0.55, 0.63], hor: [0.85, 0.87, 0.9], dir: norm3([-0.3, 0.6, 0.7]), col: [1, 0.98, 0.95], disk: 0.99995, glow: [3, 0.12, 60, 0.25], aurora: 0, cloudDark: [0.62, 0.66, 0.74], cloudLit: [0.93, 0.94, 0.96], clouds: 1, stars: 0 },
+      lamps: null, banners: true,
+      trees: { near: 0.3, far: 0.9, snow: 1, green: [0.1, 0.2, 0.16] },
+      snowfall: 0.25, nets: true, shadows: true,
+      mtn: { dark: [0.5, 0.54, 0.62], cap: [0.95, 0.96, 0.98], k: [0.6, 0.45] },
+      goals: [{ k: 'finish', t: 'Finish the run' }, { k: 'score', v: 16000, t: 'Score 16,000' }, { k: 'giants', v: 1, t: 'Land the Sawmill Drop' }],
+      card: 'linear-gradient(180deg,#9aa3b0 0%,#cfd5dd 55%,#f2f4f7 100%)', accent: '#e4e6ea',
+    },
   };
   SS.MAPS = MAPS;
   // every mountain that's built (their order seeds the courses, so it never changes) ...
-  SS.ALL_MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24', 'resort'];
-  // ... and the ones you can ride: just Sundown Park for now
-  SS.MAP_IDS = ['slopestyle'];
+  SS.ALL_MAP_IDS = ['night', 'bluebird', 'sunset', 'woods', 'cave', 'bigair', 'railking', 'triple', 'slopestyle', 'jumpline', 'cliffs', 'neon', 'bigairfinal', 'superpipe', 'sbx', 'slopequal', 'oly14', 'oly18', 'oly22', 'oly26', 'yog12', 'yog20', 'yog24', 'resort', 'village'];
+  // ... and the ones you can ride: the village, and Sundown Park at night
+  SS.MAP_IDS = ['village', 'slopestyle'];
   // the courses built like the ones at the Games get an OLYMPIC STYLE badge
   for (const id of ['slopestyle', 'slopequal', 'bigairfinal', 'superpipe', 'sbx']) MAPS[id].oly = true;
   SS.GIANT = GIANT;
@@ -619,7 +637,7 @@
         if (z < 30) s = lerp(0.1, s, clamp((z + 30) / 60, 0, 1));
         if (z > C.LENGTH + 10) s = lerp(s, 0.025, clamp((z - C.LENGTH - 10) / 70, 0, 1));
         slope[i] = s;
-        amp[i] = t === 'cattrack' || t === 'moguls' ? 0.03 : t === 'village' ? 0.08 : t === 'sidehits' ? 0.3 : t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' || t === 'yog' || t === 'yogStart' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
+        amp[i] = t === 'cattrack' || t === 'moguls' ? 0.03 : t === 'village' ? 0.08 : t === 'street' ? 0.06 : t === 'sidehits' ? 0.3 : t === 'rollers' ? 1.7 : t === 'whoops' ? 0.85 : t === 'summit' ? 0.35 : t === 'finish' || t === 'yog' || t === 'yogStart' ? 0.1 : t === 'giant' || t === 'tower' || t === 'pipe' ? 0.02 : 0.18;
         if (z < 20) amp[i] = 0;
       }
       const blur = (src, w) => {
@@ -1468,6 +1486,18 @@
             });
             break;
           }
+          case 'street': {
+            // a village street: handrails down the stair sets on both sides with a ledge to drop between
+            // them, a gap between the houses, then a long flat bar
+            const o = zn.opt || {};
+            const lane = HALF - 4.5, side = r() < 0.5 ? -1 : 1;
+            const segs = o.kinks ? [[4, 'f'], [8, 0.14], [4, 0], [8, 0.14], [4, 0]] : [[4, 'f'], [18, 0.12], [4, 0]];
+            for (const s2 of [-1, 1]) srail(z0 + 22, s2 * lane, segs, { style: 'hand', h: 0.85, label: o.kinks ? 'KINKED HANDRAIL' : 'HANDRAIL' });
+            deck(z0 + 18, 0, 1.5, 9, 10);
+            kicker(z0 + 110, side * R(5, 9), 'L');
+            srail(z0 + 185, -side * R(3, 7), [[24, 0]], { style: 'hand', h: 0.7, label: 'FLAT BAR' });
+            break;
+          }
           case 'railStation': {
             // three lines side by side: pick the rail, the box or the rainbow
             const n = (zn.opt && zn.opt.n) || 0;
@@ -1660,7 +1690,9 @@
       this.chalets = [];
       this.buntings = [];
       if (M.resort) this.layoutResort(R, HALF);
+      if (M.village) this.layoutVillage(R, HALF);
       this.trees = this.trees.filter(clear);
+      if (M.village) this.trees = this.trees.filter((t) => { for (const h of this.chalets) if (Math.hypot(t.x - h.x, t.z - h.z) < h.rad + 3) return false; return true; });
       if (M.resort) {
         // keep trees out of the chalets, off the lift line (it's cut through the forest) and away from the stations
         const lt = this.liftTowers;
@@ -1848,6 +1880,38 @@
       const zs = this.liftCross || [700, 1700];
       const sg = 1 - 2 * smooth(clamp((z - zs[0] + 80) / 160, 0, 1)) + 2 * smooth(clamp((z - zs[1] + 80) / 160, 0, 1));
       return this.center(z) + this.liftSide * (C.HALF + 16) * sg;
+    }
+
+    // the village course: chalets the whole way down both sides of the street, facing it, two or
+    // three rows deep, with bunting strung across now and then
+    layoutVillage(R, HALF) {
+      const r = this.rnd;
+      const pal = [
+        { wall: [0.95, 0.93, 0.88], wood: [0.46, 0.27, 0.14], shut: [0.16, 0.42, 0.24] },
+        { wall: [0.96, 0.86, 0.72], wood: [0.38, 0.22, 0.12], shut: [0.62, 0.16, 0.14] },
+        { wall: [0.88, 0.92, 0.96], wood: [0.5, 0.31, 0.17], shut: [0.14, 0.3, 0.55] },
+        { wall: [0.98, 0.95, 0.9], wood: [0.32, 0.19, 0.11], shut: [0.75, 0.5, 0.12] },
+        { wall: [0.9, 0.88, 0.84], wood: [0.28, 0.17, 0.1], shut: [0.3, 0.3, 0.32] },
+      ];
+      const spot = (side, e, z, o) => {
+        const x = this.center(z) + side * (HALF + e);
+        for (const h of this.chalets) if (Math.hypot(h.x - x, h.z - z) < h.rad + 5) return;
+        const ang = Math.atan2(this.center(z + 1) - this.center(z - 1), 2);
+        const w = o.w || R(5, 7.5), d = o.d || R(5, 7);
+        this.chalets.push({ x, z, side, yaw: (side > 0 ? -Math.PI / 2 : Math.PI / 2) + ang + R(-0.08, 0.08), w, d, floors: o.floors || (r() < 0.45 ? 3 : 2), pal: pal[(r() * pal.length) | 0], rad: Math.max(w, d) * 0.95, deck: false, seed: r() });
+      };
+      for (const side of [-1, 1]) {
+        for (let z = 40 + R(0, 8); z < C.ZMAX - 30; z += R(15, 21)) {
+          if (z > C.LENGTH - 14 && z < C.LENGTH + 14) continue;
+          spot(side, R(5, 7.5), z, {});
+          if (r() < 0.85) spot(side, R(19, 26), z + R(-5, 5), {});
+          if (r() < 0.6) spot(side, R(33, 44), z + R(-8, 8), { floors: 2 });
+        }
+      }
+      for (let z = 160; z < C.LENGTH - 40; z += R(120, 170)) {
+        const c = this.center(z);
+        this.buntings.push({ z, x0: c - HALF - 2.5, x1: c + HALF + 2.5, i: this.buntings.length });
+      }
     }
 
     layoutResort(R, HALF) {
@@ -3423,7 +3487,7 @@
         const sx = f.dz * hw, sz = -f.dx * hw;
         const side = neon ? nc : cave ? [0.4, 0.9, 1.0] : f.style === 'mail' ? [0.16, 0.18, 0.22] : f.style === 'clean' ? [0.9, 0.91, 0.94] : f.style === 'pad' ? [0.95, 0.95, 0.97] : oly ? w.map.boxCol || [1.0, 0.72, 0.12] : w.mapId === 'sunset' || w.mapId === 'triple' ? [1.0, 0.45, 0.25] : [1.0, 0.72, 0.12];
         const em = neon ? 0.75 : cave ? 0.5 : 0;
-        const topCol = neon ? [0.85, 0.85, 0.95] : f.style === 'mail' ? [0.55, 0.58, 0.64] : f.style === 'pad' ? [0.3, 0.32, 0.38] : [0.7, 0.76, 0.86];
+        const topCol = neon ? [0.85, 0.85, 0.95] : f.style === 'hand' ? [0.2, 0.21, 0.23] : f.style === 'mail' ? [0.55, 0.58, 0.64] : f.style === 'pad' ? [0.3, 0.32, 0.38] : [0.7, 0.76, 0.86];
         for (let i = 0; i < N; i++) {
           const a = P[i], b = P[i + 1];
           // tall boxes stand on legs instead of being solid down to the snow

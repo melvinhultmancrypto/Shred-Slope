@@ -15,24 +15,24 @@
   const GIANT_SPEED = 22;    // the in-run eases you to this speed at a giant's lip
   SS.GIANT_G = GIANT_G;
   SS.GIANT_SPEED = GIANT_SPEED;
-  const SPIN_RATE = 5.6;     // rad/s at full wind-up in the air (under a turn a second: spins take commitment)
-  const FLIP_RATE = 4.6;     // rad/s at full wind-up while holding up/down in the air
-  const MAX_SPEED = 36;      // m/s (130 km/h)
+  const SPIN_RATE = 11;      // rad/s in the air: quick enough for a 1440 off a big kicker
+  const FLIP_RATE = 7.6;     // rad/s while holding up/down in the air: room for double corks
+  const MAX_SPEED = 42;      // m/s (150 km/h)
   const BOOST_MAX = 42;      // m/s while boosting
-  const BOOST_ACC = 4;       // extra m/s^2 while boosting (a push, not a rocket)
+  const BOOST_ACC = 7;       // extra m/s^2 while boosting
   // the snow and the air
   const MU_SNOW = 0.035;     // waxed base on packed snow
   // standing up you settle at about 80 km/h on a park slope; tuck (W) to go well past 100
   const DRAG_UP = 0.0034;    // air drag per m of speed², standing up (a rider in baggy outerwear)
   const DRAG_TUCK = 0.0016;  // tucked: half the frontal area
   const DRAG_AIR = 0.0012;   // in the air, between the two
-  const GRIP = 16;           // m/s²: the sideways pull an edge holds before the board skids (about 1.6 g)
+  const GRIP = 20;           // m/s²: the sideways pull an edge holds before the board skids (about 2 g)
   const BOOST_TIME = 2.8;    // seconds a full boost meter lasts
   const TARGET_TIME = 150;   // s: finishing faster than this earns a time bonus
   const TOKEN_PTS = 50;
   const SPIN_PTS = [0, 150, 350, 700, 1100, 1600, 2300, 3100, 4000, 5000, 6200, 7500, 9000, 10600, 12400];
   // grab names; the index is also the pose the rider takes (see rider.js)
-  const GRABS = ['METHOD', 'INDY', 'MUTE', 'MELON', 'STALEFISH', 'NOSE GRAB', 'TAIL GRAB', 'JAPAN'];
+  const GRABS = ['METHOD', 'INDY', 'WEDDLE', 'MELON', 'STALEFISH', 'NOSE GRAB', 'TAIL GRAB', 'JAPAN'];
   const SEND_MS = 1000 / 12;
   const BEST_KEY = 'shredSlope3d.best';
   const NAME_KEY = 'shredSlope.name';
@@ -216,8 +216,8 @@
   const grabbing = () => (ai.on ? ai.grab : keys.grab || (touch.pop && !P.grounded));
   const crouching = () => !ai.on && keys.grab && P.grounded;
   // on the snow: W / up speeds you up, S / down powerslides to brake (in the air they flip)
-  const brakeInput = () => (ai.on ? ai.brake : keys.down);
-  const tuckInput = () => (ai.on ? ai.tuck : keys.up);
+  const brakeInput = () => (ai.on ? ai.brake : keys.down && !keys.grab);
+  const tuckInput = () => (ai.on ? ai.tuck : keys.up && !keys.grab);
   const boostInput = () => (ai.on ? ai.boost : keys.boost || touch.boost);
   const typing = () => { const a = document.activeElement; return !!a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA'); };
 
@@ -561,9 +561,9 @@
   }
 
   // ------------------------------------------------------------------ rider physics
-  const POP = 0.72;
-  const AIR_PUSH = 3.5; // m/s² sideways push while you steer in the air (you can't swim through the air)
-  const AIR_DRIFT = 1.4; // m/s: the most sideways speed you can add in one air // how hard a jump pops
+  const POP = 0.95;
+  const AIR_PUSH = 9; // m/s² sideways push while you steer in the air
+  const AIR_DRIFT = 3.5; // m/s: the most sideways speed you can add in one air // how hard a jump pops
   // ollie onto a rail: with one just ahead, the pop is sized to put you on its start instead of sailing over it
   function railPop(base, vy) {
     // off a gap kicker it's a full pop: its in-run speed was checked to carry you onto the rail
@@ -699,7 +699,7 @@
     const w = world;
     const grinding = P.surf === 2 && P.grindRef;
     // smoothed steering: carves build up instead of snapping
-    P.steerS += (steer - P.steerS) * Math.min(1, dt * 4);
+    P.steerS += (steer - P.steerS) * Math.min(1, dt * 11);
     const s = P.steerS;
     const braking = brakeInput() && !grinding && !P.finished;
     P.slide += ((braking ? 1 : 0) - P.slide) * Math.min(1, dt * (braking ? 6 : 3.5));
@@ -716,7 +716,7 @@
     } else {
       // carving: the edge holds up to GRIP sideways; ask for a tighter turn than that and the board
       // skids round it instead, scrubbing speed. Banked turns lean you into the bank and grip more.
-      const want = s * lerp(2.4, 1.15, clamp(P.speed / 38, 0, 1)) * (1 + 0.35 * P.slide);
+      const want = s * lerp(2.9, 1.55, clamp(P.speed / 42, 0, 1)) * (1 + 0.35 * P.slide);
       const e0 = 0.35, h0 = P.heading;
       const latSlope = (w.Hk(P.x + e0, P.z) - w.Hk(P.x - e0, P.z)) / (2 * e0) * Math.cos(h0) - (w.Hk(P.x, P.z + e0) - w.Hk(P.x, P.z - e0)) / (2 * e0) * Math.sin(h0);
       const bank = Math.max(0, Math.sign(want) * latSlope);
@@ -727,11 +727,11 @@
         P.skid = clamp((Math.abs(want) - wGrip) / Math.abs(want), 0, 1);
         turn = Math.sign(want) * (wGrip + (Math.abs(want) - wGrip) * 0.6);
       }
-      // a heavy board: the turn takes a moment to come in and a moment to come out
-      P.yawV = (P.yawV || 0) + (turn - (P.yawV || 0)) * Math.min(1, dt * 5);
+      // the turn comes in fast but not instantly
+      P.yawV = (P.yawV || 0) + (turn - (P.yawV || 0)) * Math.min(1, dt * 14);
       P.heading += P.yawV * dt;
       // a long, hard skid at speed: the downhill edge digs in and throws you
-      P.edgeT = P.skid > 0.5 && P.speed > 20 && !ai.on ? P.edgeT + dt : Math.max(0, P.edgeT - dt * 2);
+      P.edgeT = P.skid > 0.5 && P.speed > 26 && !ai.on ? P.edgeT + dt : Math.max(0, P.edgeT - dt * 2);
       if (P.edgeT > 0.9 + 0.15 * STK.balance && !P.finished) {
         P.edgeT = 0;
         bail('CAUGHT AN EDGE');
@@ -739,7 +739,7 @@
       }
       // hands off: the board keeps going the way you pointed it, like a real board (it doesn't swing
       // back down the hill by itself); only the look-into-the-turn eases off
-      if (Math.abs(steer) < 0.05) P.steerS *= Math.exp(-3 * dt);
+      if (Math.abs(steer) < 0.05) P.steerS *= Math.exp(-6 * dt);
       P.heading = clamp(P.heading, -1.45, 1.45);
     }
 
@@ -759,6 +759,11 @@
     const sinA = along / Math.sqrt(1 + along * along), cosA = 1 / Math.sqrt(1 + along * along);
     const skid = grinding ? 0 : P.skid || 0;
     const tuck = tuckInput() && !grinding && P.slide < 0.2;
+    // butters: hold shift and press up (nose) or down (tail) to press the board and ride on one end
+    const bIn = crouching() && !grinding && P.speed > 4 ? (keys.up ? 1 : keys.down ? -1 : 0) : 0;
+    P.butterK = (P.butterK || 0) + (bIn - (P.butterK || 0)) * Math.min(1, dt * 9);
+    if (bIn) { P.butterT = (P.butterDir === bIn ? P.butterT || 0 : 0) + dt; P.butterDir = bIn; P.speed *= Math.exp(-0.12 * dt); }
+    else { if ((P.butterT || 0) > 0.4) awardButter(P.butterDir, P.butterT); P.butterT = 0; }
     // friction presses with the board's weight on the slope; a carve costs a little, a skid a lot
     // off the groomed piste the board ploughs through deep snow
     const deep = grinding || world.map.open ? 0 : clamp((Math.abs(P.x - world.center(P.z)) - C.HALF - 1) / 4, 0, 1);
@@ -1196,7 +1201,7 @@
       P.vx = Math.sin(na) * h2;
       P.vz = Math.cos(na) * h2;
       // the body turns with the flight, so the landing lines up with where you're going
-      P.heading = clamp(lerpAngle(P.heading, na, Math.min(1, dt * 3)), -1.45, 1.45);
+      P.heading = clamp(lerpAngle(P.heading, na, Math.min(1, dt * 5)), -1.45, 1.45);
       const off = P.x - world.center(P.z);
       if (Math.abs(off) > C.HALF - 3) P.vx -= Math.sign(off) * 4 * dt;
     }
@@ -1210,18 +1215,18 @@
     if (P.flipLock && fi !== P.flipLock) P.flipLock = 0;
     const f = P.flipLock ? 0 : fi;
     const sk = 1 + 0.08 * STK.spin;
-    if (s) P.spinVel += (s * SPIN_RATE * sk - P.spinVel) * Math.min(1, dt * 3.5);
+    if (s) P.spinVel += (s * SPIN_RATE * sk - P.spinVel) * Math.min(1, dt * 10);
     else {
-      P.spinVel *= Math.exp(-2.6 * dt);
+      P.spinVel *= Math.exp(-7 * dt);
       const tgt = Math.round((P.spin + P.stance) / Math.PI) * Math.PI - P.stance;
-      P.spin += clamp(tgt - P.spin, -2.2 * dt, 2.2 * dt);
+      P.spin += clamp(tgt - P.spin, -3.4 * dt, 3.4 * dt);
     }
     P.spin += P.spinVel * dt;
-    if (f) P.flipVel += (f * FLIP_RATE * sk - P.flipVel) * Math.min(1, dt * 3.5);
+    if (f) P.flipVel += (f * FLIP_RATE * sk - P.flipVel) * Math.min(1, dt * 10);
     else {
-      P.flipVel *= Math.exp(-2.6 * dt);
+      P.flipVel *= Math.exp(-7 * dt);
       const tgt = Math.round(P.flip / TAU) * TAU;
-      P.flip += clamp(tgt - P.flip, -1.6 * dt, 1.6 * dt);
+      P.flip += clamp(tgt - P.flip, -2.6 * dt, 2.6 * dt);
     }
     P.flip += P.flipVel * dt;
     if (world.cave && world.inCave(P.z)) {
@@ -1258,10 +1263,10 @@
     P.y = h;
     // balance widens every landing window a little (or narrows it)
     const bt = 1 + 0.1 * STK.balance;
-    if (flipErr > 0.62 * bt || spinErr > 0.68 * bt) {
+    if (flipErr > 0.78 * bt || spinErr > 0.85 * bt) {
       P.grounded = true;
       P.vy = 0;
-      bail(flipErr > 0.62 * bt ? 'HEAD PLANT' : 'LANDED SIDEWAYS');
+      bail(flipErr > 0.78 * bt ? 'HEAD PLANT' : 'LANDED SIDEWAYS');
       return;
     }
     const e = 0.4;
@@ -1273,10 +1278,10 @@
     const hs = Math.hypot(P.vx, P.vz);
     const softK = P.giant ? 3 : 1 + 0.5 * Math.max(0, P.airT - 0.9);
     // coming down a bit sideways at speed catches the downhill edge; slamming flat buckles the knees
-    if (!P.pipeAir && P.airT > 0.35 && ((spinErr > 0.46 * bt && hs > 12) || impact > 23 * softK * bt)) {
+    if (!P.pipeAir && P.airT > 0.35 && ((spinErr > 0.58 * bt && hs > 16) || impact > 28 * softK * bt)) {
       P.grounded = true;
       P.vy = 0;
-      bail(impact > 23 * softK * bt ? 'HARD LANDING' : 'CAUGHT AN EDGE');
+      bail(impact > 28 * softK * bt ? 'HARD LANDING' : 'CAUGHT AN EDGE');
       return;
     }
     if (!P.pipeAir) P.heading = clamp(Math.atan2(P.vx, P.vz), -1.45, 1.45);
@@ -1292,7 +1297,7 @@
       const vn = P.vx * nx + P.vy * ny + P.vz * nz;
       if (vn < 0) ts = Math.hypot(P.vx - vn * nx, P.vz - vn * nz);
     }
-    P.speed = ts * clamp(1 - Math.max(0, impact - 6 * soft) * 0.028, 0.55, 1);
+    P.speed = ts * clamp(1 - Math.max(0, impact - 7 * soft) * 0.018, 0.7, 1);
     P.vy = groundVy;
     P.slip = 0;
     P.grounded = true;
@@ -1385,9 +1390,22 @@
     // which part of the score each piece goes to (for the results screen)
     const pre = pts;
     let ks = 1;
-    if (qual === 'perfect') { pts *= 1.15; add('PERFECT LANDING', pts - pre); }
+    if (qual === 'perfect') { pts *= 1.15; add('STOMP', pts - pre); }
     else if (qual === 'sketchy') { pts *= 0.7; ks = 0.7; add('SKETCHY LANDING', pts - pre); }
-    if (name) addTrick(name, Math.round(pts), { air: (pre - gp) * ks, grab: gp * ks, land: qual === 'perfect' ? pre * 0.15 : 0 }, lines);
+    if (name) {
+      const seen = run.seen || (run.seen = {});
+      const n = seen[name] || 0;
+      seen[name] = n + 1;
+      if (n) { const before = pts, k = Math.max(0.4, 1 - 0.15 * n); pts *= k; ks *= k; add(`${n + 1}${['', '', 'ND', 'RD'][n + 1] || 'TH'} TIME -${Math.round((1 - k) * 100)}%`, pts - before); }
+      addTrick(name, Math.round(pts), { air: (pre - gp) * ks, grab: gp * ks, land: qual === 'perfect' ? pre * 0.15 * ks : 0 }, lines);
+    }
+  }
+
+  // butters on the snow: points for how long you hold the press
+  function awardButter(dir, t) {
+    const name = dir > 0 ? 'NOSE BUTTER' : 'TAIL BUTTER';
+    const pts = Math.round(150 + Math.min(2.5, t) * 260);
+    addTrick(name, pts, { air: pts }, [[name, pts]]);
   }
 
   const mult = () => Math.min(3, 1 + 0.15 * Math.max(0, run.combo - 1));
@@ -3257,8 +3275,7 @@
   let landT = 0;
   let flash = 0;
   function showLand(qual) {
-    if (qual === 'clean') return;
-    ui.landTag.textContent = qual === 'perfect' ? 'PERFECT LANDING +15%' : 'SKETCHY LANDING';
+    ui.landTag.textContent = qual === 'perfect' ? 'STOMPED +15%' : qual === 'clean' ? 'CLEAN LANDING' : 'SKETCHY LANDING';
     ui.landTag.className = 'brush show ' + qual;
     landT = 1.6;
     if (qual === 'perfect') { Sfx.perfect(); flash = 0.5; }
@@ -3758,7 +3775,7 @@
 
   function myState() {
     return {
-      key: 'me', x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip, lean: P.lean,
+      key: 'me', x: P.x, y: P.y, z: P.z, heading: P.heading, spin: P.spin + P.yawOff, stance: P.stance, flip: P.flip + (P.butterK || 0) * 0.3, lean: P.lean,
       crouch: P.crouch, comp: P.comp, grab: grabbing() && !P.grounded, air: !P.grounded, tuck: tuckInput() && P.grounded,
       slide: P.slide, wind: P.wind, bail: P.bailT > 0, tumble: P.tumble, tumbleRoll: P.tumbleRoll, t: time, wallRoll: P.wallRoll,
       bailAge: P.bailAge, bailUp: P.bailUp, bailK: P.bailT > 0 ? clamp(Math.abs(P.tumbleV) / 6 + Math.abs(P.rollV) / 6, 0, 1) : 0,

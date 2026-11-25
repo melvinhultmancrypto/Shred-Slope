@@ -446,7 +446,7 @@ button.card:hover, a.card:hover { transform: translateY(-2px); border-color: var
 }
 .course-card {
   position: relative; padding: 18px 20px; border-radius: 14px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.14);
-  background: linear-gradient(180deg, rgba(10, 12, 16, 0.15), rgba(10, 12, 16, 0.92) 70%), url("img/maps/slopestyle.jpg") center 30% / cover;
+  background: linear-gradient(180deg, rgba(10, 12, 16, 0.15), rgba(10, 12, 16, 0.92) 70%), url("img/maps/village.jpg") center 30% / cover;
   min-height: 210px; display: flex; flex-direction: column; justify-content: flex-end;
 }
 .course-card .kicker { color: var(--cream); }
@@ -1165,7 +1165,7 @@ kbd { border-radius: 2px; font-family: var(--ui); font-weight: 700; }
 }
 
 /* PLAY: the course as a title card, not a widget */
-.course-card { border: 0; border-left: 4px solid var(--cream); background: linear-gradient(180deg, rgba(8, 11, 18, 0) 0%, rgba(8, 11, 18, 0.35) 38%, rgba(8, 11, 18, 0.92) 78%), url("img/maps/slopestyle.jpg") center 35% / cover; box-shadow: none; }
+.course-card { border: 0; border-left: 4px solid var(--cream); background: linear-gradient(180deg, rgba(8, 11, 18, 0) 0%, rgba(8, 11, 18, 0.35) 38%, rgba(8, 11, 18, 0.92) 78%), url("img/maps/village.jpg") center 35% / cover; box-shadow: none; }
 .course-card h2 { font-size: clamp(44px, 4.4vw, 64px); line-height: 0.88; text-shadow: 0 3px 14px rgba(0, 0, 0, 0.5); }
 .course-card .kicker { color: var(--cream); }
 .cc-meta { gap: 0 !important; }
@@ -1270,7 +1270,7 @@ body { background: #0a0b0c; }
 .stats i b { background: rgba(255, 255, 255, 0.1); }
 .stats i b.on { background: #a5abb3; }
 .tile.on .stats i b.on { background: #eceef1; }
-.course-card { border-left-color: #8d939c; background: linear-gradient(180deg, rgba(10, 11, 13, 0.15) 0%, rgba(10, 11, 13, 0.55) 40%, rgba(10, 11, 13, 0.95) 80%), url("img/maps/slopestyle.jpg") center 35% / cover; filter: saturate(0.55); }
+.course-card { border-left-color: #8d939c; background: linear-gradient(180deg, rgba(10, 11, 13, 0.15) 0%, rgba(10, 11, 13, 0.55) 40%, rgba(10, 11, 13, 0.95) 80%), url("img/maps/village.jpg") center 35% / cover; filter: saturate(0.55); }
 .course-card .kicker, .nameplate .rider-who { color: #a9aeb6; }
 .cc-meta span + span::before { color: #6c727b; }
 .pass-card, .pass-hero { border-left-color: #8d939c; }

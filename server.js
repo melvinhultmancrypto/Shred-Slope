@@ -33,6 +33,7 @@ const LATE_JOIN_MS = 30000;
 
 // the mountains the servers ride (ids match public/js/world.js): one course for now
 const MAPS = [
+  { id: 'village', name: 'Stellhorn Village' },
   { id: 'slopestyle', name: 'Sundown Park' },
 ];
 
