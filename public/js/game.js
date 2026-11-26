@@ -475,8 +475,9 @@
         continue;
       }
       const add = pp[o + 13] > 0;
-      pp[o + 4] -= (add ? 7 : 4.5) * dt;
-      const drag = Math.exp(-(add ? 0.8 : 1.8) * dt);
+      const cloud = !add && pp[o + 8] > 0.3;
+      pp[o + 4] -= (add ? 7 : cloud ? 0.5 : 4.5) * dt;
+      const drag = Math.exp(-(add ? 0.8 : cloud ? 2.6 : 1.8) * dt);
       pp[o + 3] *= drag; pp[o + 5] *= drag;
       pp[o] += pp[o + 3] * dt; pp[o + 1] += pp[o + 4] * dt; pp[o + 2] += pp[o + 5] * dt;
     }
@@ -491,8 +492,10 @@
       const j = (add ? nb++ : na++) * 8;
       out[j] = pp[o]; out[j + 1] = pp[o + 1]; out[j + 2] = pp[o + 2];
       out[j + 3] = pp[o + 9]; out[j + 4] = pp[o + 10]; out[j + 5] = pp[o + 11];
-      out[j + 6] = pp[o + 12] * Math.min(1, k * 1.6);
-      out[j + 7] = pp[o + 8] * (add ? 1 : 0.6 + (1 - k) * 1.1);
+      const cloud = !add && pp[o + 8] > 0.3;
+      // clouds fade in, swell and thin out; grains of snow shrink a little as they settle
+      out[j + 6] = pp[o + 12] * Math.min(1, k * 1.6) * (cloud ? Math.min(1, (1 - k) * 5) : 1);
+      out[j + 7] = pp[o + 8] * (add ? 1 : cloud ? 0.7 + (1 - k) * 2.2 : 0.85 + (1 - k) * 0.5);
     }
     engine.drawPoints(outA, na, { soft: 1 });
     engine.drawPoints(outB, nb, { soft: 1, additive: true });
@@ -1654,9 +1657,9 @@
       const back = rand(0.2, 0.8);
       emit(P.x - sh * back + ch * side * 0.25, P.y + 0.06, P.z - ch * back - sh * side * 0.25,
         sh * P.speed * 0.55 + ch * side * rand(1, 2 + carve * 4), rand(0.6, 1.6 + carve * 2.2), ch * P.speed * 0.55 - sh * side * rand(1, 2 + carve * 4),
-        rand(0.35, 0.8), rand(0.04, 0.13), 0.9, 0.94, 1.0, 0.7, false);
-      // fine powder hanging in the air behind the spray
-      if (Math.random() < 0.12 + carve * 0.15) emit(P.x - sh * back * 1.5, P.y + 0.2, P.z - ch * back * 1.5, sh * P.speed * 0.3 + rand(-0.6, 0.6), rand(0.3, 1.0), ch * P.speed * 0.3 + rand(-0.6, 0.6), rand(0.8, 1.4), rand(0.35, 0.7), 0.9, 0.93, 0.98, 0.1, false);
+        rand(0.35, 0.8), rand(0.03, 0.09), 0.92, 0.95, 1.0, 0.75, false);
+      // a low cloud of fine snow hanging behind the edge
+      if (Math.random() < 0.22 + carve * 0.4) emit(P.x - sh * back * 1.5 + ch * side * 0.3, P.y + 0.15, P.z - ch * back * 1.5 - sh * side * 0.3, sh * P.speed * 0.25 + ch * side * rand(0.3, 1.2), rand(0.1, 0.6), ch * P.speed * 0.25 - sh * side * rand(0.3, 1.2), rand(0.9, 1.6), rand(0.35, 0.65), 0.93, 0.95, 1.0, 0.13, false);
     }
     // boost flames off the tail of the board
     if (P.boosting) {

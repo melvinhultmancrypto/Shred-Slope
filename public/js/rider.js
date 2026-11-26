@@ -1037,7 +1037,8 @@
     L.push(group([
       tube([0.004, 1.45, 0], [0.058, 1.72, 0], 0.104, 0.122, { mat: BM_COLLAR, paint: collarPaint }),
       tube([0.01, 1.52, 0], [0.064, 1.76, 0], 0.084, 0.104, { op: 'sub', k: 0.006 }),
-      plane([0.17, 1.632, 0], vn([0.3, 1, 0]), { op: 'int', k: 0.01 }),
+      plane([0.17, 1.632, 0], vn([0.3, 1, 0]), { op: 'int', k: 0.018 }),
+      torus([0.056, 1.666, 0], vn([0.3, 1, 0]), 0.112, 0.012, { Rz: 0.112, k: 0.012, mat: BM_COLLAR, paint: collarPaint }),
     ], { bone: BN.spine, mat: BM_COLLAR, paint: collarPaint }));
 
     // ---- neck (inside the collar)

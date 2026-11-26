@@ -223,16 +223,22 @@ void main() {
       c *= mix(1.0, 0.72 + 0.5 * st, rk * (1.0 - smoothstep(80.0, 220.0, dCam)));
     }
     // the groomed piste: wide bands where the groomer passes meet, following the course's curves
+    float pk = 0.0; // how much this point is on the groomed piste (no powder texture there)
     if (uCurve.x > -0.5 && snow > 0.5) {
       float cx = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
       float off = vW.x - cx;
       float onPiste = 1.0 - smoothstep(uCurveP.w - 1.5, uCurveP.w - 0.3, abs(off));
+      pk = onPiste;
       if (onPiste > 0.0) {
         float pass = smoothstep(0.46, 0.54, fract(off / 4.6 + 0.25)) - smoothstep(0.96, 1.0, fract(off / 4.6 + 0.25));
-        c *= 1.0 + onPiste * (pass - 0.5) * 0.05 * (1.0 - smoothstep(60.0, 180.0, dCam));
-        // fresh corduroy: fine ridges along the fall line, the way the groomer's comb leaves them
-        float cord = abs(sin(off * 34.9));
-        c *= 1.0 + onPiste * (cord - 0.62) * 0.07 * (1.0 - smoothstep(6.0, 30.0, dCam));
+        c *= 1.0 + onPiste * (pass - 0.5) * 0.045 * (1.0 - smoothstep(60.0, 180.0, dCam));
+        // fresh corduroy: even ridges along the fall line about 11 cm apart, each groove a little
+        // valley lit on one side and in cold shade on the other; faded out before it would shimmer
+        float ph = off * 57.1;
+        float sideLit = cos(ph) * (uSunDirF.x >= 0.0 ? 1.0 : -1.0);
+        float ck = onPiste * (1.0 - smoothstep(10.0, 34.0, dCam)) * uDetail;
+        c *= 1.0 + ck * (sin(ph) * 0.05 + sideLit * 0.055);
+        c *= mix(vec3(1.0), uCold, ck * clamp(-sideLit, 0.0, 1.0) * 0.4);
       }
     }
     // sun glare off the snow when you look toward it
@@ -242,7 +248,7 @@ void main() {
     if (snow > 0.0) {
       // wind-blown snow texture
       float n = vnoise(vW.xz * 0.3) * 0.55 + vnoise(vW.xz * 1.9 + 7.0) * 0.45;
-      c *= mix(1.0, 0.92 + n * 0.13, snow);
+      c *= mix(1.0, 0.92 + n * 0.13, snow * (1.0 - 0.85 * pk));
       float d = dCam;
       // the snow's own relief, lit per pixel: wind drifts a few metres across (deeper off the groomed
       // piste), ripples and then grain up close. Faces turned to the sun light up; the lee sides fall
@@ -253,7 +259,7 @@ void main() {
         float off = 1.0;
         if (uCurve.x > -0.5) {
           float cx2 = uCurve.x * sin(vW.z / uCurve.y + uCurveP.x) + uCurve.z * sin(vW.z / uCurve.w + uCurveP.y) - uCurveP.z;
-          off = mix(0.45, 1.7, smoothstep(uCurveP.w - 2.0, uCurveP.w + 4.0, abs(vW.x - cx2)));
+          off = mix(0.12, 1.7, smoothstep(uCurveP.w - 2.0, uCurveP.w + 4.0, abs(vW.x - cx2)));
         }
         // drifts: stretched across the fall line, about 9 x 16 m
         vec2 a1 = vec2(0.105, 0.035), b1 = vec2(-0.02, 0.062);
@@ -263,12 +269,12 @@ void main() {
         if (d < 60.0) {
           vec2 a2 = vec2(0.62, 0.14), b2 = vec2(-0.16, 0.7);
           vec3 n2 = vnoiseD(vec2(dot(vW.xz, a2), dot(vW.xz, b2)) + 9.1);
-          g += (n2.y * a2 + n2.z * b2) * 0.05 * (0.6 + 0.6 * off) * smoothstep(60.0, 25.0, d);
+          g += (n2.y * a2 + n2.z * b2) * 0.05 * (0.6 + 0.6 * off) * smoothstep(60.0, 25.0, d) * (1.0 - pk);
         }
         // grain, a hand's width, only right under you
         if (d < 14.0) {
           vec3 n3 = vnoiseD(vW.xz * 3.3 + 1.3);
-          g += n3.yz * 3.3 * 0.008 * smoothstep(14.0, 5.0, d);
+          g += n3.yz * 3.3 * 0.008 * smoothstep(14.0, 5.0, d) * (1.0 - pk);
         }
         float lit = -dot(g, sd) / sunY;
         float sunPart = (1.0 - sh) * smoothstep(0.35, 0.7, lum);
@@ -283,7 +289,7 @@ void main() {
         float tw = h21(cell * 1.31 + floor(uEye.xz * 1.6) * 0.37);
         vec2 spot = vec2(h21(cell + 11.0), h21(cell + 23.0));
         float dot0 = smoothstep(0.16, 0.0, length(fract(vW.xz * 7.0) - spot));
-        float s = step(0.975, h) * step(0.55, tw) * dot0 * snow * (1.0 - d / 40.0);
+        float s = step(0.975, h) * step(0.55, tw) * dot0 * snow * (1.0 - d / 40.0) * (1.0 - pk);
         c += vec3(0.95, 0.97, 1.0) * s * (0.6 + lum * 1.6) * uDetail * (1.0 - sh);
       }
     }
