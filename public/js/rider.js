@@ -1020,13 +1020,13 @@
       // a puffy jacket standing off the body: full through the chest and back, falling straight
       ell([0.0, 1.27, 0], [0.148, 0.2, 0.245], { mat: BM_JACKET, paint: hoodiePaint }),
       ell([-0.04, 1.3, 0], [0.122, 0.17, 0.238], { k: 0.06, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.01, 1.04, 0], [0.14, 0.24, 0.215], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([-0.01, 0.86, 0], [0.152, 0.3, 0.25], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.01, 1.04, 0], [0.152, 0.26, 0.242], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([-0.01, 0.88, 0], [0.155, 0.34, 0.248], { k: 0.09, mat: BM_JACKET, paint: hoodiePaint }),
       // rounded, dropped shoulders
-      tube([-0.01, 1.51, -0.05], [-0.006, 1.44, -0.225], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
-      tube([-0.01, 1.51, 0.05], [-0.006, 1.44, 0.225], 0.078, 0.082, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([0.0, 1.415, -0.24], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
-      ell([0.0, 1.415, 0.24], [0.09, 0.09, 0.088], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.5, -0.05], [-0.006, 1.47, -0.225], 0.08, 0.084, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      tube([-0.01, 1.5, 0.05], [-0.006, 1.47, 0.225], 0.08, 0.084, { k: 0.05, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.44, -0.242], [0.092, 0.085, 0.09], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
+      ell([0.0, 1.44, 0.242], [0.092, 0.085, 0.09], { k: 0.04, mat: BM_JACKET, paint: hoodiePaint }),
       plane([0, 0.715, 0], [0, -1, 0], { op: 'int', k: 0.012 }),
     ], { bone: BN.spine, mat: BM_JACKET });
     L.push(jk);
